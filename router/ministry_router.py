@@ -101,15 +101,14 @@ def fetch_meetings(keyword: str, *, start: str, end: str | None, limit: int) -> 
     return payload.get("meetingRecord") or []
 
 
-def extract_pairs(meetings: Iterable[dict], *, lookahead: int = 6) -> list[LabeledPair]:
+def extract_pairs(meetings: Iterable[dict]) -> list[LabeledPair]:
     pairs: list[LabeledPair] = []
     for meeting in meetings:
         speeches = sorted(meeting.get("speechRecord") or [], key=lambda s: int(s.get("speechOrder") or 0))
         for idx, question in enumerate(speeches):
             if not is_legislator(question) or not is_question_like(question):
                 continue
-            found = 0
-            for answer in speeches[idx + 1 : idx + 1 + lookahead]:
+            for answer in speeches[idx + 1 :]:
                 if is_legislator(answer):
                     break
                 ministry = ministry_from_position(answer.get("speakerPosition") or "")
@@ -127,9 +126,6 @@ def extract_pairs(meetings: Iterable[dict], *, lookahead: int = 6) -> list[Label
                         url=answer.get("speechURL") or "",
                     )
                 )
-                found += 1
-                if found >= 3:
-                    break
     return pairs
 
 
@@ -178,14 +174,18 @@ def train_centroids(rows: Iterable[dict]) -> dict[str, Counter[str]]:
     return dict(model)
 
 
+def cosine_score(question_tokens: Counter[str], row_tokens: Counter[str]) -> float:
+    dot = sum(question_tokens[token] * row_tokens[token] for token in question_tokens)
+    q_norm = math.sqrt(sum(v * v for v in question_tokens.values()))
+    r_norm = math.sqrt(sum(v * v for v in row_tokens.values()))
+    return dot / (q_norm * r_norm) if q_norm and r_norm else 0.0
+
+
 def predict_ministries(question: str, model: dict[str, Counter[str]], *, topn: int = 5) -> list[dict]:
     q = Counter(tokenize(question))
     scores: dict[str, float] = {}
     for ministry, centroid in model.items():
-        dot = sum(q[token] * centroid[token] for token in q)
-        q_norm = math.sqrt(sum(v * v for v in q.values()))
-        c_norm = math.sqrt(sum(v * v for v in centroid.values()))
-        score = dot / (q_norm * c_norm) if q_norm and c_norm else 0.0
+        score = cosine_score(q, centroid)
         if score > 0:
             scores[ministry] = score
     total = sum(scores.values())
@@ -197,6 +197,33 @@ def predict_ministries(question: str, model: dict[str, Counter[str]], *, topn: i
     if shares:
         shares[0]["percent"] = round(shares[0]["percent"] + correction, 1)
     return shares
+
+
+def predict_with_evidence(question: str, rows: list[dict], *, topn: int = 5, evidence_n: int = 8) -> dict:
+    shares = predict_ministries(question, train_centroids(rows), topn=topn)
+    q = Counter(tokenize(question))
+    scored = []
+    for row in rows:
+        score = cosine_score(q, Counter(tokenize(row.get("question", ""))))
+        if score <= 0:
+            continue
+        scored.append((score, row))
+    evidence = []
+    for score, row in sorted(scored, key=lambda item: item[0], reverse=True)[:evidence_n]:
+        evidence.append(
+            {
+                "ministry": row.get("ministry", ""),
+                "score": round(score, 4),
+                "date": row.get("date", ""),
+                "meeting": row.get("meeting", ""),
+                "speaker": row.get("speaker", ""),
+                "position": row.get("position", ""),
+                "url": row.get("url", ""),
+                "question": row.get("question", "")[:260],
+                "answer": row.get("answer", "")[:220],
+            }
+        )
+    return {"shares": shares, "evidence": evidence}
 
 
 def evaluate(rows: list[dict]) -> dict:
@@ -268,7 +295,7 @@ def main() -> None:
         print(json.dumps({"written": count, "out": args.out}, ensure_ascii=False))
     elif args.command == "predict":
         rows = read_jsonl(Path(args.data))
-        print(json.dumps(predict_ministries(args.question, train_centroids(rows)), ensure_ascii=False, indent=2))
+        print(json.dumps(predict_with_evidence(args.question, rows), ensure_ascii=False, indent=2))
     elif args.command == "evaluate":
         print(json.dumps(evaluate(read_jsonl(Path(args.data))), ensure_ascii=False, indent=2))
     elif args.command == "csv":

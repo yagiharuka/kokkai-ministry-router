@@ -59,13 +59,11 @@ function extract(meetings:Meeting[],query:Set<string>):Pair[]{
   for(let i=0;i<speeches.length;i++){
    const q=speeches[i];if(!legislator(q)||!isQuestion(q))continue;
    const similarity=score(query,q.speech||"");if(similarity<0.055)continue;
-   // A chair's procedural intervention may occur before the first answer.
-   let found=0;
-   for(let j=i+1;j<Math.min(i+7,speeches.length);j++){
+   // Collect every government answer until the next legislator begins speaking.
+   for(let j=i+1;j<speeches.length;j++){
     const a=speeches[j];if(legislator(a))break;
     const label=ministry(a);if(!label||!(a.speech||"").trim())continue;
     pairs.push({question:(q.speech||"").slice(0,260),answer:(a.speech||"").slice(0,220),ministry:label,speaker:a.speaker||"答弁者",position:a.speakerPosition||"",date:m.date||"",meeting:m.nameOfMeeting||"",url:a.speechURL||"",score:similarity});
-    if(++found>=3)break;
    }
   }
  }
