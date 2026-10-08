@@ -20,7 +20,7 @@ GitHub Pagesで公開する場合のURL:
 
 https://yagiharuka.github.io/kokkai-ministry-router/
 
-GitHub Pagesの画面は静的なままです。ブラウザーのCORS制限を避けるため、会議録の取得だけを読み取り専用の中継APIに送ります。質問全文は送らず、抽出した検索語だけを国会図書館に転送します。公開中の読み取り専用中継APIは `https://kokkai-pages-api.haru620328.chatgpt.site/api/speech` です。
+GitHub Pagesの画面は静的なままです。公開画面の更新には `.github/workflows/pages.yml` が `dist/` を配備します。ブラウザーのCORS制限を避けるため、会議録の取得だけを読み取り専用の中継APIに送ります。質問全文は送らず、抽出した検索語だけを国会図書館に転送します。公開中の読み取り専用中継APIは `https://kokkai-pages-api.haru620328.chatgpt.site/api/speech` です。
 
 ## 教師データを作る
 
