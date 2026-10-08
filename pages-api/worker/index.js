@@ -14,18 +14,23 @@ export default {
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(rootPage, { headers: { "content-type": "text/html; charset=utf-8" } });
     }
-    if (url.pathname !== "/api/meeting" || request.method !== "GET") {
+    if (!["/api/meeting", "/api/speech"].includes(url.pathname) || request.method !== "GET") {
       return new Response("Not found", { status: 404 });
     }
     const term = (url.searchParams.get("any") || "").trim();
+    const meetingName = (url.searchParams.get("nameOfMeeting") || "").trim();
     const from = url.searchParams.get("from") || "2020-01-01";
     const maximum = Number(url.searchParams.get("maximumRecords") || 5);
-    if (term.length < 2 || term.length > 80 || !/^\d{4}-\d{2}-\d{2}$/.test(from) ||
-        !Number.isInteger(maximum) || maximum < 1 || maximum > 10) {
+    const limit = url.pathname === "/api/speech" ? 30 : 10;
+    if (term.length < 2 || term.length > 80 || meetingName.length > 30 ||
+        (meetingName && !/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々・]+$/u.test(meetingName)) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(from) ||
+        !Number.isInteger(maximum) || maximum < 1 || maximum > limit) {
       return withCors(Response.json({ error: "検索条件を確認してください。" }, { status: 400 }));
     }
-    const source = new URL("https://kokkai.ndl.go.jp/api/meeting");
+    const source = new URL(`https://kokkai.ndl.go.jp${url.pathname}`);
     source.searchParams.set("any", term);
+    if (meetingName) source.searchParams.set("nameOfMeeting", meetingName);
     source.searchParams.set("from", from);
     source.searchParams.set("maximumRecords", String(maximum));
     source.searchParams.set("recordPacking", "json");
