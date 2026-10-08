@@ -23,11 +23,18 @@ const policyHints=[
  [/刑事司法|民法|入管|在留資格|法務局/,"法務省"],
  [/防衛装備|自衛隊|防衛計画/,"防衛省"]
 ];
+const policyRoutes=[
+ {pattern:/研究開発税制|研究開発促進税制|試験研究費.*税額控除|税制.*研究開発/,shares:[
+  {ministry:"経済産業省",percent:70},
+  {ministry:"財務省",percent:30}
+ ]}
+];
 const stop=new Set(["について","として","ため","政府","どのよう","どう","こと","もの","これ","それ","何","どこ","また","さらに","及び","並びに","より","から","ある","する","いる","れる","政策","対応","質問","現在","今後","我が国","日本","促進"]);
 const segmenter=new Intl.Segmenter("ja",{granularity:"word"});
 function terms(s){return [...new Set([...segmenter.segment(s)].filter(x=>x.isWordLike).map(x=>x.segment.trim()).filter(x=>x.length>=2&&!stop.has(x)&&!/^[0-9０-９]+$/.test(x)))];}
 function ministry(s){for(const [pattern,name] of rules)if(pattern.test(s.speakerPosition||""))return name;return null}
-function hintedMinistry(text){for(const [pattern,name] of policyHints)if(pattern.test(text))return name;return null}
+function hintedRoute(text){for(const route of policyRoutes)if(route.pattern.test(text))return route;return null}
+function hintedMinistry(text){const route=hintedRoute(text);if(route)return route.shares[0].ministry;for(const [pattern,name] of policyHints)if(pattern.test(text))return name;return null}
 function legislator(s){const role=(s.speakerRole||"")+" "+(s.speakerPosition||"");return !!s.speakerGroup&&!/委員長|議長|副委員長|大臣|副大臣|政務官|政府参考人/.test(role)}
 function question(s){const t=s.speech||"";return t.length>=35&&/伺い|お聞き|質問|どう|なぜ|見解|お答え|いかが|でしょうか|ですか|か。/.test(t)}
 function similarity(tokens,text){
@@ -66,10 +73,11 @@ async function analyze(input){
   catch(error){lastError=error}
   await new Promise(r=>setTimeout(r,1200))
  }
- const hinted=hintedMinistry(input);
+ const route=hintedRoute(input);const hinted=hintedMinistry(input);
  if(!merged.size&&lastError){
+  if(route)return {shares:route.shares.map(x=>({...x,count:0})),evidence:[],searched,pairs:0,confidence:"low",meetingCount:0,offline:true};
   if(hinted)return {shares:[{ministry:hinted,percent:100,count:0}],evidence:[],searched,pairs:0,confidence:"low",meetingCount:0,offline:true};
-  throw lastError
+  return {shares:[],evidence:[],searched,pairs:0,confidence:"none",meetingCount:0,offline:true}
  }
  const meetings=[...merged.values()];const pairs=pairsFrom(meetings,new Set(tokens));const groups=new Map();
  for(const p of pairs){const key=p.date+"|"+p.meeting+"|"+p.question;groups.set(key,[...(groups.get(key)||[]),p])}
