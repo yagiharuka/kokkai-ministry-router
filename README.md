@@ -93,3 +93,8 @@ Python 3.10以上で `python -m pip install -r requirements-mcp.txt` を実行�
 リモート接続用には `MCP_TRANSPORT=streamable-http python mcp_server.py` で起動できます。MCPクライアントから使うにはHTTPSで到達できる場所への別途ホストが必要です。GitHub Pagesは静的ファイル配信先なので、MCPサーバー自体はホストしません。
 
 MCPツールはNDL APIの呼び出しを直列化し、数秒の間隔を空けます。APIエラーや関連事例なしの場合、割合を推測で埋めません。
+
+
+### エージェント接続用の実行環境
+
+GitHub Pagesの公開画面はそのまま利用します。ChatGPTから呼ぶMCP接続先には、依存パッケージ不要のWorker実装を [`mcp-worker/`](mcp-worker/) に用意しました。公開・接続の完了まではこのコードは稼働していません。
