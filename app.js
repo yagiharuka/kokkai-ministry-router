@@ -59,7 +59,14 @@ async function search(keyword){
 async function analyze(input){
  const tokens=terms(input);if(!tokens.length)throw new Error("検索に使える語が見つかりません。質問を具体化してください。");
  const keywords=[...tokens].filter(x=>x.length>=2).sort((a,b)=>b.length-a.length).slice(0,4);const searched=[];const merged=new Map();
- for(const word of keywords){searched.push(word);for(const m of await search(word)){const key=m.issueID||((m.date||"")+"|"+(m.nameOfMeeting||""));if(!merged.has(key))merged.set(key,m)}await new Promise(r=>setTimeout(r,900))}
+ let lastError=null;
+ for(const word of keywords){
+  searched.push(word);
+  try{for(const m of await search(word)){const key=m.issueID||((m.date||"")+"|"+(m.nameOfMeeting||""));if(!merged.has(key))merged.set(key,m)}}
+  catch(error){lastError=error}
+  await new Promise(r=>setTimeout(r,1200))
+ }
+ if(!merged.size&&lastError)throw lastError;
  const meetings=[...merged.values()];const pairs=pairsFrom(meetings,new Set(tokens));const groups=new Map();
  for(const p of pairs){const key=p.date+"|"+p.meeting+"|"+p.question;groups.set(key,[...(groups.get(key)||[]),p])}
  const weights=new Map();for(const group of groups.values()){
