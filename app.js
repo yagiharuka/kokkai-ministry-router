@@ -13,7 +13,7 @@ const rules=[
  [/内閣府|内閣官房|内閣総理大臣|官房長官|国家公安委員会|警察庁|消費者庁|公正取引委員会/,"内閣府・内閣官房等"]
 ];
 const policyHints=[
- [/なでしこ銘柄|ダイバーシティ経営|女性活躍推進法|ものづくり白書|産業競争力強化法|中小企業基本法|中小企業庁|特許庁|半導体支援|経済安全保障推進法|省エネ法|再エネ賦課金/,"経済産業省"],
+ [/なでしこ銘柄|ダイバーシティ経営|女性活躍推進法|ものづくり白書|産業競争力強化法|中小企業基本法|中小企業庁|特許庁|半導体|経済安全保障推進法|省エネ法|再エネ賦課金/,"経済産業省"],
  [/年金|雇用保険|労災|働き方改革|医療保険|介護保険|最低賃金|薬価|医薬品医療機器/,"厚生労働省"],
  [/学習指導要領|学校教育|大学入試|科研費|文化芸術|スポーツ振興|著作権/,"文部科学省"],
  [/所得税|法人税|消費税|関税|国債|財政/,"財務省"],
@@ -66,18 +66,22 @@ async function analyze(input){
   catch(error){lastError=error}
   await new Promise(r=>setTimeout(r,1200))
  }
- if(!merged.size&&lastError)throw lastError;
+ const hinted=hintedMinistry(input);
+ if(!merged.size&&lastError){
+  if(hinted)return {shares:[{ministry:hinted,percent:100,count:0}],evidence:[],searched,pairs:0,confidence:"low",meetingCount:0,offline:true};
+  throw lastError
+ }
  const meetings=[...merged.values()];const pairs=pairsFrom(meetings,new Set(tokens));const groups=new Map();
  for(const p of pairs){const key=p.date+"|"+p.meeting+"|"+p.question;groups.set(key,[...(groups.get(key)||[]),p])}
  const weights=new Map();for(const group of groups.values()){
   const best=new Map();for(const p of group)best.set(p.ministry,Math.max(best.get(p.ministry)||0,p.score));
   const labels=[...best.keys()];for(const label of labels){const v=weights.get(label)||{weight:0,count:0};v.weight+=Math.max(best.get(label),.05)/labels.length;v.count++;weights.set(label,v)}
  }
- const hinted=hintedMinistry(input);if(hinted){const existing=weights.get(hinted)||{weight:0,count:0};existing.weight=Math.max(existing.weight,10);existing.count=Math.max(existing.count,1);weights.set(hinted,existing)}
+ if(hinted){const existing=weights.get(hinted)||{weight:0,count:0};existing.weight=Math.max(existing.weight,10);existing.count=Math.max(existing.count,1);weights.set(hinted,existing)}
  const total=[...weights.values()].reduce((n,v)=>n+v.weight,0);let shares=[...weights].map(([ministry,v])=>({ministry,percent:Math.round(v.weight/total*100),count:v.count})).sort((a,b)=>b.percent-a.percent);if(hinted){shares=shares.filter(x=>x.ministry===hinted||x.percent>=5);const hit=shares.find(x=>x.ministry===hinted);if(hit){hit.percent=90;for(const x of shares)if(x!==hit)x.percent=Math.floor(10/Math.max(shares.length-1,1));}}if(shares.length)shares[0].percent+=100-shares.reduce((n,v)=>n+v.percent,0);
  const top=pairs[0]?.score||0;const confidence=!shares.length?"none":top<.1||shares[0].percent<45?"low":shares[0].percent<65?"medium":"high";
  return {shares,evidence:pairs.slice(0,8),searched,pairs:groups.size,confidence,meetingCount:meetings.length}
 }
-function render(r){$("results").hidden=false;const confidence=r.confidence==="low"?'<p class="caveat">今回は根拠が薄いため、判定保留寄りの参考値です。固有の制度名・法令名・事業名を足すと精度が上がります。</p>':"";$("results").innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>答弁担当の推定割合</h2></div><span>'+r.pairs+'件の類似質疑から算出</span></div>'+confidence+(r.shares.length?'<div class="shares">'+r.shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,"0")+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join("")+'</div><p class="caveat">割合は取得した類似質疑の答弁担当を質問との類似度で重みづけしたものです。正式な所管や将来の答弁担当が確定する確率ではありません。少数事例では参考値として扱ってください。</p>':'<p class="caveat">答弁者の肩書きから省庁を特定できる類似質疑が見つかりませんでした。質問案に固有の政策名を加えて再検索してください。</p>')+(r.evidence.length?'<div class="examples"><h3>判断に使った質疑</h3>'+r.evidence.map(x=>'<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.date)+' · '+escape(x.meeting)+'</span></div><p><b>質問</b>'+escape(x.question)+'</p><p><b>答弁</b>'+escape(x.answer)+'</p><footer><span>'+escape(x.speaker)+'（'+escape(x.position)+'）</span>'+(x.url.startsWith("https://kokkai.ndl.go.jp/")?'<a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">会議録の発言を見る ↗</a>':"")+'</footer></article>').join("")+'</div>':"")+'<p class="caveat footnote">検索語：'+r.searched.map(escape).join("、")+'。会議録の収録状況、発言順、役職表記により抽出漏れが生じます。実務での割り振りは担当部局が最終確認してください。</p>'}
+function render(r){$("results").hidden=false;const offline=r.offline?'<p class="caveat">現在、会議録APIから根拠を取得できなかったため、入力された制度名・政策名の所管ルールだけで暫定判定しています。</p>':"";const confidence=r.confidence==="low"&&!r.offline?'<p class="caveat">今回は根拠が薄いため、判定保留寄りの参考値です。固有の制度名・法令名・事業名を足すと精度が上がります。</p>':"";$("results").innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>答弁担当の推定割合</h2></div><span>'+r.pairs+'件の類似質疑から算出</span></div>'+confidence+(r.shares.length?'<div class="shares">'+r.shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,"0")+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join("")+'</div><p class="caveat">割合は取得した類似質疑の答弁担当を質問との類似度で重みづけしたものです。正式な所管や将来の答弁担当が確定する確率ではありません。少数事例では参考値として扱ってください。</p>':'<p class="caveat">答弁者の肩書きから省庁を特定できる類似質疑が見つかりませんでした。質問案に固有の政策名を加えて再検索してください。</p>')+(r.evidence.length?'<div class="examples"><h3>判断に使った質疑</h3>'+r.evidence.map(x=>'<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.date)+' · '+escape(x.meeting)+'</span></div><p><b>質問</b>'+escape(x.question)+'</p><p><b>答弁</b>'+escape(x.answer)+'</p><footer><span>'+escape(x.speaker)+'（'+escape(x.position)+'）</span>'+(x.url.startsWith("https://kokkai.ndl.go.jp/")?'<a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">会議録の発言を見る ↗</a>':"")+'</footer></article>').join("")+'</div>':"")+'<p class="caveat footnote">検索語：'+r.searched.map(escape).join("、")+'。会議録の収録状況、発言順、役職表記により抽出漏れが生じます。実務での割り振りは担当部局が最終確認してください。</p>'}
 $("question").addEventListener("input",e=>$("length").textContent=e.target.value.length+" / 1200字");
 $("form").addEventListener("submit",async e=>{e.preventDefault();const input=$("question").value.trim();if(input.length<12){$("message").textContent="質問案をもう少し具体的に入力してください。";$("message").className="error";$("message").hidden=false;return}$("submit").disabled=true;$("submit").textContent="会議録を調べています…";$("results").hidden=true;$("message").className="";$("message").hidden=false;$("message").textContent="関連する会議録を取得し、質問と答弁を対応づけています。数十秒かかることがあります。";try{render(await analyze(input));$("message").hidden=true}catch(err){$("message").className="error";$("message").textContent="会議録を取得できませんでした。ブラウザーからのAPI接続、または通信状況を確認して再試行してください。詳細："+(err?.message||"不明なエラー")}finally{$("submit").disabled=false;$("submit").textContent="担当候補を調べる"}});
