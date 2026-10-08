@@ -60,6 +60,14 @@ function retrievalMatch(terms, text) {
   return terms.filter(term => text.includes(term)).length / terms.length;
 }
 
+function excerptAroundTerms(value, terms) {
+  const valueText = cleaned(value);
+  const hits = terms.map(term => valueText.indexOf(term)).filter(index => index >= 0);
+  if (!hits.length) return valueText.slice(0, 400);
+  const start = Math.max(0, Math.min(...hits) - 140);
+  return `${start ? "…" : ""}${valueText.slice(start, start + 400)}${start + 400 < valueText.length ? "…" : ""}`;
+}
+
 function extractCandidates(meetings, terms) {
   const rows = [];
   const seen = new Set();
@@ -77,25 +85,35 @@ function extractCandidates(meetings, terms) {
         const title = answer.speakerPosition || "";
         const ministry = ministryFromTitle(title);
         if (!answerText || !ministry) continue;
+        const questionMatch = retrievalMatch(terms, questionText);
+        const answerMatch = retrievalMatch(terms, answerText);
+        // Long plenary speeches often contain many separate questions. A reply to
+        // another topic must not inherit a keyword mentioned elsewhere in them.
+        if (!questionMatch && !answerMatch) continue;
+        if (!answerMatch && questionText.length > 1000) continue;
         const key = `${meeting.issueID || ""}:${answer.speechID || j}:${ministry}`;
         if (seen.has(key)) continue;
         seen.add(key);
         rows.push({
           case_id: `${meeting.issueID || meeting.date || ""}:${question.speechID || question.speechOrder || i}`,
-          question: questionText.slice(0, 400),
-          answer: answerText.slice(0, 400),
+          question: excerptAroundTerms(questionText, terms),
+          answer: excerptAroundTerms(answerText, terms),
           ministry,
           speaker: answer.speaker || "答弁者",
           speaker_title: title,
           date: meeting.date || "",
           meeting: meeting.nameOfMeeting || "",
           url: answer.speechURL || "",
-          retrieval_match: Math.max(retrievalMatch(terms, questionText), retrievalMatch(terms, answerText)),
+          retrieval_match: Math.max(questionMatch, answerMatch),
+          answer_match: answerMatch,
+          question_match: questionMatch,
         });
       }
     }
   }
-  return rows.sort((a, b) => b.retrieval_match - a.retrieval_match).slice(0, 30);
+  return rows.sort((a, b) =>
+    (2 * b.answer_match + b.question_match) - (2 * a.answer_match + a.question_match))
+    .slice(0, 30);
 }
 
 let requestQueue = Promise.resolve();
