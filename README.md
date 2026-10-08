@@ -20,7 +20,7 @@ GitHub Pagesで公開する場合のURL:
 
 https://yagiharuka.github.io/kokkai-ministry-router/
 
-この静的ページは、ブラウザーから国立国会図書館APIに直接アクセスします。ブラウザーやネットワークのCORS制限で取得できない場合は、ローカル版の `python server.py` を使ってください。
+GitHub Pagesの画面は静的なままです。ブラウザーのCORS制限を避けるため、会議録の取得だけを読み取り専用の中継APIに送ります。質問全文は送らず、抽出した検索語だけを国会図書館に転送します。中継APIの公開設定が必要です。
 
 ## 教師データを作る
 
