@@ -1,6 +1,8 @@
-const protocolVersion = "2025-11-25";
+const protocolVersion = "2026-07-28";
+const legacyProtocolVersion = "2025-11-25";
 const toolDefinition = {
   name: "search_answer_assignments",
+  title: "国会答弁から所管省庁を調べる",
   description: "国会会議録を検索し、議員の発言に続く政府側答弁の候補と、答弁者の肩書きから読める省庁を返します。質問案と質疑の意味上の関連性を読んで選別し、case_id単位で質疑を重複なく数えて省庁別の構成比を示してください。複数省庁の答弁はその質疑の重みを均等に分け、記録がない場合は割合を作らないでください。",
   inputSchema: {
     type: "object",
@@ -15,6 +17,7 @@ const toolDefinition = {
     },
     required: ["question", "search_terms"],
   },
+  annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
 };
 
 const ministryPatterns = [
@@ -159,9 +162,11 @@ async function searchAssignments(args) {
   };
 }
 
-function jsonRpc(id, result) {
-  return Response.json({ jsonrpc: "2.0", id, result }, {
-    headers: { "MCP-Protocol-Version": protocolVersion },
+function jsonRpc(id, result, version = protocolVersion) {
+  return Response.json({ jsonrpc: "2.0", id, result: version === protocolVersion
+    ? { resultType: "complete", ...result }
+    : result }, {
+    headers: { "MCP-Protocol-Version": version },
   });
 }
 
@@ -183,22 +188,27 @@ async function handleMcp(request) {
   if (message.method.startsWith("notifications/")) return new Response(null, { status: 202 });
   if (message.method === "initialize") {
     return jsonRpc(id, {
-      protocolVersion,
+      protocolVersion: legacyProtocolVersion,
       capabilities: { tools: {} },
       serverInfo: { name: "kokkai-ministry-router", version: "0.1.0" },
       instructions: "検索語を選んでツールを呼び、質問案との関連性を読んで省庁別の構成比を計算してください。根拠URLを示し、記録がない場合は割合を作らないでください。",
-    });
+    }, legacyProtocolVersion);
   }
   if (message.method === "server/discover") {
     return jsonRpc(id, {
-      supportedVersions: [protocolVersion],
+      supportedVersions: [protocolVersion, legacyProtocolVersion],
       capabilities: { tools: {} },
-      serverInfo: { name: "kokkai-ministry-router", version: "0.1.0" },
+      _meta: { "io.modelcontextprotocol/serverInfo": { name: "kokkai-ministry-router", version: "0.1.1" } },
       instructions: "検索後に候補の関連性を読み、根拠付きで省庁別の構成比を示してください。",
+      ttlMs: 300000,
+      cacheScope: "public",
     });
   }
-  if (message.method === "tools/list") return jsonRpc(id, { tools: [toolDefinition] });
-  if (message.method === "ping") return jsonRpc(id, {});
+  const version = request.headers.get("MCP-Protocol-Version") === legacyProtocolVersion ||
+    message.params?._meta?.["io.modelcontextprotocol/protocolVersion"] === legacyProtocolVersion
+    ? legacyProtocolVersion : protocolVersion;
+  if (message.method === "tools/list") return jsonRpc(id, { tools: [toolDefinition] }, version);
+  if (message.method === "ping") return jsonRpc(id, {}, version);
   if (message.method !== "tools/call") return rpcError(id, -32601, "Method not found");
   if (!request.headers.get("oai-authenticated-user-id")) {
     return Response.json({ error: "Authentication required" }, { status: 401 });
@@ -214,12 +224,12 @@ async function handleMcp(request) {
       content: [{ type: "text", text: JSON.stringify(result) }],
       structuredContent: result,
       isError: result.errors.length > 0 && result.meetings_searched === 0,
-    });
+    }, version);
   } catch (error) {
     return jsonRpc(id, {
       content: [{ type: "text", text: error instanceof Error ? error.message : "検索に失敗しました。" }],
       isError: true,
-    });
+    }, version);
   }
 }
 
