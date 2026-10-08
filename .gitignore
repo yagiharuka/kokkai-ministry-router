@@ -38,6 +38,8 @@ yarn-error.log*
 next-env.d.ts
 /dist/
 /.wrangler/
+__pycache__/
+*.zip
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
 /.agents/
