@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 // Load private helpers without adding diagnostic endpoints or production exports.
 const source = await readFile(new URL('../worker/index.js', import.meta.url), 'utf8');
-const core = await import('data:text/javascript;base64,' + Buffer.from(source + '\nexport { ministryOf, questionMatch, extractCases, selectQuestions, routeCases };').toString('base64'));
+const core = await import('data:text/javascript;base64,' + Buffer.from(source + '\nexport { ministryOf, questionMatch, extractCases, selectQuestions, routeCases, relatedWord };').toString('base64'));
 let passed = 0;
 const check = (name, fn) => { fn(); passed++; console.log('PASS ' + name); };
 const speech = (id, order, text, position = '', group = '') => ({
@@ -23,6 +23,13 @@ check('迅速化の語幹でも質問の目的を照合', () => assert.ok(core.q
 check('水道だけの答弁を耐震化の答弁として採らない', () => assert.equal(core.extractCases([meeting('water', '2025-01-01', '水道の耐震化にどのような対策を講じるのか伺います。', [['水道サービスのため都市の立地を誘導します。', '国土交通大臣']])], ['水道', '耐震化'], '水道 耐震化').length, 0));
 check('拡充を強化と言い換えた答弁を落とさない', () => assert.equal(core.extractCases([meeting('tax', '2025-01-01', '研究開発税制の拡充について、制度をどう進めるのか伺います。', [['研究開発税制についてインセンティブを強化します。', taxTitle]])], ['研究開発税制', '拡充'], '研究開発税制 拡充')[0].ministry, '財務省'));
 check('次の論点へ移った質問を除外', () => assert.equal(core.questionMatch(speech('q', 1, '外国人労働者の受入れに課題があります。次に、避難所の対策について伺います。', '', '会派'), ['外国人労働者', '受入れ']), null));
+check('助動詞を関連政策語にしない', () => assert.equal(core.relatedWord('水道水に含まれる水質基準', '水道水', '水質'), null));
+check('法律名の一部だけで別製品の承認を拾わない', () => assert.equal(core.questionMatch(speech('q', 1, 'ワクチンの承認は医薬品医療機器等法の特例で短縮されたと思いますが、いかがでしょうか。', '', '会派'), ['医療機器', '承認']), null));
+check('組織名の一部だけで別製品の承認を拾わない', () => assert.equal(core.questionMatch(speech('q', 1, '医薬品の承認審査を行う医薬品医療機器総合機構について簡単に説明していただけますか。', '', '会派'), ['医療機器', '承認']), null));
+check('同一会議の別の関連質問も候補に残す', () => {
+  const q = { ...speech('q1', 1, '水道の耐震化について、その対策を伺います。', '', '会派'), issueID: 'same', nameOfMeeting: '委員会' };
+  assert.deepEqual(core.selectQuestions([q, { ...q, speechID: 'q2' }], ['水道', '耐震化'])[0][1].speechIDs, ['q1', 'q2']);
+});
 
 const frontend = await readFile(new URL('../../dist/app.js', import.meta.url), 'utf8');
 const parse = new Function(frontend.slice(frontend.indexOf('const stop='), frontend.indexOf('function ministry(')) + ';return policyPhrases;')();
