@@ -11,7 +11,7 @@ const toolDefinition = {
       search_terms: {
         type: "array",
         items: { type: "string" },
-        description: "最初の2語は質問案の異なる核心概念（例：スタートアップ／女性活躍）。近くに共起する質疑だけを候補にする。残りは追加検索語。検索語が見つからなければ言い換えて再実行。",
+        description: "質問案の異なる核心概念を2語（例：スタートアップ／女性活躍）。近くに共起する質疑だけを候補にする。関連例が乏しければ言い換えて再実行。",
       },
       since: { type: "string", description: "検索開始日 YYYY-MM-DD。省略時は2020-01-01。" },
     },
@@ -177,7 +177,7 @@ async function searchAssignments(args) {
   }
   if (!Array.isArray(args.search_terms)) throw new Error("検索語を指定してください。");
   const terms = [...new Set(args.search_terms.filter(term => typeof term === "string")
-    .map(term => cleaned(term).slice(0, 80)).filter(Boolean))].slice(0, 4);
+    .map(term => cleaned(term).slice(0, 80)).filter(Boolean))].slice(0, 2);
   if (!terms.length) throw new Error("検索語を1つ以上指定してください。");
   const since = args.since === undefined ? "2020-01-01" : args.since;
   if (typeof since !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(since)) {
