@@ -3,7 +3,7 @@ const legacyProtocolVersion = "2025-11-25";
 const toolDefinition = {
   name: "search_answer_assignments",
   title: "国会答弁から所管省庁を調べる",
-  description: "国会会議録を検索し、議員の発言に続く政府側答弁の候補と、答弁者の肩書きから読める省庁を返します。質問案と質疑の意味上の関連性を読んで選別し、case_id単位で質疑を重複なく数えて省庁別の構成比を示してください。複数省庁の答弁はその質疑の重みを均等に分け、記録がない場合は割合を作らないでください。",
+  description: "国会会議録を検索し、議員の発言に続く政府側答弁の候補と、答弁者の肩書きから読める省庁を返します。検索語の近接一致だけを候補として返します。質問案と質疑の意味上の関連性を読んで選別し、case_id単位で質疑を重複なく数えて省庁別の構成比を示してください。複数省庁の答弁はその質疑の重みを均等に分け、記録がない場合は割合を作らないでください。",
   inputSchema: {
     type: "object",
     properties: {
@@ -11,7 +11,7 @@ const toolDefinition = {
       search_terms: {
         type: "array",
         items: { type: "string" },
-        description: "質問案から選んだ固有性の高い政策名・制度名など、2〜4個の短い検索語。",
+        description: "最初の2語は質問案の異なる核心概念（例：スタートアップ／女性活躍）。近くに共起する質疑だけを候補にする。残りは追加検索語。検索語が見つからなければ言い換えて再実行。",
       },
       since: { type: "string", description: "検索開始日 YYYY-MM-DD。省略時は2020-01-01。" },
     },
@@ -60,11 +60,31 @@ function retrievalMatch(terms, text) {
   return terms.filter(term => text.includes(term)).length / terms.length;
 }
 
+function relatedSpan(value, terms, maxGap = 180) {
+  const text = cleaned(value);
+  const pair = terms.slice(0, 2);
+  const hits = pair.map(term => {
+    const found = []; let at = -1;
+    while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) found.push(at);
+    return found;
+  });
+  if (hits.some(list => !list.length)) return null;
+  if (hits.length === 1) return { start: hits[0][0], end: hits[0][0] + pair[0].length };
+  let best = null;
+  for (const a of hits[0]) for (const b of hits[1]) {
+    const start = Math.min(a, b);
+    const end = Math.max(a + pair[0].length, b + pair[1].length);
+    const gap = Math.max(0, Math.max(a, b) - Math.min(a + pair[0].length, b + pair[1].length));
+    if (gap <= maxGap && (!best || end - start < best.end - best.start)) best = { start, end };
+  }
+  return best;
+}
+
 function excerptAroundTerms(value, terms) {
   const valueText = cleaned(value);
-  const hits = terms.map(term => valueText.indexOf(term)).filter(index => index >= 0);
-  if (!hits.length) return valueText.slice(0, 400);
-  const start = Math.max(0, Math.min(...hits) - 140);
+  const span = relatedSpan(valueText, terms);
+  if (!span) return valueText.slice(0, 400);
+  const start = Math.max(0, span.start - 140);
   return `${start ? "…" : ""}${valueText.slice(start, start + 400)}${start + 400 < valueText.length ? "…" : ""}`;
 }
 
@@ -89,8 +109,10 @@ function extractCandidates(meetings, terms) {
         const answerMatch = retrievalMatch(terms, answerText);
         // Long plenary speeches often contain many separate questions. A reply to
         // another topic must not inherit a keyword mentioned elsewhere in them.
-        if (!questionMatch && !answerMatch) continue;
-        if (!answerMatch && questionText.length > 1000) continue;
+        const questionSpan = relatedSpan(questionText, terms);
+        const answerSpan = relatedSpan(answerText, terms);
+        if (!questionSpan && !answerSpan) continue;
+        if (!answerSpan && questionText.length > 1000) continue;
         const key = `${meeting.issueID || ""}:${answer.speechID || j}:${ministry}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -107,6 +129,7 @@ function extractCandidates(meetings, terms) {
           retrieval_match: Math.max(questionMatch, answerMatch),
           answer_match: answerMatch,
           question_match: questionMatch,
+          context_match: answerSpan ? "answer" : "question",
         });
       }
     }
@@ -176,7 +199,7 @@ async function searchAssignments(args) {
     meetings_searched: meetings.size,
     candidates: extractCandidates([...meetings.values()], terms),
     errors,
-    interpretation: "候補は検索一致によるものです。質問案との意味上の関連性を判断してから省庁割合を集計してください。",
+    interpretation: "候補は最初の2語が近くにある質疑から抽出しました。近接一致は所管の証明ではありません。質問案との意味上の関連性を判断し、重複した質疑をまとめてから集計してください。",
   };
 }
 
