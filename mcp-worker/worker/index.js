@@ -154,7 +154,7 @@ async function fetchMeetings(term, since) {
     const url = new URL("https://kokkai.ndl.go.jp/api/meeting");
     url.searchParams.set("any", term);
     url.searchParams.set("from", since);
-    url.searchParams.set("maximumRecords", "5");
+    url.searchParams.set("maximumRecords", "10");
     url.searchParams.set("recordPacking", "json");
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -185,7 +185,8 @@ async function searchAssignments(args) {
   }
   const meetings = new Map();
   const errors = [];
-  for (const term of terms) {
+  const focusedQuery = terms.slice(0, 2).join(" ");
+  for (const term of [focusedQuery]) {
     try {
       for (const meeting of await fetchMeetings(term, since)) {
         meetings.set(meeting.issueID || `${meeting.date}:${meeting.nameOfMeeting}`, meeting);
@@ -194,8 +195,20 @@ async function searchAssignments(args) {
       errors.push(error instanceof Error ? error.message : "会議録APIから取得できませんでした。");
     }
   }
+  if (!meetings.size && terms.length > 1 && !errors.length) {
+    for (const term of terms.slice(0, 2)) {
+      try {
+        for (const meeting of await fetchMeetings(term, since)) {
+          meetings.set(meeting.issueID || `${meeting.date}:${meeting.nameOfMeeting}`, meeting);
+        }
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : "会議録APIから取得できませんでした。");
+      }
+    }
+  }
   return {
     searched_terms: terms,
+    focused_query: focusedQuery,
     meetings_searched: meetings.size,
     candidates: extractCandidates([...meetings.values()], terms),
     errors,
