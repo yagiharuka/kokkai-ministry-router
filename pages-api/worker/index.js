@@ -162,7 +162,7 @@ async function routeCases(first, second) {
     if (cases.size >= 3) break;
   }
   if (cases.size > 0 && cases.size < 3 && relaxed !== second) {
-    const seed = [...cases.values()].find(row => row.context === "question" && row.query === [first, relaxed].join(" "));
+    const seed = [...cases.values()].find(row => row.context === "question");
     const alias = seed && relatedWord(seed.question, first, relaxed);
     if (alias && alias !== first && alias !== relaxed) {
       const terms = [relaxed, alias], query = terms.join(" ");
