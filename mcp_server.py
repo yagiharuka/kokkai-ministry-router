@@ -21,7 +21,7 @@ from mcp.server.fastmcp import FastMCP
 
 API_URL = "https://kokkai.ndl.go.jp/api/meeting"
 DEFAULT_SINCE = "2020-01-01"
-MAX_SEARCH_TERMS = 4
+MAX_SEARCH_TERMS = 2
 MAX_MEETINGS_PER_TERM = 10
 MAX_CANDIDATES = 30
 REQUEST_PAUSE_SECONDS = 3
@@ -234,7 +234,7 @@ def search_answer_assignments(
             terms.append(term)
     if not terms:
         return {"error": "検索語を1つ以上指定してください。", "shares": [], "evidence": []}
-    terms = terms[:2]
+    terms = terms[:MAX_SEARCH_TERMS]
 
     meetings_by_id: dict[str, dict[str, Any]] = {}
     searched: list[str] = []
