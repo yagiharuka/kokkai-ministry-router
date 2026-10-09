@@ -1,0 +1,577 @@
+{
+  "evaluated_at": "2026-10-09T12:21:08.421Z",
+  "version": "20261009-25",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "note": "Single local-environment measurements, not a latency guarantee or independent accuracy benchmark. Last three cases blocked by exhausted API credits; excluded from successful latency and accuracy measurements.",
+  "baseline": [
+    {
+      "question": "スタートアップ界の女性活躍推進を進めるべきではないか",
+      "duration_ms": 65798,
+      "assessment_status": "reviewed",
+      "pairs": 5,
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 80,
+          "count": 4
+        },
+        {
+          "ministry": "金融庁",
+          "percent": 20,
+          "count": 1
+        }
+      ],
+      "requests_used": 10,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 8756,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 415,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 332,
+            "output_tokens_details": {
+              "reasoning_tokens": 288
+            },
+            "total_tokens": 747
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 17869,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 12407,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1746,
+            "output_tokens_details": {
+              "reasoning_tokens": 516
+            },
+            "total_tokens": 14153
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/183",
+          "review_reason": "女性起業家の安全確保を求める趣旨で一致",
+          "question_evidence": "女性起業家に対するセクハラあるいは性加害、この現状をどう認識しているのか",
+          "answer_evidence": "女性起業家が事業を継続し成長させていくためには、前提として、個人の尊厳と安全、安心等が守られるビジネス環境"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/185",
+          "review_reason": "スタートアップ業界の女性起業家の被害防止に対応",
+          "question_evidence": "日本のスタートアップにおけるセクシュアルハラスメント調査",
+          "answer_evidence": "スタートアップエコシステムの健全な発展に向けては、官民で連携をしながらハラスメント防止に取り組んでまいりたい"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "井上誠一郎",
+          "position": "経済産業省大臣官房審議官",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187",
+          "review_reason": "女性起業家のハラスメント対策を問う答弁になっている",
+          "question_evidence": "この女性起業家へのセクハラは、個人が対応、対策をすればいいということではなくて、政治としてどう防ぐのか",
+          "answer_evidence": "スタートアップ業界においてハラスメント対策が喫緊の課題と認識されていたというふうに承知をしております"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/193",
+          "review_reason": "指針へのハラスメント明記を求める質問への応答",
+          "question_evidence": "セクハラ、とりわけ女性起業家に対するセクハラ",
+          "answer_evidence": "委員御指摘のとおりだと思います。そういう意味の中で分かりやすい表記への修正を検討するように今後働きかけていきます"
+        },
+        {
+          "ministry": "金融庁",
+          "speaker": "加藤勝信",
+          "position": "財務大臣・内閣府特命担当大臣（金融）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/74",
+          "review_reason": "女性起業家の活躍環境整備に関する答弁がある",
+          "question_evidence": "女性起業家へのハラスメントの実態を調査しましたか",
+          "answer_evidence": "女性起業家が安心して活躍できることは我が国経済にとって非常に重要であると考えており"
+        }
+      ]
+    }
+  ],
+  "updated": [
+    {
+      "question": "スタートアップ界の女性活躍推進を進めるべきではないか",
+      "duration_ms": 27977,
+      "assessment_status": "reviewed",
+      "pairs": 4,
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 100,
+          "count": 4
+        }
+      ],
+      "requests_used": 3,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 5779,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 415,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 38,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 453
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 9625,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 7423,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 577,
+            "output_tokens_details": {
+              "reasoning_tokens": 141
+            },
+            "total_tokens": 8000
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 9672,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 6389,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 850,
+            "output_tokens_details": {
+              "reasoning_tokens": 117
+            },
+            "total_tokens": 7239
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/183",
+          "review_reason": "女性起業家の環境整備という同一課題",
+          "question_evidence": "女性起業家に対するハラスメント問題であります。",
+          "answer_evidence": "女性起業家が事業を継続し成長させていくためには、前提として、個人の尊厳と安全、安心等が守られるビジネス環境"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/185",
+          "review_reason": "女性起業家のハラスメント防止策を問う",
+          "question_evidence": "こうした構造が背景にあって、報復が怖いというなどの理由で、被害を周囲に訴えたのは一四・八%にとどまっているということも分かっております。 大臣、このスタートアップ業界でのハラスメント、これが本当に深刻になっている",
+          "answer_evidence": "スタートアップエコシステムの健全な発展に向けては、官民で連携をしながらハラスメント防止に取り組んでまいりたい"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "井上誠一郎",
+          "position": "経済産業省大臣官房審議官",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187",
+          "review_reason": "女性起業家保護の制度整備を求めている",
+          "question_evidence": "女性起業家へのセクハラは、個人が対応、対策をすればいいということではなくて、政治としてどう防ぐのか",
+          "answer_evidence": "スタートアップ業界においてハラスメント対策が喫緊の課題と認識されていたというふうに承知をしております。"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/193",
+          "review_reason": "女性起業家へのセクハラ明記を求める趣旨",
+          "question_evidence": "セクハラ、とりわけ女性起業家に対するセクハラ、半分の女性起業家がセクハラに遭っている",
+          "answer_evidence": "ハラスメントの防止規程の中での、今の、ハラスメントが入っていないじゃないかと。"
+        }
+      ]
+    },
+    {
+      "question": "半導体産業の国内生産を支援すべきではないか",
+      "duration_ms": 24475,
+      "assessment_status": "reviewed",
+      "pairs": 5,
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 80,
+          "count": 4
+        },
+        {
+          "ministry": "内閣府・内閣官房等",
+          "percent": 20,
+          "count": 1
+        }
+      ],
+      "requests_used": 3,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 805,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 413,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 40,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 453
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 9468,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 4561,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 841,
+            "output_tokens_details": {
+              "reasoning_tokens": 156
+            },
+            "total_tokens": 5402
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 10411,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 6330,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 942,
+            "output_tokens_details": {
+              "reasoning_tokens": 282
+            },
+            "total_tokens": 7272
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "ministry": "経済産業省",
+          "speaker": "赤澤亮正",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "url": "https://kokkai.ndl.go.jp/txt/122114103X00720260608/22",
+          "review_reason": "半導体の国内投資支援策と顧客見通しを問う",
+          "question_evidence": "半導体支援であります。広島県東広島市のマイクロンでありますとか熊本TSMC始め",
+          "answer_evidence": "AI・半導体産業基盤強化フレームそのものについても、外部有識者の下で十年間で五十兆円超の国内投資を誘発する"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "渋谷闘志彦",
+          "position": "経済産業省大臣官房審議官",
+          "url": "https://kokkai.ndl.go.jp/txt/122115385X00820260708/52",
+          "review_reason": "半導体サプライチェーン支援で国内基盤強化を問う",
+          "question_evidence": "半導体、レアメタル等のサプライチェーン強靱化と中小製造業の波及についてお伺いしたい",
+          "answer_evidence": "半導体のサプライチェーン全体の強靱化を図るため、半導体そのものだけではなく、製造装置や部素材"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "井野俊郎",
+          "position": "経済産業副大臣",
+          "url": "https://kokkai.ndl.go.jp/txt/122104006X01420260714/65",
+          "review_reason": "半導体産業の強化と国内生産能力への支援策を答えている",
+          "question_evidence": "政府としてこの半導体産業をどのように見ていくのか",
+          "answer_evidence": "経済安全保障法に基づく国内生産能力強化に向けた設備投資への支援を行っております。"
+        },
+        {
+          "ministry": "経済産業省",
+          "speaker": "宮本岩男",
+          "position": "経済産業省経済産業政策局地方創生担当政策統括調整官",
+          "url": "https://kokkai.ndl.go.jp/txt/122104006X01420260714/69",
+          "review_reason": "半導体産業向けの水インフラ支援で国内投資を後押しする答弁",
+          "question_evidence": "こうした半導体産業に関わる水資源の確保につきまして、自治体への支援はどのような状況でしょうか。",
+          "answer_evidence": "半導体等の戦略分野に関するリーディングプロジェクトの産業拠点整備にとって必要となる工業用水を含む関連インフラの整備については"
+        },
+        {
+          "ministry": "内閣府・内閣官房等",
+          "speaker": "松家新治",
+          "position": "内閣府地方創生推進室次長",
+          "url": "https://kokkai.ndl.go.jp/txt/122104006X01420260714/73",
+          "review_reason": "半導体工場の操業に必要な下水道整備への支援策を述べている",
+          "question_evidence": "公共下水道が半導体産業からの排水処理において重要な役割を担っております。",
+          "answer_evidence": "半導体等の戦略分野におけるリーディングプロジェクトとなる産業拠点の整備等において、その安定的かつ円滑な操業に不可欠な関連インフラの整備に対し"
+        }
+      ]
+    },
+    {
+      "question": "教員の長時間労働を是正すべきではないか",
+      "duration_ms": 24261,
+      "assessment_status": "reviewed",
+      "pairs": 8,
+      "shares": [
+        {
+          "ministry": "文部科学省",
+          "percent": 74,
+          "count": 6
+        },
+        {
+          "ministry": "総務省",
+          "percent": 13,
+          "count": 1
+        },
+        {
+          "ministry": "財務省",
+          "percent": 13,
+          "count": 1
+        }
+      ],
+      "requests_used": 3,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 958,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 412,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 44,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 456
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 9906,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 6977,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 863,
+            "output_tokens_details": {
+              "reasoning_tokens": 296
+            },
+            "total_tokens": 7840
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 10249,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 6514,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 911,
+            "output_tokens_details": {
+              "reasoning_tokens": 207
+            },
+            "total_tokens": 7425
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "ministry": "文部科学省",
+          "speaker": "あべ俊子",
+          "position": "文部科学大臣",
+          "url": "https://kokkai.ndl.go.jp/txt/121715104X00820250522/215",
+          "review_reason": "教員の長時間労働是正と業務軽減を直接問う",
+          "question_evidence": "教員の長時間労働に歯止めを掛けることはできません。",
+          "answer_evidence": "時間外在校等時間を縮減することがまさに重要でございます。"
+        },
+        {
+          "ministry": "文部科学省",
+          "speaker": "堀野晶三",
+          "position": "文部科学省大臣官房学習基盤審議官",
+          "url": "https://kokkai.ndl.go.jp/txt/122105124X00220260304/175",
+          "review_reason": "教員の長時間労働と働き方改革の改善策を問う",
+          "question_evidence": "教員の長時間労働が社会問題となっています。",
+          "answer_evidence": "昨年の給特法改正を踏まえました働き方改革をしっかりと進めて"
+        },
+        {
+          "ministry": "文部科学省",
+          "speaker": "あべ俊子",
+          "position": "文部科学大臣",
+          "url": "https://kokkai.ndl.go.jp/txt/121715104X00820250522/203",
+          "review_reason": "長時間労働の是正と待遇改善の法改正趣旨に一致",
+          "question_evidence": "過労死ライン超過の長時間労働が長年放置され",
+          "answer_evidence": "学校における働き方改革を進め、教師が高い専門性を最大限に発揮して"
+        },
+        {
+          "ministry": "文部科学省",
+          "speaker": "松本洋平",
+          "position": "文部科学大臣",
+          "url": "https://kokkai.ndl.go.jp/txt/121905124X00320251126/95",
+          "review_reason": "給特法と長時間労働是正、残業代見直しの論点が一致",
+          "question_evidence": "長時間労働がなくならないのは、ある意味当たり前ではないか",
+          "answer_evidence": "働き方改革の更なる加速化、学校の指導、運営体制の充実を一体的、総合的に進めて"
+        },
+        {
+          "ministry": "文部科学省",
+          "speaker": "あべ俊子",
+          "position": "文部科学大臣",
+          "url": "https://kokkai.ndl.go.jp/txt/121715104X00820250522/205",
+          "review_reason": "教員の長時間労働是正と残業代化を問う",
+          "question_evidence": "教員の長時間労働を何とかしようというのであれば、まずは時間外勤務を減らすことが最重要課題です。",
+          "answer_evidence": "働き方改革の更なる加速化のための仕組みを構築することも盛り込んだ改正案を提出する"
+        },
+        {
+          "ministry": "文部科学省",
+          "speaker": "あべ俊子",
+          "position": "文部科学大臣",
+          "url": "https://kokkai.ndl.go.jp/txt/121715104X00820250522/211",
+          "review_reason": "教員の長時間労働縮減と実効化策の答弁",
+          "question_evidence": "教員の長時間労働が改善されないことに対して、国も学校設置者も校長も誰も責任を取らない現状において一定の前進とは考えます。",
+          "answer_evidence": "教師の健康、福祉の確保に向けて時間外在校等時間を縮減する仕組みを構築することとしております。"
+        },
+        {
+          "ministry": "財務省",
+          "speaker": "中山光輝",
+          "position": "財務省主計局次長",
+          "url": "https://kokkai.ndl.go.jp/txt/121715104X00820250522/218",
+          "review_reason": "教員長時間労働の是正策として手当支給を論じる",
+          "question_evidence": "長時間労働が続く教育現場というのは間違いなく疲弊していると思います。",
+          "answer_evidence": "労働基準法の原則どおり、やむを得ない所定外の勤務時間にはそれに見合う手当を支給することが、教職の魅力向上につながる"
+        },
+        {
+          "ministry": "総務省",
+          "speaker": "小池信之",
+          "position": "総務省自治行政局公務員部長",
+          "url": "https://kokkai.ndl.go.jp/txt/121715104X00820250522/220",
+          "review_reason": "給特法廃止と残業代支給で是正を問う内容",
+          "question_evidence": "時間外勤務手当を支給する仕組みに抜本的に見直すことで、労働者である教員の勤務時間管理が進み、長時間勤務の是正につながると肯定的に評価をしております",
+          "answer_evidence": "仮に給特法が廃止をされ、この当該規定がなくなった場合においては、教育職員についても、地方自治法第二百四条第二項に基づき時間外勤務手当を支給することができる"
+        }
+      ]
+    },
+    {
+      "question": "医療機器の承認審査を迅速化すべきではないか",
+      "duration_ms": 20502,
+      "assessment_status": "failed",
+      "pairs": 0,
+      "shares": [],
+      "requests_used": 3,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 777,
+          "http_status": 200,
+          "error_code": null,
+          "usage": {
+            "input_tokens": 415,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 55,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 470
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "duration_ms": 7600,
+          "http_status": 429,
+          "error_code": "credit_balance_exhausted",
+          "usage": null
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "question": "農産物の輸出を拡大すべきではないか",
+      "duration_ms": 13927,
+      "assessment_status": "failed",
+      "pairs": 0,
+      "shares": [],
+      "requests_used": 3,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 776,
+          "http_status": 429,
+          "error_code": "credit_balance_exhausted",
+          "usage": null
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "question": "なでしこ銘柄の推進を進めるべきではないか",
+      "duration_ms": 18493,
+      "assessment_status": "failed",
+      "pairs": 0,
+      "shares": [],
+      "requests_used": 3,
+      "retrieval_rounds": 1,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "duration_ms": 7133,
+          "http_status": 429,
+          "error_code": "credit_balance_exhausted",
+          "usage": null
+        }
+      ],
+      "evidence": []
+    }
+  ]
+}

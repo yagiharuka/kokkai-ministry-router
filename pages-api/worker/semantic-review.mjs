@@ -6,7 +6,9 @@ const semanticInstructions = `あなたは国会質疑の関連性を確認す�
 質問案が業種・主体・制度を限定している場合、その限定は必須です。上位概念の一般論や全業種向けの方針を、特定の業種・対象への答弁と推測しないでください。同じ属性の人が登場していても、活動の場や政策手段が異なれば別の論点です。まず「誰の、どの活動や制度について、何を問うているか」を質問案から確かめてください。
 対象地域が省略されている質問案は、日本国内の対象・制度を改善する施策として扱います。外国での支援事業、国際協力、外国の実績紹介は同じ分野でも別の範囲です。質問案自体が外交、海外展開、輸出、国際協力、特定の外国等を扱っている場合は、その明示された範囲を優先してください。
 accept: 質問と実際の答弁が、質問案と同じ政策課題・措置についての問いへの応答になっている。政府の賛成・反対・慎重な見解・現行制度の説明も採用できます。提案と同じ賛否や同じ動詞は不要です。
+質問案が活動の推進・促進という広い目的を尋ねる場合、同じ対象の活動を妨げる障壁の除去や、参加機会・安全・資金などを整える具体策への答弁も採用できます。「推進」という抽象語がないだけで除外してはいけません。一方、質問案が特定の手続・制度変更を求める場合は、その指定を維持してください。
 reject: 対象が違う、別の制度や措置への答弁、背景で語に触れただけ、複数論点のうち別の問いに答えている。議長・委員長の案内、所信表明・挨拶だけで実質的な質問への応答がないものも除きます。国内施策への問いに外国の実績を紹介しただけの場合なども除いてください。ただし外国の例を踏まえて国内施策に答えているなら採用できます。
+議員の発言でも、決議案・附帯決議・法案の読み上げと、それを尊重する旨の大臣挨拶だけの組合せは質疑ではないので除いてください。
 uncertain: 抜粋が不足するなど、質問と答弁の対応を判断できない。無理に reject にしないでください。
 全候補について一度ずつ判定してください。候補IDだけを使い、所属を変更しないでください。reason は日本語60字以内を目安にした短い採否理由です。accept の question_evidence と answer_evidence は、それぞれその候補の source_question と source_answer から、対応を示す連続した原文を1〜90字で引用してください。引用符や説明を付け足さず、原文の文字列だけを返してください。proposed_question を根拠の引用にしてはいけません。reject/uncertain の引用は空文字でも構いません。`;
 
@@ -17,18 +19,23 @@ export function semanticConfiguration(env = {}) {
 }
 
 async function structuredModel(config, name, schema, instructions, input, fetchModel) {
+  const effort = name === 'kokkai_search_plan' && /^gpt-5\.4-mini(?:-|$)/.test(config.model) ? 'none' : 'low';
   const response = await fetchModel('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: config.model, store: false, max_output_tokens: 6144, instructions,
-      ...(/^gpt-5(?:[.-]|$)/.test(config.model) ? { reasoning: { effort: 'low' } } : {}),
+      ...(/^gpt-5(?:[.-]|$)/.test(config.model) ? { reasoning: { effort } } : {}),
       input: [{ role: 'user', content: JSON.stringify(input) }],
       text: { format: { type: 'json_schema', name, schema, strict: true } } }),
     signal: AbortSignal.timeout(40000),
   });
   // Provider error bodies may contain request details. Never expose them or
   // credentials through the public API, and never count a failed review.
-  if (!response.ok) throw new Error('model_request_failed');
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    if (['credit_balance_exhausted', 'insufficient_quota'].includes(error.error?.code)) throw new Error('quota_exhausted');
+    throw new Error('model_request_failed');
+  }
   const data = await response.json();
   if (data.status !== 'completed' || data.error) throw new Error('model_incomplete');
   const content = (data.output || []).filter(item => item.type === 'message' && item.role === 'assistant').flatMap(item => item.content || []);
@@ -56,8 +63,8 @@ export async function prepareSemanticPlan(question, env = {}, fetchModel = fetch
     if (queries.length < 2) throw new Error('invalid_search_plan');
     const recallGroups = [...new Map(queries.flatMap(concepts).map(g => [g.text, g])).values()];
     return { plan: { ...plan, queries: [...new Set([...queries, plan.queries.at(-1)].filter(Boolean))].slice(0, 5), recall_groups: recallGroups }, status: 'ready' };
-  } catch {
-    return { plan, status: 'failed' };
+  } catch (error) {
+    return { plan, status: 'failed', error_code: error?.message === 'quota_exhausted' ? 'quota_exhausted' : 'model_unavailable' };
   }
 }
 
@@ -92,18 +99,27 @@ export async function reviewAssignments(question, result, env = {}, fetchModel =
   if (planStatus === 'failed') return { ...base, assessment_status: 'failed' };
   if (!candidates.length) return { ...base, assessment_status: 'no_candidates' };
   try {
-    const schema = { type: 'object', properties: { reviews: { type: 'array', items: {
-      type: 'object', properties: {
-        id: { type: 'string', enum: candidates.map(row => row.candidate_id) },
-        decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
-        reason: { type: 'string' }, question_evidence: { type: 'string' }, answer_evidence: { type: 'string' },
-      }, required: ['id', 'decision', 'reason', 'question_evidence', 'answer_evidence'], additionalProperties: false,
-    } } }, required: ['reviews'], additionalProperties: false };
-    const input = { proposed_question: normalize(question), candidates: candidates.map(row => ({
-      id: row.candidate_id, source_question: row.question, source_answer: row.answer, position: row.position,
-      previous_context: row.previous_context || '', question_truncated: Boolean(row.question_truncated), answer_truncated: Boolean(row.answer_truncated),
-    })) };
-    const data = await structuredModel(config, 'kokkai_context_review', schema, semanticInstructions, input, fetchModel);
+    const judgeBatch = async batch => {
+      const schema = { type: 'object', properties: { reviews: { type: 'array', items: {
+        type: 'object', properties: {
+          id: { type: 'string', enum: batch.map(row => row.candidate_id) },
+          decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
+          reason: { type: 'string' }, question_evidence: { type: 'string' }, answer_evidence: { type: 'string' },
+        }, required: ['id', 'decision', 'reason', 'question_evidence', 'answer_evidence'], additionalProperties: false,
+      } } }, required: ['reviews'], additionalProperties: false };
+      const input = { proposed_question: normalize(question), candidates: batch.map(row => ({
+        id: row.candidate_id, source_question: row.question, source_answer: row.answer, position: row.position,
+        previous_context: row.previous_context || '', question_truncated: Boolean(row.question_truncated), answer_truncated: Boolean(row.answer_truncated),
+      })) };
+      const data = await structuredModel(config, 'kokkai_context_review', schema, semanticInstructions, input, fetchModel);
+      const ids = new Set(batch.map(row => row.candidate_id));
+      if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== batch.length || data.reviews.some(r => !ids.has(r?.id))) throw new Error('invalid_review');
+      return data.reviews;
+    };
+    // Each candidate is judged independently. Keep the same twelve candidates
+    // and original context, but avoid one long serial model response.
+    const batches = candidates.length > 6 ? [candidates.slice(0, 6), candidates.slice(6)] : [candidates];
+    const data = { reviews: (await Promise.all(batches.map(judgeBatch))).flat() };
     if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== candidates.length) throw new Error('invalid_review');
     const byId = new Map(candidates.map(row => [row.candidate_id, row])), seen = new Set(), reviewed = [];
     for (const review of data.reviews) {
@@ -128,7 +144,7 @@ export async function reviewAssignments(question, result, env = {}, fetchModel =
       search_feedback: reviewed.filter(row => row.screening === 'reject').map(row => row.review_reason).slice(0, 6),
       historical_only: unique.length > 0 && unique.every(row => row.date && row.date < result.recent_since),
     };
-  } catch {
-    return { ...base, assessment_status: 'failed' };
+  } catch (error) {
+    return { ...base, assessment_status: 'failed', assessment_error: error?.message === 'quota_exhausted' ? 'quota_exhausted' : 'model_unavailable' };
   }
 }

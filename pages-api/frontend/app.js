@@ -33,10 +33,10 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261009-24"};
+ const params={question:input,v:"20261009-25"};
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),180000);
- const lawData=await lawRequest;
- return {...cases,question:input,unit:"質疑",laws:cases.shares.length?(lawData.matches||[]):[],lawTerm,lawTruncated:!!lawData.truncated,lawError:!!lawData.error,lawSkipped:!cases.shares.length};
+ // Supplementary laws must not delay the actual ministry result.
+ return {...cases,question:input,unit:"質疑",laws:[],lawTerm,lawTask:lawRequest,lawSkipped:!cases.shares.length};
 }
 function handoffPacket(r){
  const rows=(r.review_candidates||[]).slice(0,12).map((x,i)=>({id:'c'+(i+1),case_id:x.case_id,ministry:x.ministry,speaker:x.speaker,position:x.position,question:x.question,answer:x.answer,previous_context:x.previous_context||'',date:x.date,meeting:x.meeting,url:x.url,question_url:x.question_url}));
@@ -44,6 +44,10 @@ function handoffPacket(r){
 }
 function evidenceCard(x){
  return '<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.date)+' · '+escape(x.meeting)+'</span></div><p><b>質問</b>'+escape(x.question)+'</p><p><b>答弁</b>'+escape(x.answer)+'</p>'+(x.review_reason?'<p><b>採否の理由</b>'+escape(x.review_reason)+'</p>':'')+'<footer><span>'+escape(x.speaker)+'（'+escape(x.position)+'）</span>'+(/^https:\/\/kokkai\.ndl\.go\.jp\//.test(x.url||'')?'<a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">会議録の発言を見る ↗</a>':'')+'</footer></article>';
+}
+function lawSection(r){
+ const laws=r.assessment_status==='reviewed'&&r.shares?.length?r.laws||[]:[];
+ return laws.length?'<div class="examples"><h3>法令上の所掌（e-Gov法令検索）</h3><p class="caveat">政策語「'+escape(r.lawTerm)+'」を含む設置法・組織令・組織規則の条文です。個別事業の担当を確定する根拠ではありません。</p>'+laws.map(x=>'<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.title)+'</span></div><p>'+escape(x.snippet)+'</p><footer><a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">e-Govの法令を見る ↗</a></footer></article>').join('')+'</div>':'';
 }
 function render(r){
  const reviewed=r.assessment_status==='reviewed';
@@ -60,8 +64,8 @@ function render(r){
   note='関連する質問と答弁の候補を集めました。下のボタンで内容をコピーし、ChatGPTに貼り付けると、文脈を確認して担当候補と割合を判定できます。この画面ではまだ担当を確定していません。';
   count='未判定の候補 '+pending.length+'件';
  }else if(r.assessment_status==='failed'){
-  title='文脈判定を完了できませんでした';
-  note='会議録の候補は取得できましたが、関連性の判定が完了していません。少し時間を置いて再試行してください。';
+  title=r.assessment_error==='quota_exhausted'?'判定用APIの利用枠が不足しています':'文脈判定を完了できませんでした';
+  note=r.assessment_error==='quota_exhausted'?'管理者側でAPIの残高・利用枠を確認する必要があります。質問内容が原因ではありません。':'関連性の判定が完了していません。少し時間を置いて再試行してください。';
   count='未判定の候補 '+pending.length+'件';
  }else if(reviewed){
   title='採用できる答弁を確認できませんでした';
@@ -75,10 +79,8 @@ function render(r){
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
  const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,6).map(evidenceCard).join('')+'</div>':'';
  const handoffHtml=pending.length?'<div class="examples"><h3>ChatGPTで文脈を判定</h3><p>質疑をコピーしてChatGPTに貼り付けてください。</p><div class="actions"><button id="copy-context" type="button">判定用の質疑をコピー</button><a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPTを開く ↗</a></div><p id="copy-message" role="status"></p><textarea id="copy-fallback" aria-label="判定用の質疑" readonly hidden></textarea></div>':'';
- const laws=shares.length?r.laws||[]:[];
- const lawHtml=laws.length?'<div class="examples"><h3>法令上の所掌（e-Gov法令検索）</h3><p class="caveat">政策語「'+escape(r.lawTerm)+'」を含む設置法・組織令・組織規則の条文です。個別事業の担当を確定する根拠ではありません。</p>'+laws.map(x=>'<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.title)+'</span></div><p>'+escape(x.snippet)+'</p><footer><a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">e-Govの法令を見る ↗</a></footer></article>').join('')+'</div>':'';
  $('results').hidden=false;
- $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+'<p class="caveat">'+note+'</p>'+handoffHtml+acceptedHtml+pendingHtml+lawHtml+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+'<p class="caveat">'+note+'</p>'+handoffHtml+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
  if(pending.length){
   const packet=handoffPacket(r);
   $('copy-context').addEventListener('click',async()=>{
@@ -88,6 +90,19 @@ function render(r){
  }
 }
 $("question").addEventListener("input",e=>$("length").textContent=e.target.value.length+" / 1200字");
-$("form").addEventListener("submit",async e=>{e.preventDefault();const input=$("question").value.trim();if(input.length<12){$("message").textContent="質問案をもう少し具体的に入力してください。";$("message").className="error";$("message").hidden=false;return}$("submit").disabled=true;$("submit").textContent="会議録を調べています…";$("results").hidden=true;$("message").className="";$("message").hidden=false;$("message").textContent="会議録を検索し、質問と答弁の文脈を確認しています。1〜2分ほどかかる場合があります。";try{render(await analyze(input));$("message").hidden=true}catch(err){$("message").className="error";$("message").textContent="会議録を取得できませんでした。中継APIまたは通信状況を確認して再試行してください。詳細："+(err?.message||"不明なエラー")}finally{$("submit").disabled=false;$("submit").textContent="担当候補を調べる"}});
-
-
+let latestRequest=0;
+$("form").addEventListener("submit",async e=>{
+ e.preventDefault();const input=$("question").value.trim();
+ if(input.length<12){$("message").textContent="質問案をもう少し具体的に入力してください。";$("message").className="error";$("message").hidden=false;return}
+ const requestId=++latestRequest;
+ $("submit").disabled=true;$("submit").textContent="会議録を調べています…";$("results").hidden=true;$("message").className="";$("message").hidden=false;$("message").textContent="関連する会議録を検索し、質問と答弁の文脈を確認しています。";
+ try{
+  const result=await analyze(input);render(result);$("message").hidden=true;
+  result.lawTask.then(data=>{
+   if(requestId!==latestRequest)return;
+   const target=$("law-results");
+   if(target)target.innerHTML=lawSection({...result,laws:data.matches||[],lawTruncated:!!data.truncated,lawError:!!data.error});
+  });
+ }catch(err){$("message").className="error";$("message").textContent="会議録を取得できませんでした。中継APIまたは通信状況を確認して再試行してください。詳細："+(err?.message||"不明なエラー")}
+ finally{$("submit").disabled=false;$("submit").textContent="担当候補を調べる"}
+});

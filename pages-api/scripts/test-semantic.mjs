@@ -124,7 +124,7 @@ globalThis.fetch=async(url,init)=>{
   }
   const target=new URL(url);
   assert.equal(target.origin,'https://kokkai.ndl.go.jp');
-  return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[meeting]}:{speechRecord:target.searchParams.get('from')==='2025-01-01'?meeting.speechRecord.map(s=>({...s,issueID:meeting.issueID})):[]});
+  return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[meeting]}:{speechRecord:meeting.speechRecord.map(s=>({...s,issueID:meeting.issueID}))});
 };
 try {
   const request=new Request('https://example.invalid/api/cases?'+new URLSearchParams({question}));
@@ -165,7 +165,7 @@ try {
     ndlCalls++;
     const target=new URL(url),query=target.searchParams.get('any')||'';
     const m=query.includes('審査期間')||query==='医療機器'?onTopic:offTopic;
-    return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[target.searchParams.get('issueID')==='on-topic'?onTopic:offTopic]}:{speechRecord:target.searchParams.get('from')==='2025-01-01'?m.speechRecord.map(s=>({...s,issueID:m.issueID})):[]});
+    return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[target.searchParams.get('issueID')==='on-topic'?onTopic:offTopic]}:{speechRecord:m.speechRecord.map(s=>({...s,issueID:m.issueID}))});
   };
   const retried=await (await worker.fetch(new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'医療機器の承認審査を迅速化すべきではないか'})),env)).json();
   assert.equal(retried.retrieval_rounds,2);
@@ -173,7 +173,40 @@ try {
   assert.equal(retried.shares[0].ministry,'厚生労働省');
   assert.equal(retried.pairs,1);
   assert.equal(retryModelCalls,4);
-  assert.ok(ndlCalls<=24);
+  assert.ok(ndlCalls<=8);
   assert.equal(retried.requests_used,ndlCalls);
 }finally{globalThis.fetch=realFetch;Date.now=realNow;}
+
+let active = 0, peak = 0;
+const twelve = Array.from({length:12}, (_,i) => row('parallel'+i, '文部科学省'));
+const parallel = await reviewAssignments(question, { ...result, candidates: [], review_candidates: twelve }, env, async (url, init) => {
+  active++; peak = Math.max(peak, active);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  const input = JSON.parse(JSON.parse(init.body).input[0].content);
+  assert.equal(input.candidates.length, 6);
+  active--;
+  return response({ reviews: input.candidates.map(c => accept(c.id, { question: c.source_question, answer: c.source_answer })) });
+});
+assert.equal(peak, 2, 'Independent semantic batches should overlap');
+assert.equal(parallel.accepted_candidates, 12, 'Parallel review must keep all candidates and evidence');
+assert.equal(parallel.pairs, 12);
+const quota = () => Response.json({error:{code:'credit_balance_exhausted',message:'private provider billing detail'}},{status:429});
+const quotaPlan = await prepareSemanticPlan(question,env,quota);
+assert.equal(quotaPlan.error_code,'quota_exhausted');
+const quotaReview = await reviewAssignments(question,result,env,quota);
+assert.equal(quotaReview.assessment_error,'quota_exhausted');
+let failFastCalls=0;
+globalThis.fetch=async url=>{
+  failFastCalls++;
+  assert.equal(String(url),'https://api.openai.com/v1/responses','Quota failure must not trigger slow NDL searches');
+  return quota();
+};
+try{
+ const failure=await (await worker.fetch(new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'食品輸出に必要な輸出証明の手続を簡略化すべきではないか'})),env)).json();
+ assert.equal(failure.assessment_status,'failed');
+ assert.equal(failure.assessment_error,'quota_exhausted');
+ assert.equal(failure.requests_used,0);
+ assert.equal(failFastCalls,1);
+ assert.ok(!JSON.stringify(failure).includes('private provider billing detail'));
+}finally{globalThis.fetch=realFetch;}
 console.log('Semantic adapter protocol, immutable evidence, deduplication, recall, public request path and failure handling checks passed. Mock responses do not measure model accuracy.');

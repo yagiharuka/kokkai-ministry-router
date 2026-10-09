@@ -1,6 +1,8 @@
-import { retrieveAssignments, routingVersion } from './routing-core.mjs';
+import { routingVersion } from './routing-core.mjs';
+import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
+const publicRoutingVersion = '20261009-25';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -20,7 +22,7 @@ function withCors(response) {
 let requestQueue = Promise.resolve();
 let lastNdlRequest = 0;
 
-async function fetchNdl(path, parameters) {
+async function requestNdl(path, parameters) {
   let release;
   const next = new Promise(resolve => { release = resolve; });
   const prior = requestQueue;
@@ -43,13 +45,44 @@ async function fetchNdl(path, parameters) {
   }
 }
 
+// Cache public source responses only. Reuse never transfers another user's
+// question, interpretation, or ministry judgment into this request.
+const ndlCache = new Map(), ndlInFlight = new Map();
+let ndlCacheBytes = 0;
+async function fetchNdl(path, parameters) {
+  const key = JSON.stringify([path, Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b))]);
+  const cached = ndlCache.get(key);
+  if (cached && cached.until > Date.now()) return cached.data;
+  if (cached) { ndlCache.delete(key); ndlCacheBytes -= cached.bytes; }
+  if (ndlInFlight.has(key)) return ndlInFlight.get(key);
+  const pending = requestNdl(path, parameters);
+  ndlInFlight.set(key, pending);
+  try {
+    const data = await pending, bytes = JSON.stringify(data).length * 2;
+    if (bytes <= 2 * 1024 * 1024) {
+      while (ndlCache.size && (ndlCacheBytes + bytes > 12 * 1024 * 1024 || ndlCache.size >= 32)) {
+        const oldest = ndlCache.keys().next().value;
+        ndlCacheBytes -= ndlCache.get(oldest).bytes; ndlCache.delete(oldest);
+      }
+      ndlCache.set(key, { data, bytes, until: Date.now() + 3600000 });
+      ndlCacheBytes += bytes;
+    }
+    return data;
+  } finally { ndlInFlight.delete(key); }
+}
+
 async function routeCases(first, second, focus = "", question = "", env = {}) {
   const hints = [first, second, focus].filter(Boolean);
   const fullQuestion = question || hints.join("の") + "について伺います。";
   const prepared = await prepareSemanticPlan(fullQuestion, env);
   const plan = prepared.plan;
+  if (prepared.status === 'failed') {
+    const empty = { candidates: [], review_candidates: [], searched: [], searched_queries: [], errors: [], requests_used: 0, meetings_searched: 0, retrieved_meetings: [] };
+    return { ...await reviewAssignments(fullQuestion, empty, env, fetch, 'failed'),
+      assessment_error: prepared.error_code, retrieval_rounds: 0 };
+  }
   if (!plan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
-  const result = await retrieveAssignments(plan, fetchNdl);
+  const result = await retrieveFastAssignments(plan, fetchNdl);
   if (result.errors.length && !result.searched.length) throw new Error(result.errors[0]);
   const assessed = await reviewAssignments(fullQuestion, result, env, fetch, prepared.status);
   // Rejection is evidence about these candidates, not evidence that no relevant
@@ -60,9 +93,9 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
     rejected_reasons: assessed.search_feedback || [],
     result: assessed.assessment_status === 'no_candidates' ? '質問と答弁の候補が見つからなかった' : '候補を読んだが、質問案の対象と措置に対応する答弁を確認できなかった',
   });
-  if (refined.status !== 'ready') return { ...assessed, retrieval_rounds: 1, expansion_status: 'failed' };
-  const more = await retrieveAssignments(refined.plan, fetchNdl, '2020-01-01', {
-    maxRequests: 24 - result.requests_used, excludeMeetings: result.retrieved_meetings, includeOlder: true,
+  if (refined.status !== 'ready') return { ...assessed, retrieval_rounds: 1, expansion_status: 'failed', assessment_status: 'failed', assessment_error: refined.error_code };
+  const more = await retrieveFastAssignments(refined.plan, fetchNdl, '2020-01-01', {
+    maxRequests: 8 - result.requests_used, excludeMeetings: result.retrieved_meetings, includeOlder: true,
   });
   const reviewed = await reviewAssignments(fullQuestion, more, env, fetch, prepared.status);
   return { ...reviewed, retrieval_rounds: 2, initial_reviewed_candidates: assessed.reviewed_candidates,
@@ -87,7 +120,7 @@ async function cachedRoute(first, second, focus, question, env) {
   if (cached && cached.until > Date.now()) return cached.result;
   if (routesInFlight.has(key)) return routesInFlight.get(key);
   if (routesInFlight.size >= 2) return null;
-  const pending = routeCases(first, second, focus, question, env);
+  const pending = routeCases(first, second, focus, question, env).then(result => ({ ...result, routing_version: publicRoutingVersion }));
   routesInFlight.set(key, pending);
   try {
     const result = await pending;
@@ -101,7 +134,7 @@ export default {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/api/status") {
-      return withCors(Response.json({ routing_version: routingVersion, assessment_method: 'semantic',
+      return withCors(Response.json({ routing_version: publicRoutingVersion, assessment_method: 'semantic',
         model_ready: semanticConfiguration(env).ready }, { headers: { 'cache-control': 'no-store' } }));
     }
     if (request.method === "GET" && url.pathname === "/") {
