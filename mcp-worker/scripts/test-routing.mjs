@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import worker from '../worker/index.js';
+import { readFile } from 'node:fs/promises';
+import { makePlan, answeringMinistry, matchQuestion } from '../worker/routing-core.mjs';
+const common = await readFile(new URL('../../pages-api/worker/routing-core.mjs',import.meta.url),'utf8');
+assert.equal(await readFile(new URL('../worker/routing-core.mjs',import.meta.url),'utf8'),common,'Public site and MCP must share exactly the same core');
+const plan=makePlan('スタートアップ界の女性活躍推進を進めるべきではないか',['女性']);
+assert.equal(matchQuestion({speakerGroup:'会派',speech:'職場における女性活躍推進について伺います。'},plan),null);
+assert.equal(answeringMinistry('財務大臣・内閣府特命担当大臣（金融）','研究開発税制を強化します。'),null);
+const req=(method,params={})=>new Request('https://example.invalid/mcp',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+assert.equal((await worker.fetch(req('tools/list'))).status,200);
+assert.equal((await worker.fetch(req('tools/call',{name:'search_answer_assignments',arguments:{question:'水道の耐震化について伺います。',search_terms:['水道','耐震化']}}))).status,401);
+const list=await (await worker.fetch(req('tools/list'))).json();
+assert.equal(list.result.tools[0].name,'search_answer_assignments');
+console.log('6 MCP checks passed, including identical shared core and authenticated tool access.');
