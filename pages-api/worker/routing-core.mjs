@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-19';
+export const routingVersion = '20261009-20';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -260,11 +260,14 @@ export function reviewCandidates(meetings, plan, limit = 12) {
         const ministry = answeringMinistry(reply.speakerPosition, reply.speech);
         if (!ministry) continue;
         const answer = normalize(reply.speech);
-        if (answer.length < 15) continue;
+        if (answer.length < 15 || (answer.length < 120 && /拍手|登壇/.test(answer))) continue;
         const excerpt = passages(answer).sort((a, b) => scorePassage(b.text, plan).score - scorePassage(a.text, plan).score || a.text.length - b.text.length)[0];
         const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
         const key = `${caseId}:${ministry}`;
-        const row = { case_id: caseId, ministry, question: relevant.text.slice(0, 800), answer: (excerpt?.text || answer).slice(0, 1000), speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round(relevant.score * 1000) / 1000 };
+        const questionText = normalize(ask.speech);
+        const questionContext = questionText.slice(Math.max(0, relevant.start - 180), Math.min(questionText.length, relevant.end + 550)).slice(0, 1200);
+        const answerContext = answer.slice(Math.max(0, (excerpt?.start || 0) - 250), Math.min(answer.length, (excerpt?.end || 0) + 700)).slice(0, 1400);
+        const row = { case_id: caseId, ministry, question: questionContext, answer: answerContext, speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round(relevant.score * 1000) / 1000 };
         if (!rows.has(key) || row.retrieval_score > rows.get(key).retrieval_score) rows.set(key, row);
       }
     }
