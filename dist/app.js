@@ -15,16 +15,17 @@ const rules=[
 const stop=new Set(["について","として","ため","政府","どのよう","どう","こと","もの","これ","それ","何","どこ","また","さらに","及び","並びに","より","から","ある","する","いる","れる","政策","対応","質問","現在","今後","我が国","日本","促進","推進","進める","検討","べき","では","ない","すべ","強化","必要","見直し"]);
 const segmenter=new Intl.Segmenter("ja",{granularity:"word"});
 function policyPhrases(input){
- const chunks=[];let run=[];
- const flush=()=>{if(run.length)chunks.push(run.join(""));run=[]};
- for(const part of segmenter.segment(input)){
+ const chunks=[];let run=[],pending="";
+ const flush=()=>{if(run.length)chunks.push(run.join(""));run=[];pending=""};
+ for(const part of segmenter.segment(input.normalize("NFKC"))){
   const word=part.segment.trim();
   if(part.isWordLike&&word.length===1&&/^\p{Script=Han}$/u.test(word)){
    if(word==="界"){flush();continue}
-   if(run.length){run.push(word);continue}
+   if(run.length)run.push(word);else pending=word;
+   continue;
   }
   if(!part.isWordLike||word.length<2||stop.has(word)||/^[0-9０-９]+$/.test(word)){flush();continue}
-  run.push(word);
+  run.push(pending+word);pending="";
  }
  flush();
  return [...new Set(chunks.filter(x=>x.length>=2))].slice(0,3);
