@@ -67,6 +67,16 @@ function reducedWord(phrase) {
   const parts = [...wordSegmenter.segment(phrase)].filter(part => part.isWordLike && part.segment.length >= 2);
   return parts[0]?.segment || phrase;
 }
+function relatedWord(question, first, second) {
+  const span = nearby(question, [first, second]);
+  if (!span) return null;
+  const passage = question.slice(span.start, span.end);
+  const a = passage.indexOf(first), b = passage.indexOf(second);
+  const between = a < b ? passage.slice(a + first.length, b) : passage.slice(b + second.length, a);
+  const words = [...wordSegmenter.segment(between)]
+    .filter(part => part.isWordLike && part.segment.length >= 2 && !/^(について|として|ため|こと|もの|それ|これ|から|まで|など|支援|推進|活躍)$/.test(part.segment));
+  return words[0]?.segment || null;
+}
 
 async function fetchMeetings(query, from, until) {
   let release;
@@ -101,13 +111,16 @@ function extractCases(meetings, terms, query) {
       const ask = speeches[i], question = cleaned(ask.speech);
       if (!lawmaker(ask) || question.length < 20) continue;
       const questionSpan = nearby(question, terms);
+      if (!questionSpan) continue;
+      const questionContext = question.slice(Math.max(0, questionSpan.start - 80), Math.min(question.length, questionSpan.end + 170));
+      if (!/[？?]|伺|お尋ね|いかが|どう|所見|べき|問う|質問/.test(questionContext)) continue;
       for (let j = i + 1; j < speeches.length; j++) {
         const reply = speeches[j];
         if (lawmaker(reply)) break;
         const answer = cleaned(reply.speech), ministry = ministryOf(reply.speakerPosition);
         if (!ministry || !answer || !reply.speechURL) continue;
         const answerSpan = nearby(answer, terms);
-        if (!answerSpan && (!questionSpan || question.length > 1000)) continue;
+        if (!answerSpan && question.length > 1000) continue;
         const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
         const key = `${caseId}:${ministry}`;
         if (cases.has(key) && (cases.get(key).context === "answer" || !answerSpan)) continue;
@@ -147,6 +160,24 @@ async function routeCases(first, second) {
       searched.push(`${query}（${from.slice(0,4)}–${until.slice(0,4)}）`);
     }
     if (cases.size >= 3) break;
+  }
+  if (cases.size > 0 && cases.size < 3 && relaxed !== second) {
+    const seed = [...cases.values()].find(row => row.context === "question" && row.query === [first, relaxed].join(" "));
+    const alias = seed && relatedWord(seed.question, first, relaxed);
+    if (alias && alias !== first && alias !== relaxed) {
+      const terms = [relaxed, alias], query = terms.join(" ");
+      for (const [from, until] of periods) {
+        try {
+          const meetings = await fetchMeetings(query, from, until);
+          meetingCount += meetings.length;
+          for (const row of extractCases(meetings, terms, query)) {
+            const key = `${row.case_id}:${row.ministry}`;
+            if (!cases.has(key)) cases.set(key, row);
+          }
+        } catch { errors++; }
+        searched.push(`${query}（${from.slice(0,4)}–${until.slice(0,4)}）`);
+      }
+    }
   }
   if (errors === searched.length) throw new Error("国会会議録APIが応答しませんでした。");
   const rows = [...cases.values()].slice(0, 24);
