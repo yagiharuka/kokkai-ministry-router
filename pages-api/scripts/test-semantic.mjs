@@ -4,7 +4,7 @@ import { makePlan, reviewCandidates, retrieveAssignments, summarize } from '../w
 import worker from '../worker/model-api.js';
 
 const env = { CLOUDFLARE_API_TOKEN: 'test-only-not-a-real-token', CLOUDFLARE_ACCOUNT_ID: '0123456789abcdef0123456789abcdef', CLOUDFLARE_WORKERS_PLAN: 'free' };
-const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' + env.CLOUDFLARE_ACCOUNT_ID + '/ai/run/@cf/qwen/qwen3-30b-a3b-fp8';
+const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' + env.CLOUDFLARE_ACCOUNT_ID + '/ai/run/@cf/openai/gpt-oss-20b';
 const row = (caseId, ministry, suffix = '', question = '教員の負担を減らすにはどうしますか。', answer = '教師の時間外在校等時間を縮減します。') => ({ case_id: caseId, ministry, question, answer, position: ministry + '大臣', date: '2025-06-10', url: 'https://kokkai.ndl.go.jp/txt/fixture/' + caseId + suffix, screening: 'unverified' });
 const rows = [row('q1','文部科学省','a'),row('q1','文部科学省','b'),row('q1','内閣府・内閣官房等'),row('q2','文部科学省'),row('q3','厚生労働省')];
 const result = { shares: [{ ministry: '厚生労働省', percent: 100 }], pairs: 1, evidence: rows, candidates: [], review_candidates: rows, recent_since: '2024-01-01' };
@@ -64,6 +64,18 @@ for (const disabled of [
 const nativeJson = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, env,
   async () => Response.json({success:true,result:{response:{reviews:decisions}},errors:[]}));
 assert.equal(nativeJson.accepted_candidates, 4);
+let bindingCalls = 0;
+const bindingEnv = { CLOUDFLARE_WORKERS_PLAN: 'free', AI: { run: async (model, body) => {
+  bindingCalls++;
+  assert.equal(model, '@cf/openai/gpt-oss-20b');
+  assert.equal(body.response_format.type, 'json_schema');
+  return { response: { reviews: decisions } };
+} } };
+const bound = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, bindingEnv,
+  async () => { throw new Error('AI binding must not call REST'); });
+assert.equal(bindingCalls, 1);
+assert.equal(bound.accepted_candidates, 4);
+assert.equal(semanticConfiguration(bindingEnv).ready, true);
 for (const partial of [
   {success:true,result:{choices:[{finish_reason:'length',message:{role:'assistant',content:JSON.stringify({reviews:decisions})}}]}},
   {success:true,result:{choices:[{finish_reason:'stop',message:{role:'assistant',content:'<think>not a JSON object</think>'}}]}},

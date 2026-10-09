@@ -401,42 +401,57 @@ uncertain: 抜粋が不足するなど、質問と答弁の対応を判断でき
 function semanticConfiguration(env = {}) {
   const apiKey = typeof env.CLOUDFLARE_API_TOKEN === 'string' ? env.CLOUDFLARE_API_TOKEN.trim() : '';
   const accountId = typeof env.CLOUDFLARE_ACCOUNT_ID === 'string' ? env.CLOUDFLARE_ACCOUNT_ID.trim() : '';
-  const model = '@cf/qwen/qwen3-30b-a3b-fp8';
+  const binding = env.AI && typeof env.AI.run === 'function' ? env.AI : null;
+  const model = '@cf/openai/gpt-oss-20b';
   // An operator must first verify Workers Free in the Cloudflare dashboard.
   // This flag records that check; it cannot verify or change the account plan.
   // OpenAI credentials and arbitrary models/endpoints are intentionally ignored.
   const freePlanConfirmed = env.CLOUDFLARE_WORKERS_PLAN === 'free';
-  return { apiKey, accountId, model, provider: 'cloudflare',
-    ready: Boolean(apiKey && /^[a-f0-9]{32}$/i.test(accountId) && freePlanConfirmed) };
+  return { apiKey, accountId, binding, model, provider: 'cloudflare',
+    ready: Boolean(freePlanConfirmed && (binding || (apiKey && /^[a-f0-9]{32}$/i.test(accountId)))) };
 }
 
 async function structuredModel(config, name, schema, instructions, input, fetchModel) {
-  const response = await fetchModel(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${config.model}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ stream: false, temperature: 0.1,
-      max_tokens: name === 'kokkai_search_plan' ? 1024 : 3072,
-      messages: [{ role: 'system', content: instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
-        { role: 'user', content: JSON.stringify(input) }],
-      response_format: { type: 'json_schema', json_schema: schema } }),
-    signal: AbortSignal.timeout(40000),
-  });
+  const payload = { stream: false, temperature: 0.1,
+    max_tokens: name === 'kokkai_search_plan' ? 1024 : 3072,
+    messages: [{ role: 'system', content: instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
+      { role: 'user', content: JSON.stringify(input) }],
+    response_format: { type: 'json_schema', json_schema: schema } };
+  let data;
+  if (config.binding) {
+    try {
+      data = await config.binding.run(config.model, payload);
+    } catch (error) {
+      const message = String(error?.message || '').toLowerCase();
+      if (message.includes('quota') || message.includes('limit') || message.includes('neuron')) throw new Error('quota_exhausted');
+      if (message.includes('busy') || message.includes('rate')) throw new Error('model_busy');
+      throw new Error('model_request_failed');
+    }
+  } else {
+    const response = await fetchModel(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${config.model}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(40000),
+    });
+    data = await response.json().catch(() => null);
+    if (!response.ok || data?.success === false) {
+      const codes = (Array.isArray(data?.errors) ? data.errors : []).map(error => Number(error?.code));
+      if (codes.includes(3036)) throw new Error('quota_exhausted');
+      if (response.status === 429 || codes.includes(3040)) throw new Error('model_busy');
+      throw new Error('model_request_failed');
+    }
+  }
   // Provider error bodies may contain request details. Never expose them or
   // credentials through the public API, and never count a failed review.
-  const data = await response.json().catch(() => null);
-  if (!response.ok || data?.success === false) {
-    const codes = (Array.isArray(data?.errors) ? data.errors : []).map(error => Number(error?.code));
-    if (codes.includes(3036)) throw new Error('quota_exhausted');
-    if (response.status === 429 || codes.includes(3040)) throw new Error('model_busy');
-    throw new Error('model_request_failed');
-  }
-  if (data?.success !== true || !data.result || data.result.error) throw new Error('model_incomplete');
-  // Workers AI's native JSON mode can return an object in response; the Qwen
-  // model also documents a chat.completion result. Both still pass local,
+  const result = data?.success === true ? data.result : data;
+  if (!result || result.error) throw new Error('model_incomplete');
+  // Workers AI's native JSON mode can return an object in response; some
+  // model adapters return a chat.completion result. Both still pass local,
   // exhaustive ID/schema/quotation validation below. Never repair invented text.
-  let output = data.result.response;
-  if (Array.isArray(data.result.choices)) {
-    const choices = data.result.choices;
+  let output = result.response;
+  if (Array.isArray(result.choices)) {
+    const choices = result.choices;
     if (choices.length !== 1 || choices[0].finish_reason !== 'stop' ||
         choices[0].message?.role !== 'assistant' || choices[0].message.refusal) throw new Error('model_incomplete');
     output = choices[0].message.content;

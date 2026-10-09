@@ -9,16 +9,16 @@
 
 Workers Paidでは超過料金が発生するため、この構成には使わない。ローカルのカウンターや設定フラグが課金を止めるのではなく、Cloudflare側のFreeプランが超過実行を止める。有料サービスへの自動切替は実装していない。
 
-## 運営者が一度だけ行う設定
+## 推奨する接続方法
 
 1. [Cloudflare](https://dash.cloudflare.com/)で、利用するアカウントが **Workers Free** であることを確認する。有料プランへの変更、支払方法の追加、有料モデルの選択は不要。
-2. Workers AIの「Use REST API」から、そのアカウントだけのWorkers AI Read / Edit権限を持つAPIトークンを作成する。Account IDも控える。
-3. 公開中継サーバーの環境変数に `CLOUDFLARE_ACCOUNT_ID` と、シークレットの `CLOUDFLARE_API_TOKEN` を設定する。Freeプランを実際に確認してから `CLOUDFLARE_WORKERS_PLAN=free` を設定する。このフラグだけではアカウント契約を確認・変更できない。
-4. 同じ中継サイトを再配備する。`/api/status` の `model_ready` は設定の有無を示すだけなので、会議録の実例でも動作確認する。
+2. CloudflareのGit連携でこのリポジトリを選び、ルートディレクトリを `pages-api` にして配備する。
+3. `wrangler.jsonc` のWorkers AI bindingが、同じCloudflareアカウントのAIを直接呼び出す。公開サイトやGitHubにAPIトークンを保存する必要はない。
+4. `/api/status` の `model_ready` と会議録の実例で動作確認する。
 
-トークンはチャット本文、ブラウザーのコード、GitHub、`.openai/hosting.json` に貼らない。受け取る人はGitHubのサイトを開くだけで、アカウントや端末内モデルは不要。
+REST接続も互換用として残しているが、トークンはチャット本文、ブラウザーのコード、GitHub、`.openai/hosting.json` に貼らない。受け取る人はGitHubのサイトを開くだけで、アカウントや端末内モデルは不要。
 
-固定モデルは `@cf/qwen/qwen3-30b-a3b-fp8`。検索計画と候補の文脈確認を実行し、省庁ラベル・URL・割合はモデルに作らせない。引用を原文と照合し、検証できない判定から割合を出さない。未接続時は通信せず即座に「準備中」を返す。
+固定モデルはCloudflare上のOpenAI公開モデル `@cf/openai/gpt-oss-20b`。検索計画と候補の文脈確認を実行し、省庁ラベル・URL・割合はモデルに作らせない。引用を原文と照合し、検証できない判定から割合を出さない。未接続時は通信せず即座に「準備中」を返す。
 
 ## 実接続後の確認
 
@@ -28,6 +28,6 @@ Workers Paidでは超過料金が発生するため、この構成には使わ�
 
 - [国会会議録検索API](https://kokkai.ndl.go.jp/api.html)
 - [Workers AIの料金・無料枠](https://developers.cloudflare.com/workers-ai/platform/pricing/)
-- [REST APIの接続手順](https://developers.cloudflare.com/workers-ai/get-started/rest-api/)
-- [モデルの仕様](https://developers.cloudflare.com/workers-ai/models/qwen3-30b-a3b-fp8/)
+- [Workers AI binding](https://developers.cloudflare.com/workers-ai/configuration/bindings/)
+- [モデルの仕様](https://developers.cloudflare.com/workers-ai/models/gpt-oss-20b/)
 - [JSON mode](https://developers.cloudflare.com/workers-ai/features/json-mode/)
