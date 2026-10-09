@@ -51,7 +51,32 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
   if (!plan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
   const result = await retrieveAssignments(plan, fetchNdl);
   if (result.errors.length && !result.searched.length) throw new Error(result.errors[0]);
-  return reviewAssignments(fullQuestion, result, env, fetch, prepared.status);
+  const assessed = await reviewAssignments(fullQuestion, result, env, fetch, prepared.status);
+  // Rejection is evidence about these candidates, not evidence that no relevant
+  // debate exists. Try unused natural-language searches and older records once.
+  if (prepared.status !== 'ready' || !['reviewed', 'no_candidates'].includes(assessed.assessment_status) || assessed.pairs) return { ...assessed, retrieval_rounds: 1 };
+  const refined = await prepareSemanticPlan(fullQuestion, env, fetch, {
+    searched_queries: result.searched_queries,
+    rejected_reasons: assessed.search_feedback || [],
+    result: assessed.assessment_status === 'no_candidates' ? '質問と答弁の候補が見つからなかった' : '候補を読んだが、質問案の対象と措置に対応する答弁を確認できなかった',
+  });
+  if (refined.status !== 'ready') return { ...assessed, retrieval_rounds: 1, expansion_status: 'failed' };
+  const more = await retrieveAssignments(refined.plan, fetchNdl, '2020-01-01', {
+    maxRequests: 24 - result.requests_used, excludeMeetings: result.retrieved_meetings, includeOlder: true,
+  });
+  const reviewed = await reviewAssignments(fullQuestion, more, env, fetch, prepared.status);
+  return { ...reviewed, retrieval_rounds: 2, initial_reviewed_candidates: assessed.reviewed_candidates,
+    assessment_status: reviewed.assessment_status === 'no_candidates' && assessed.assessment_status === 'reviewed' ? 'reviewed' : reviewed.assessment_status,
+    reviewed_candidates: assessed.reviewed_candidates + reviewed.reviewed_candidates,
+    rejected_candidates: assessed.rejected_candidates + reviewed.rejected_candidates,
+    uncertain_candidates: assessed.uncertain_candidates + reviewed.uncertain_candidates,
+    review_candidates: [...assessed.review_candidates.map(row => ({ ...row, review_round: 1 })), ...reviewed.review_candidates.map(row => ({ ...row, review_round: 2 }))],
+    searched: [...result.searched, ...more.searched], searched_queries: [...new Set([...result.searched_queries, ...more.searched_queries])],
+    requests_used: result.requests_used + more.requests_used,
+    retrieved_meetings: [...result.retrieved_meetings, ...more.retrieved_meetings],
+    meetings_searched: result.meetings_searched + more.meetings_searched,
+    errors: [...result.errors, ...more.errors], partial: result.partial || more.partial,
+    search_limited: result.search_limited || more.search_limited };
 }
 
 const routeCache = new Map(), routesInFlight = new Map();

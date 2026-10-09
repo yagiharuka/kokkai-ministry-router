@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-22';
+export const routingVersion = '20261009-24';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -71,7 +71,12 @@ export function makePlan(question, hints = []) {
   return { question: normalize(question), groups, queries: plans.length > 5 ? [...plans.slice(0, 4), plans.at(-1)] : plans,
     ...(supplied.length ? { recall_groups: supplied.flatMap(concepts) } : {}) };
 }
-export function isChair(speech) { return /委員長|議長|副委員長/.test(`${speech.speakerRole || ''} ${speech.speakerPosition || ''}`); }
+export function isChair(speech) {
+  if (/委員長|議長|会長|座長/.test(`${speech.speakerRole || ''} ${speech.speakerPosition || ''}`)) return true;
+  // NDL sometimes leaves the role fields empty for chairs. Read only the
+  // speaker header; a lawmaker mentioning the chair in their question is not a chair.
+  return /^[○〇][^\s。]{0,60}?(?:委員長|議長|会長|座長)(?:代理)?(?:\([^)]{0,50}\))?(?:\s|$)/u.test(normalize(speech.speech));
+}
 export function isQuestioner(speech) {
   return Boolean(speech.speakerGroup) && !isChair(speech) &&
     !/大臣|副大臣|政務官|政府参考人|長官|局長|審議官|統括官/.test(`${speech.speakerRole || ''} ${speech.speakerPosition || ''}`);
@@ -198,13 +203,15 @@ export function rankRecallQuestions(speeches, plan, limit = 4) {
     if (!isQuestioner(speech) && !answeringMinistry(speech.speakerPosition, speech.speech)) continue;
     const match = recallPassage(speech.speech, plan);
     if (!match) continue;
-    const score = match.score + (isQuestioner(speech) ? .05 : 0);
+    const isAsk = isQuestioner(speech);
+    const score = match.score;
     const current = byMeeting.get(speech.issueID) || { score: 0, speechIDs: [] };
     current.score = Math.max(current.score, score);
+    current.has_question = Boolean(current.has_question || isAsk);
     if (!current.speechIDs.includes(speech.speechID)) current.speechIDs.push(speech.speechID);
     byMeeting.set(speech.issueID, current);
   }
-  return [...byMeeting].sort((a, b) => b[1].score - a[1].score).slice(0, limit);
+  return [...byMeeting].sort((a, b) => Number(b[1].has_question) - Number(a[1].has_question) || b[1].score - a[1].score).slice(0, limit);
 }
 function alignAnswer(answer, question, plan) {
   const matches = passages(answer).map(p => ({ ...p, ...scorePassage(p.text, plan) })).filter(p => p.supported);
@@ -309,7 +316,9 @@ export function summarize(rows) {
   if (shares.length) shares[0].percent += 100 - shares.reduce((sum, row) => sum + row.percent, 0);
   return { shares, pairs: byCase.size };
 }
-export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') {
+export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01', options = {}) {
+  const requestLimit = Math.max(0, Math.min(14, options.maxRequests ?? 14));
+  const excluded = new Set(options.excludeMeetings || []);
   const year = new Date().getUTCFullYear(), recentSince = `${year - 2}-01-01`;
   // The API returns newest records first, capped at 100 per request. Search each
   // recent year separately so a busy current year cannot hide older debates.
@@ -319,19 +328,20 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') 
     if (since <= `${y}-12-31`) periods.push([since > from ? since : from, `${y}-12-31`]);
   }
   if (since < recentSince) periods.push([since, `${year - 3}-12-31`]);
-  const searched = [], errors = [], meetings = new Map(); let requests = 0, searchLimited = false;
+  const searched = [], searchedQueries = new Set(), errors = [], meetings = new Map(); let requests = 0, searchLimited = false;
   const search = async ([from, until], query, pool) => {
     try {
       requests++;
       const data = await fetchNdl('speech', { any: query, from, until, maximumRecords: '100' });
       searchLimited ||= Boolean(data.nextRecordPosition);
       searched.push(`${query}（${from.slice(0, 4)}–${until.slice(0, 4)}）`);
+      searchedQueries.add(query);
       for (const speech of data.speechRecord || []) pool.set(speech.speechID, speech);
     } catch (error) { errors.push(error instanceof Error ? error.message : '会議録APIを取得できませんでした。'); }
   };
   const retrievePeriods = async ranges => {
     const pools = ranges.map(range => ({ range, pool: new Map() }));
-    const searchBudget = ranges.some(([from]) => from >= recentSince) ? 8 : 10;
+    const searchBudget = Math.min(ranges.some(([from]) => from >= recentSince) ? 8 : 10, Math.max(0, requestLimit - 1));
     // Search recent years before spending the budget on full meetings. Include
     // one concise subject search, so exact proposal wording cannot block recall.
     const initial = [...new Set([plan.queries[0], plan.recall_groups ? plan.queries[1] : plan.queries.at(-1)].filter(Boolean))];
@@ -345,17 +355,17 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') 
         await search(item.range, query, item.pool);
       }
     }
-    const ranked = pools.map(item => rankRecallQuestions([...item.pool.values()], plan, 4));
+    const ranked = pools.map(item => rankRecallQuestions([...item.pool.values()].filter(speech => !excluded.has(speech.issueID)), plan, 4));
     const selected = new Map();
     // Reserve a place for each year; a busy recent year must not mask last year.
     for (const list of ranked) if (list.length) selected.set(list[0][0], list[0][1]);
-    for (const [id, item] of ranked.flat().sort((a, b) => b[1].score - a[1].score)) {
+    for (const [id, item] of ranked.flat().sort((a, b) => Number(b[1].has_question) - Number(a[1].has_question) || b[1].score - a[1].score)) {
       if (selected.size >= 4) break;
       selected.set(id, item);
     }
     searchLimited ||= ranked.flat().some(([id]) => !selected.has(id));
     for (const [issueID] of selected) {
-      if (requests >= 14) { searchLimited = true; break; }
+      if (requests >= requestLimit) { searchLimited = true; break; }
       try {
         requests++;
         const data = await fetchNdl('meeting', { issueID, maximumRecords: '1' });
@@ -364,13 +374,13 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') 
     }
   };
   const recent = periods.filter(([from]) => from >= recentSince);
-  await retrievePeriods(recent);
+  await retrievePeriods(options.includeOlder ? periods : recent);
   let historicalOnly = false;
-  if (!reviewCandidates([...meetings.values()].flat(), plan).length) {
+  if (!options.includeOlder && !reviewCandidates([...meetings.values()].flat(), plan).length) {
     const older = periods.filter(([from]) => from < recentSince);
-    if (older.length && requests < 10) { await retrievePeriods(older); historicalOnly = true; }
+    if (older.length && requests < Math.min(10, requestLimit - 1)) { await retrievePeriods(older); historicalOnly = true; }
   }
   const records = [...meetings.values()].flat();
   const rows = pairAnswers(records, plan), review = reviewCandidates(records, plan);
-  return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), review_candidates: review, searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: historicalOnly && review.length > 0, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
+  return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), review_candidates: review, searched, searched_queries: [...searchedQueries], requests_used: requests, retrieved_meetings: [...meetings.keys()], meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: historicalOnly && review.length > 0, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
 }

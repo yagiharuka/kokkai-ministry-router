@@ -33,7 +33,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261009-22"};
+ const params={question:input,v:"20261009-24"};
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),180000);
  const lawData=await lawRequest;
  return {...cases,question:input,unit:"質疑",laws:cases.shares.length?(lawData.matches||[]):[],lawTerm,lawTruncated:!!lawData.truncated,lawError:!!lawData.error,lawSkipped:!cases.shares.length};
@@ -88,6 +88,6 @@ function render(r){
  }
 }
 $("question").addEventListener("input",e=>$("length").textContent=e.target.value.length+" / 1200字");
-$("form").addEventListener("submit",async e=>{e.preventDefault();const input=$("question").value.trim();if(input.length<12){$("message").textContent="質問案をもう少し具体的に入力してください。";$("message").className="error";$("message").hidden=false;return}$("submit").disabled=true;$("submit").textContent="会議録を調べています…";$("results").hidden=true;$("message").className="";$("message").hidden=false;$("message").textContent="関連する質疑と答弁者の肩書きを調べています。少し時間がかかる場合があります。";try{render(await analyze(input));$("message").hidden=true}catch(err){$("message").className="error";$("message").textContent="会議録を取得できませんでした。中継APIまたは通信状況を確認して再試行してください。詳細："+(err?.message||"不明なエラー")}finally{$("submit").disabled=false;$("submit").textContent="担当候補を調べる"}});
+$("form").addEventListener("submit",async e=>{e.preventDefault();const input=$("question").value.trim();if(input.length<12){$("message").textContent="質問案をもう少し具体的に入力してください。";$("message").className="error";$("message").hidden=false;return}$("submit").disabled=true;$("submit").textContent="会議録を調べています…";$("results").hidden=true;$("message").className="";$("message").hidden=false;$("message").textContent="会議録を検索し、質問と答弁の文脈を確認しています。1〜2分ほどかかる場合があります。";try{render(await analyze(input));$("message").hidden=true}catch(err){$("message").className="error";$("message").textContent="会議録を取得できませんでした。中継APIまたは通信状況を確認して再試行してください。詳細："+(err?.message||"不明なエラー")}finally{$("submit").disabled=false;$("submit").textContent="担当候補を調べる"}});
 
 

@@ -44,7 +44,6 @@ for (const invalid of [
   { reviews: [...decisions.slice(0,4), { ...decisions[4],id:'c1' }] },
   { reviews: decisions.slice(0,4) },
   { reviews: decisions.map((r,i)=>i ? r : { ...r, ministry:'厚生労働省' }) },
-  { reviews: decisions.map((r,i)=>i ? r : { ...r, answer_evidence:'存在しない引用' }) },
   { reviews: decisions.map((r,i)=>i ? r : { ...r, reason:'' }) },
 ]) {
   const bad = await reviewAssignments('教員の長時間労働を是正すべきではないか',result,env,async()=>response(invalid));
@@ -52,6 +51,16 @@ for (const invalid of [
   assert.deepEqual(bad.shares,[]);
   assert.equal(bad.evidence.length,0);
 }
+const ungrounded = await reviewAssignments('教員の長時間労働を是正すべきではないか',result,env,async()=>response({reviews:decisions.map((r,i)=>i?r:{...r,question_evidence:'利用者の質問案を誤って引用'})}));
+assert.equal(ungrounded.assessment_status,'reviewed');
+assert.equal(ungrounded.accepted_candidates,3);
+assert.equal(ungrounded.uncertain_candidates,1);
+assert.equal(ungrounded.review_candidates[0].candidate_id,'c1');
+assert.ok(!ungrounded.candidates.some(r=>r.url===rows[0].url));
+const wrapped = await reviewAssignments('教員の長時間労働を是正すべきではないか',result,env,async()=>response({reviews:decisions.map(r=>({...r,question_evidence:r.question_evidence?'「'+r.question_evidence+'」':'',answer_evidence:r.answer_evidence?'“'+r.answer_evidence+'”':''}))}));
+assert.equal(wrapped.assessment_status,'reviewed');
+assert.equal(wrapped.accepted_candidates,4);
+assert.equal(wrapped.evidence[0].question_evidence,rows[0].question);
 for (const provider of [
   async()=>new Response('secret provider detail',{status:429}),
   async()=>{throw new Error('sensitive network detail');},
@@ -110,7 +119,8 @@ globalThis.fetch=async(url,init)=>{
     const body=JSON.parse(init.body);
     if(body.text.format.name==='kokkai_search_plan')return response({queries:['教員 働き方改革','教師 勤務時間']});
     const input=JSON.parse(body.input[0].content);
-    return response({reviews:input.candidates.map(c=>({id:c.id,decision:'accept',reason:'教員の勤務負担を減らす方策への答弁。',question_evidence:c.question,answer_evidence:c.answer}))});
+    assert.equal(input.proposed_question,question);
+    return response({reviews:input.candidates.map(c=>({id:c.id,decision:'accept',reason:'教員の勤務負担を減らす方策への答弁。',question_evidence:c.source_question,answer_evidence:c.source_answer}))});
   }
   const target=new URL(url);
   assert.equal(target.origin,'https://kokkai.ndl.go.jp');
@@ -129,5 +139,41 @@ try {
   assert.equal(modelCalls,2,'Cached requests must not spend more model calls');
   const status=await (await worker.fetch(new Request('https://example.invalid/api/status'),{})).json();
   assert.equal(status.model_ready,false);
+  const offTopic={...meeting,issueID:'off-topic',speechRecord:[
+    {...meeting.speechRecord[0],speech:'医療機器の法制度に関連して、ワクチンの評価について伺います。'},
+    {...meeting.speechRecord[1],speakerPosition:'厚生労働大臣',speech:'ワクチンの品質、安全性を確認します。'},
+  ]};
+  const onTopic={...meeting,issueID:'on-topic',speechRecord:[
+    {...meeting.speechRecord[0],speech:'医療機器の審査期間を短縮できるでしょうか。'},
+    {...meeting.speechRecord[1],speakerPosition:'厚生労働大臣',speech:'医療機器の承認審査に専門人材を増やし、審査期間を短縮します。'},
+  ]};
+  let retryModelCalls=0,ndlCalls=0;
+  globalThis.fetch=async(url,init)=>{
+    if(String(url)==='https://api.openai.com/v1/responses') {
+      retryModelCalls++;
+      const body=JSON.parse(init.body);
+      if(body.text.format.name==='kokkai_search_plan') {
+        const input=JSON.parse(body.input[0].content);
+        if(retryModelCalls===1)return response({queries:['医療機器 薬事承認','医療機器 承認審査','医療機器 審査期間']});
+        assert.ok(input.search_feedback.searched_queries.length);
+        assert.ok(input.search_feedback.rejected_reasons.length);
+        return response({queries:['医療機器 審査期間','医療機器']});
+      }
+      const input=JSON.parse(body.input[0].content);
+      return response({reviews:input.candidates.map(c=>({id:c.id,decision:c.source_answer.includes('審査期間')?'accept':'reject',reason:'審査期間の短縮という問いに対応するかで確認。',question_evidence:c.source_question,answer_evidence:c.source_answer}))});
+    }
+    ndlCalls++;
+    const target=new URL(url),query=target.searchParams.get('any')||'';
+    const m=query.includes('審査期間')||query==='医療機器'?onTopic:offTopic;
+    return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[target.searchParams.get('issueID')==='on-topic'?onTopic:offTopic]}:{speechRecord:target.searchParams.get('from')==='2025-01-01'?m.speechRecord.map(s=>({...s,issueID:m.issueID})):[]});
+  };
+  const retried=await (await worker.fetch(new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'医療機器の承認審査を迅速化すべきではないか'})),env)).json();
+  assert.equal(retried.retrieval_rounds,2);
+  assert.equal(retried.assessment_status,'reviewed');
+  assert.equal(retried.shares[0].ministry,'厚生労働省');
+  assert.equal(retried.pairs,1);
+  assert.equal(retryModelCalls,4);
+  assert.ok(ndlCalls<=24);
+  assert.equal(retried.requests_used,ndlCalls);
 }finally{globalThis.fetch=realFetch;Date.now=realNow;}
 console.log('Semantic adapter protocol, immutable evidence, deduplication, recall, public request path and failure handling checks passed. Mock responses do not measure model accuracy.');

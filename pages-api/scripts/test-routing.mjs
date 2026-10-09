@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import worker from '../worker/index.js';
-import { concepts, makePlan, matchQuestion, answeringMinistry, pairAnswers, reviewCandidates, summarize, retrieveAssignments, passages } from '../worker/routing-core.mjs';
+import { concepts, makePlan, matchQuestion, answeringMinistry, pairAnswers, reviewCandidates, summarize, retrieveAssignments, passages, isChair, isQuestioner, rankRecallQuestions } from '../worker/routing-core.mjs';
 let passed = 0;
 const check = (name, fn) => { fn(); passed++; console.log('PASS ' + name); };
 const ask = (text, id = 'q', order = 1) => ({ speechID:id, speechOrder:order, speech:text, speakerGroup:'会派', speechURL:'https://kokkai.ndl.go.jp/txt/fixture/'+id });
@@ -38,6 +38,19 @@ check('複数論点でも該当する質問部分を切り出す',()=>assert.equ
 check('答弁内の遠く離れた論点をつなげない',()=>assert.equal(route('水道の耐震化について伺います。','水道の耐震化について伺います。',[['水道の利用料金を考えます。次に、橋の耐震化を進めます。','国土交通大臣']]).length,0));
 check('承認への質問を開発支援の答弁に割り振らない',()=>assert.equal(route('医療機器の承認を迅速化すべきではないか','医療機器の承認を迅速化すべきではないか伺います。',[['医療機器の開発支援を進めます。','経済産業大臣']]).length,0));
 check('委員長の手続発言は答弁に数えない',()=>assert.equal(route('水道の耐震化について伺います。','水道の耐震化について伺います。',[['水道の耐震化について大臣お願いします。','委員長'],['水道の耐震化を進めます。','国土交通大臣']]).length,1));
+check('役職欄が空の委員長発言と大臣挨拶を質疑にしない',()=>{
+  for(const header of ['○山下委員長 次に、国務大臣。','○委員長(山田太郎君) 次に、大臣。','○山田委員長代理 次に、大臣。']) {
+    const chair=ask(header);assert.equal(isChair(chair),true);assert.equal(isQuestioner(chair),false);
+    const meeting=record(header,[['女性起業家の支援を推進します。一言御挨拶を申し上げます。','経済産業大臣']]);
+    assert.deepEqual(reviewCandidates([meeting],makePlan('女性起業家を支援すべきではないか')),[]);
+  }
+  assert.equal(isChair(ask('○山田委員 委員長にお取り計らいをお願いします。')),false);
+});
+check('総花的な大臣演説より実際の議員質問を先に調べる',()=>{
+  const plan=makePlan('スタートアップの女性起業家を支援すべきではないか');
+  const speeches=[{...answer('スタートアップの女性起業家を支援します。','経済産業大臣'),issueID:'speech'}, {...ask('女性起業家の支援について伺います。'),issueID:'question'}];
+  assert.equal(rankRecallQuestions(speeches,plan,1)[0][0],'question');
+});
 check('後の議員質問で答弁の対応を打ち切る',()=>{ const m=record('水道の耐震化について伺います。',[['水道の耐震化を進めます。','国土交通大臣']]);m.speechRecord.splice(1,0,ask('別の質問について伺います。','q2',2));m.speechRecord[2].speechOrder=3; assert.equal(pairAnswers([m],makePlan('水道の耐震化について伺います。')).length,0);});
 check('同じ省の反復答弁を一質疑として数える',()=>assert.equal(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。','財務大臣'],['研究開発税制を検討します。','財務大臣']])).pairs,1));
 check('複数省の割合は一質疑の重みを分ける',()=>assert.deepEqual(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。','財務大臣'],['研究開発税制を拡充します。','経済産業大臣']])).shares.map(x=>x.percent),[50,50]));

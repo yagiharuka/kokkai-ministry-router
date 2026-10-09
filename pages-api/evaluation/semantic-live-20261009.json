@@ -1,0 +1,1583 @@
+{
+  "evaluated_at": "2026-10-09T11:38:27.821Z",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "note": "Six small live integration cases, including development examples. Targeted rechecks followed citation-validation and semantic search-expansion fixes. Each result records its actual routing version. This is not an independent accuracy benchmark. The medical-device approval question still has no accepted matches in the retrieved sample.",
+  "results": [
+    {
+      "question": "スタートアップ界の女性活躍推進を進めるべきではないか",
+      "http_status": 200,
+      "duration_ms": 61066,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 310,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 136,
+            "output_tokens_details": {
+              "reasoning_tokens": 98
+            },
+            "total_tokens": 446
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "女性起業家",
+              "スタートアップ 女性起業家",
+              "女性活躍 スタートアップ"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 11588,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1788,
+            "output_tokens_details": {
+              "reasoning_tokens": 304
+            },
+            "total_tokens": 13376
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "accept",
+                "reason": "女性起業家の環境整備という同趣旨の答弁",
+                "question_evidence": "このスタートアップをめぐる重大な問題があります。それは、スタートアップ企業に対する深刻なハラスメント問題なんですね。女性起業家に対するハラスメント問題であります。",
+                "answer_evidence": "女性起業家が事業を継続し成長させていくためには、前提として、個人の尊厳と安全、安心等が守られるビジネス環境というものが整備されていないといけない"
+              },
+              {
+                "id": "c2",
+                "decision": "accept",
+                "reason": "女性起業家へのハラスメント対策を正面から答弁",
+                "question_evidence": "日本のスタートアップにおけるセクシュアルハラスメント調査が研究者の方によって行われました。",
+                "answer_evidence": "ハラスメント防止を含めたコンプライアンスの確保、これは責任ある企業であるための前提でありますので、スタートアップエコシステムの健全な発展に向けて、官民で連携をしながらハラスメント防止に取り組んでまいりたい"
+              },
+              {
+                "id": "c3",
+                "decision": "accept",
+                "reason": "起業家特有のハラスメント防止策を求める質問への答弁",
+                "question_evidence": "女性起業家へのセクハラは、個人が対応、対策をすればいいということではなくて、政治としてどう防ぐのか",
+                "answer_evidence": "スタートアップ業界においてハラスメント対策が喫緊の課題と認識されていたというふうに承知をしております。"
+              },
+              {
+                "id": "c4",
+                "decision": "accept",
+                "reason": "女性起業家向け指針へハラスメント明記を求める応答",
+                "question_evidence": "セクハラ、とりわけ女性起業家に対するセクハラ、半分の女性起業家がセクハラに遭っている、性被害に遭っているわけですから、これはやはり、セクハラ、ハラスメント、この文言を用いて",
+                "answer_evidence": "そういう意味の中で分かりやすい表記への修正を検討するように今後働きかけていきますし、このハラスメントの防止というのは、コンプライアンスの確保というものとハラスメントの防止、これはもう責任を持って政府がやっていかなきゃいけない"
+              },
+              {
+                "id": "c5",
+                "decision": "accept",
+                "reason": "VC指針で女性起業家ハラスメント明記を問う答弁",
+                "question_evidence": "新指針においては、貴重な声が一切反映されていないように見受けられます。",
+                "answer_evidence": "金融庁として、女性起業家が安心して活躍できることは我が国経済にとって非常に重要であると考えており、ベンチャーキャピタルについて、官民で必要な環境整備や啓発活動に取り組んでいきたい"
+              },
+              {
+                "id": "c6",
+                "decision": "accept",
+                "reason": "VCのハラスメント防止と女性活躍環境整備の答弁",
+                "question_evidence": "投資家によるスタートアップ、特に女性起業家へのハラスメントが大きな問題となっている",
+                "answer_evidence": "ハラスメント防止も含めたコンプライアンス管理の体制確保を推奨する事項を盛り込んだ。"
+              },
+              {
+                "id": "c7",
+                "decision": "reject",
+                "reason": "外務省のジェンダー施策で、スタートアップ限定でない",
+                "question_evidence": "女性参画やジェンダーバイアスをテーマに、地方と都市の格差解消や女性起業家支援、地方学生支援などについて議論がなされた",
+                "answer_evidence": "ジェンダー平等推進の担い手となる実務家であったり若者による研究そして議論を促進して"
+              },
+              {
+                "id": "c8",
+                "decision": "reject",
+                "reason": "後半が万博の記者証問題で別論点",
+                "question_evidence": "女性起業家に対するハラスメントは絶対許さないという、これを言葉で示していただきたい",
+                "answer_evidence": "メディア関係者用の入場証の発行を含めたメディア対応についてですけれども、一義的には博覧会協会の裁量にこれは委ねられるべきものでございますが"
+              },
+              {
+                "id": "c9",
+                "decision": "reject",
+                "reason": "エプスタイン問題で、スタートアップ女性活躍と無関係",
+                "question_evidence": "日本政府としても、日本人が関わっているかどうかということは抜きにしてでも、この問題をどのように現在捉えているのか",
+                "answer_evidence": "こういった事態はあってはならないことだ、こんなふうに考えておりますが"
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "震災復興と外交の話で、質問案と別制度",
+                "question_evidence": "東日本大震災から十五年がたとうとしております。",
+                "answer_evidence": "世界各国から本当に温かい支援の手が差し伸べられた。こういったことに改めて、関わった皆さんに敬意を表し"
+              },
+              {
+                "id": "c11",
+                "decision": "reject",
+                "reason": "WPS推進の確認で、スタートアップ女性活躍ではない",
+                "question_evidence": "女性・平和・安全保障、いわゆるWPSを積極的に推進するという",
+                "answer_evidence": "そのような御理解で結構です。"
+              },
+              {
+                "id": "c12",
+                "decision": "reject",
+                "reason": "WPSの国内実装で、スタートアップ政策ではない",
+                "question_evidence": "国際的にリーダーシップを取るお立場であるからこそ、国際社会と約束をするだけではなくて、その約束が日本各地でどのように反映されているのか",
+                "answer_evidence": "国内の実態と世界のギャップについて申し上げると、世界経済フォーラムが公表しました、昨年、二〇二五年のジェンダーギャップ指数について"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "shares": [
+          {
+            "ministry": "経済産業省",
+            "percent": 75,
+            "count": 3
+          },
+          {
+            "ministry": "金融庁",
+            "percent": 25,
+            "count": 1
+          }
+        ],
+        "pairs": 4,
+        "evidence": [
+          {
+            "case_id": "121704080X01120250418:121704080X01120250418_182",
+            "ministry": "経済産業省",
+            "speaker": "武藤容治",
+            "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+            "date": "2025-04-18",
+            "meeting": "経済産業委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/183",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/182",
+            "review_reason": "女性起業家の環境整備という同趣旨の答弁",
+            "question_evidence": "このスタートアップをめぐる重大な問題があります。それは、スタートアップ企業に対する深刻なハラスメント問題なんですね。女性起業家に対するハラスメント問題であります。",
+            "answer_evidence": "女性起業家が事業を継続し成長させていくためには、前提として、個人の尊厳と安全、安心等が守られるビジネス環境というものが整備されていないといけない"
+          },
+          {
+            "case_id": "121704080X01120250418:121704080X01120250418_186",
+            "ministry": "経済産業省",
+            "speaker": "井上誠一郎",
+            "position": "経済産業省大臣官房審議官",
+            "date": "2025-04-18",
+            "meeting": "経済産業委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/186",
+            "review_reason": "起業家特有のハラスメント防止策を求める質問への答弁",
+            "question_evidence": "女性起業家へのセクハラは、個人が対応、対策をすればいいということではなくて、政治としてどう防ぐのか",
+            "answer_evidence": "スタートアップ業界においてハラスメント対策が喫緊の課題と認識されていたというふうに承知をしております。"
+          },
+          {
+            "case_id": "121704080X01120250418:121704080X01120250418_192",
+            "ministry": "経済産業省",
+            "speaker": "武藤容治",
+            "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+            "date": "2025-04-18",
+            "meeting": "経済産業委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/193",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/192",
+            "review_reason": "女性起業家向け指針へハラスメント明記を求める応答",
+            "question_evidence": "セクハラ、とりわけ女性起業家に対するセクハラ、半分の女性起業家がセクハラに遭っている、性被害に遭っているわけですから、これはやはり、セクハラ、ハラスメント、この文言を用いて",
+            "answer_evidence": "そういう意味の中で分かりやすい表記への修正を検討するように今後働きかけていきますし、このハラスメントの防止というのは、コンプライアンスの確保というものとハラスメントの防止、これはもう責任を持って政府がやっていかなきゃいけない"
+          },
+          {
+            "case_id": "121704376X00220250212:121704376X00220250212_072",
+            "ministry": "金融庁",
+            "speaker": "加藤勝信",
+            "position": "財務大臣・内閣府特命担当大臣（金融）",
+            "date": "2025-02-12",
+            "meeting": "財務金融委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/74",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/72",
+            "review_reason": "VCのハラスメント防止と女性活躍環境整備の答弁",
+            "question_evidence": "投資家によるスタートアップ、特に女性起業家へのハラスメントが大きな問題となっている",
+            "answer_evidence": "ハラスメント防止も含めたコンプライアンス管理の体制確保を推奨する事項を盛り込んだ。"
+          }
+        ],
+        "searched": [
+          "女性起業家（2026–2026）",
+          "女性起業家（2025–2025）",
+          "女性起業家（2024–2024）",
+          "スタートアップ 女性起業家（2026–2026）",
+          "スタートアップ 女性起業家（2025–2025）",
+          "スタートアップ 女性起業家（2024–2024）"
+        ],
+        "meetings_searched": 4,
+        "errors": [],
+        "partial": false,
+        "historical_only": false,
+        "recent_since": "2024-01-01",
+        "search_limited": true,
+        "routing_version": "20261009-23",
+        "query_concepts": [
+          "スタートアップ",
+          "女性"
+        ],
+        "assessment_status": "reviewed",
+        "assessment_method": "semantic",
+        "reviewed_candidates": 12,
+        "accepted_candidates": 4,
+        "rejected_candidates": 6,
+        "uncertain_candidates": 2,
+        "assessment_model": "gpt-5.4-mini-2026-03-17"
+      }
+    },
+    {
+      "question": "半導体産業の国内生産を支援すべきではないか",
+      "http_status": 200,
+      "duration_ms": 51789,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 308,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 200,
+            "output_tokens_details": {
+              "reasoning_tokens": 154
+            },
+            "total_tokens": 508
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "半導体 国内生産",
+              "半導体産業 国内生産",
+              "半導体 国産化",
+              "半導体 量産"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 18791,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1151,
+            "output_tokens_details": {
+              "reasoning_tokens": 352
+            },
+            "total_tokens": 19942
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "reject",
+                "reason": "中東情勢の燃料支援で、半導体生産支援の問いではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c2",
+                "decision": "accept",
+                "reason": "次世代半導体の国内生産支援を直接問うている",
+                "question_evidence": "二ナノを目指す次世代半導体は、国内で生産する意義は何でしょうか。",
+                "answer_evidence": "次世代半導体の国内生産の意義についてお尋ねがありました。"
+              },
+              {
+                "id": "c3",
+                "decision": "reject",
+                "reason": "米国関税協議が主題で、半導体国内生産支援ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c4",
+                "decision": "accept",
+                "reason": "半導体国内生産基盤強化の支援策を問うている",
+                "question_evidence": "半導体の国内生産基盤強化に向けて十兆円規模の集中投資をしていくこととなるわけですが",
+                "answer_evidence": "半導体の国内生産基盤強化に向けた設備投資支援を行うとともに、先端的な研究開発支援も行っています。"
+              },
+              {
+                "id": "c5",
+                "decision": "reject",
+                "reason": "人材育成や技術流出が中心で、国内生産支援への答弁ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c6",
+                "decision": "reject",
+                "reason": "工業用水インフラの支援で、半導体産業の生産支援ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c7",
+                "decision": "accept",
+                "reason": "ラピダスの支援継続や半導体国内生産政策を問うている",
+                "question_evidence": "特定の企業に際限なく税金をつぎ込む産業政策では、真の半導体産業支援にはなりません。",
+                "answer_evidence": "現在の半導体政策は、例えば海外との連携を積極的に進めるなど、過去の半導体政策の反省を総括した上で展開しているところです。"
+              },
+              {
+                "id": "c8",
+                "decision": "reject",
+                "reason": "エネルギー基本計画の火力半減が主題で、半導体支援ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c9",
+                "decision": "reject",
+                "reason": "中国鋼材流入の対策が主題で、半導体国内生産支援ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "NEXIの貿易保険案件で、半導体国内生産支援の問いではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c11",
+                "decision": "reject",
+                "reason": "対米投融資の保険制度で、半導体国内生産支援の問いではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c12",
+                "decision": "accept",
+                "reason": "半導体関連設備投資の税制適用を問うており関連する",
+                "question_evidence": "半導体の検査機器などを製造している日本マイクロニクスという会社でございます。",
+                "answer_evidence": "大規模かつ高付加価値な国内投資を促進することを目的としてございます。"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "shares": [
+          {
+            "ministry": "経済産業省",
+            "percent": 100,
+            "count": 3
+          }
+        ],
+        "pairs": 3,
+        "evidence": [
+          {
+            "case_id": "121715254X01320250416:121715254X01320250416_005",
+            "ministry": "経済産業省",
+            "speaker": "武藤容治",
+            "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+            "date": "2025-04-16",
+            "meeting": "本会議",
+            "url": "https://kokkai.ndl.go.jp/txt/121715254X01320250416/6",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121715254X01320250416/5",
+            "review_reason": "次世代半導体の国内生産支援を直接問うている",
+            "question_evidence": "二ナノを目指す次世代半導体は、国内で生産する意義は何でしょうか。",
+            "answer_evidence": "次世代半導体の国内生産の意義についてお尋ねがありました。"
+          },
+          {
+            "case_id": "121715254X01320250416:121715254X01320250416_017",
+            "ministry": "経済産業省",
+            "speaker": "武藤容治",
+            "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+            "date": "2025-04-16",
+            "meeting": "本会議",
+            "url": "https://kokkai.ndl.go.jp/txt/121715254X01320250416/18",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121715254X01320250416/17",
+            "review_reason": "ラピダスの支援継続や半導体国内生産政策を問うている",
+            "question_evidence": "特定の企業に際限なく税金をつぎ込む産業政策では、真の半導体産業支援にはなりません。",
+            "answer_evidence": "現在の半導体政策は、例えば海外との連携を積極的に進めるなど、過去の半導体政策の反省を総括した上で展開しているところです。"
+          },
+          {
+            "case_id": "122114080X00720260526:122114080X00720260526_082",
+            "ministry": "経済産業省",
+            "speaker": "畠山陽二郎",
+            "position": "経済産業省経済産業政策局長",
+            "date": "2026-05-26",
+            "meeting": "経済産業委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/122114080X00720260526/83",
+            "question_url": "https://kokkai.ndl.go.jp/txt/122114080X00720260526/82",
+            "review_reason": "半導体関連設備投資の税制適用を問うており関連する",
+            "question_evidence": "半導体の検査機器などを製造している日本マイクロニクスという会社でございます。",
+            "answer_evidence": "大規模かつ高付加価値な国内投資を促進することを目的としてございます。"
+          }
+        ],
+        "searched": [
+          "半導体 国内生産（2026–2026）",
+          "半導体 国内生産（2025–2025）",
+          "半導体 国内生産（2024–2024）",
+          "半導体産業 国内生産（2026–2026）",
+          "半導体産業 国内生産（2025–2025）",
+          "半導体産業 国内生産（2024–2024）"
+        ],
+        "meetings_searched": 4,
+        "errors": [],
+        "partial": false,
+        "historical_only": false,
+        "recent_since": "2024-01-01",
+        "search_limited": true,
+        "routing_version": "20261009-23",
+        "query_concepts": [
+          "半導体産業",
+          "国内生産",
+          "支援"
+        ],
+        "assessment_status": "reviewed",
+        "assessment_method": "semantic",
+        "reviewed_candidates": 12,
+        "accepted_candidates": 3,
+        "rejected_candidates": 8,
+        "uncertain_candidates": 1,
+        "assessment_model": "gpt-5.4-mini-2026-03-17"
+      }
+    },
+    {
+      "question": "教員の長時間労働を是正すべきではないか",
+      "http_status": 200,
+      "duration_ms": 57732,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 307,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 134,
+            "output_tokens_details": {
+              "reasoning_tokens": 85
+            },
+            "total_tokens": 441
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "教員 長時間労働",
+              "教職員 長時間労働",
+              "教員 勤務時間",
+              "教員 働き方改革"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 11456,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1535,
+            "output_tokens_details": {
+              "reasoning_tokens": 313
+            },
+            "total_tokens": 12991
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "accept",
+                "reason": "長時間労働是正と働き方改革への回答になっている",
+                "question_evidence": "教員の働き方改革や教員不足解消のための取組として",
+                "answer_evidence": "学校における働き方改革、教師の処遇改善、学校の指導、運営体制の充実を一体的に進めることが必要"
+              },
+              {
+                "id": "c2",
+                "decision": "reject",
+                "reason": "教員不足の原因と改善策で、是正そのものへの応答でない",
+                "question_evidence": "教員不足の現状認識と今後の改善策についてお伺いをいたします。",
+                "answer_evidence": "教師不足の解消に向けまして、文部科学省といたしましては"
+              },
+              {
+                "id": "c3",
+                "decision": "reject",
+                "reason": "不足調査の有無であり、長時間労働是正の問いではない",
+                "question_evidence": "令和七年は、教員不足の実態調査、これ自体、行われていますでしょうか。",
+                "answer_evidence": "令和七年度の状況につきましては、令和三年度と比較することができるような形で"
+              },
+              {
+                "id": "c4",
+                "decision": "accept",
+                "reason": "勤務時間管理の徹底を求める問いへの応答になっている",
+                "question_evidence": "こうした現状について大臣の受け止めをお聞きしたいと思います。",
+                "answer_evidence": "各教育委員会に対しまして、適切な勤務時間の記録及び管理が徹底されるよう"
+              },
+              {
+                "id": "c5",
+                "decision": "accept",
+                "reason": "給特法と長時間労働是正の見直しを問う内容に合致する",
+                "question_evidence": "近い将来、これを見直して労基法三十七条の適用を除外する現給特法を変える必要がある",
+                "answer_evidence": "処遇改善と併せて、働き方改革の更なる加速化、学校の指導、運営体制の充実を一体的、総合的に進めていく必要があり"
+              },
+              {
+                "id": "c6",
+                "decision": "accept",
+                "reason": "勤務間インターバルによる長時間労働対策の回答である",
+                "question_evidence": "勤務間インターバルを実現すべきと考えるが、国はどのように取り組んでいくのか。",
+                "answer_evidence": "教師の健康福祉の観点から、勤務間インターバル確保ということにつきましても"
+              },
+              {
+                "id": "c7",
+                "decision": "reject",
+                "reason": "教員不足の要因質問で、長時間労働是正への応答ではない",
+                "question_evidence": "現在の教員不足の要因、大臣、どうお考えでしょうか。",
+                "answer_evidence": "教師不足でございますが、教師の年齢構成、それが一つ起因するところの近年の大量の退職と"
+              },
+              {
+                "id": "c8",
+                "decision": "accept",
+                "reason": "働き方改革と業務明確化で長時間労働是正を扱っている",
+                "question_evidence": "学校における働き方改革の更なる加速化について大臣に伺います。",
+                "answer_evidence": "学校における働き方改革の実効性を更に向上させていくためには"
+              },
+              {
+                "id": "c9",
+                "decision": "accept",
+                "reason": "教員の長時間労働による疲弊への職場環境整備の答弁である",
+                "question_evidence": "教員の長時間労働や周辺業務によるストレスなどによって疲弊し",
+                "answer_evidence": "教師が、その専門性を最大限に発揮して、子供たちによりよい教育を行うことができる職場環境を整備することが重要"
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "勤務実態調査の実施状況で、是正措置の問いではない",
+                "question_evidence": "公立の小中学校の長時間労働の実態調査についても一緒にお伺いします。",
+                "answer_evidence": "学校現場に追加の調査負担を生じさせることなく、毎年度、全国の教育委員会が年間を通じて把握する在校等時間の状況を調査"
+              },
+              {
+                "id": "c11",
+                "decision": "accept",
+                "reason": "長時間労働削減の姿勢と具体策を問う答弁になっている",
+                "question_evidence": "学校の先生の長時間過密労働についてです。",
+                "answer_evidence": "今後、そうしたいわゆる働く時間をより適切なものに短くしていく取組を進めてまいりたい"
+              },
+              {
+                "id": "c12",
+                "decision": "reject",
+                "reason": "授業準備時間の考え方で、長時間労働是正の直接の応答でない",
+                "question_evidence": "授業準備時間の考え方も見直していく必要があると思いますけれども、いかがでしょうか。",
+                "answer_evidence": "教員の指導時数は勤務時間の半分程度を充て、残りの半分程度の時間は授業指導の準備など"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "shares": [
+          {
+            "ministry": "文部科学省",
+            "percent": 100,
+            "count": 7
+          }
+        ],
+        "pairs": 7,
+        "evidence": [
+          {
+            "case_id": "121305270X00120240227:121305270X00120240227_206",
+            "ministry": "文部科学省",
+            "speaker": "盛山正仁",
+            "position": "文部科学大臣",
+            "date": "2024-02-27",
+            "meeting": "予算委員会第四分科会",
+            "url": "https://kokkai.ndl.go.jp/txt/121305270X00120240227/207",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121305270X00120240227/206",
+            "review_reason": "長時間労働是正と働き方改革への回答になっている",
+            "question_evidence": "教員の働き方改革や教員不足解消のための取組として",
+            "answer_evidence": "学校における働き方改革、教師の処遇改善、学校の指導、運営体制の充実を一体的に進めることが必要"
+          },
+          {
+            "case_id": "122105124X00220260304:122105124X00220260304_095",
+            "ministry": "文部科学省",
+            "speaker": "松本洋平",
+            "position": "文部科学大臣",
+            "date": "2026-03-04",
+            "meeting": "文部科学委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/122105124X00220260304/96",
+            "question_url": "https://kokkai.ndl.go.jp/txt/122105124X00220260304/95",
+            "review_reason": "勤務時間管理の徹底を求める問いへの応答になっている",
+            "question_evidence": "こうした現状について大臣の受け止めをお聞きしたいと思います。",
+            "answer_evidence": "各教育委員会に対しまして、適切な勤務時間の記録及び管理が徹底されるよう"
+          },
+          {
+            "case_id": "121905124X00320251126:121905124X00320251126_094",
+            "ministry": "文部科学省",
+            "speaker": "松本洋平",
+            "position": "文部科学大臣",
+            "date": "2025-11-26",
+            "meeting": "文部科学委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121905124X00320251126/95",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121905124X00320251126/94",
+            "review_reason": "給特法と長時間労働是正の見直しを問う内容に合致する",
+            "question_evidence": "近い将来、これを見直して労基法三十七条の適用を除外する現給特法を変える必要がある",
+            "answer_evidence": "処遇改善と併せて、働き方改革の更なる加速化、学校の指導、運営体制の充実を一体的、総合的に進めていく必要があり"
+          },
+          {
+            "case_id": "121705124X01020250423:121705124X01020250423_134",
+            "ministry": "文部科学省",
+            "speaker": "望月禎",
+            "position": "文部科学省初等中等教育局長",
+            "date": "2025-04-23",
+            "meeting": "文部科学委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121705124X01020250423/135",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121705124X01020250423/134",
+            "review_reason": "勤務間インターバルによる長時間労働対策の回答である",
+            "question_evidence": "勤務間インターバルを実現すべきと考えるが、国はどのように取り組んでいくのか。",
+            "answer_evidence": "教師の健康福祉の観点から、勤務間インターバル確保ということにつきましても"
+          },
+          {
+            "case_id": "121705124X01020250423:121705124X01020250423_132",
+            "ministry": "文部科学省",
+            "speaker": "あべ俊子",
+            "position": "文部科学大臣",
+            "date": "2025-04-23",
+            "meeting": "文部科学委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121705124X01020250423/133",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121705124X01020250423/132",
+            "review_reason": "働き方改革と業務明確化で長時間労働是正を扱っている",
+            "question_evidence": "学校における働き方改革の更なる加速化について大臣に伺います。",
+            "answer_evidence": "学校における働き方改革の実効性を更に向上させていくためには"
+          },
+          {
+            "case_id": "121305270X00120240227:121305270X00120240227_087",
+            "ministry": "文部科学省",
+            "speaker": "盛山正仁",
+            "position": "文部科学大臣",
+            "date": "2024-02-27",
+            "meeting": "予算委員会第四分科会",
+            "url": "https://kokkai.ndl.go.jp/txt/121305270X00120240227/88",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121305270X00120240227/87",
+            "review_reason": "教員の長時間労働による疲弊への職場環境整備の答弁である",
+            "question_evidence": "教員の長時間労働や周辺業務によるストレスなどによって疲弊し",
+            "answer_evidence": "教師が、その専門性を最大限に発揮して、子供たちによりよい教育を行うことができる職場環境を整備することが重要"
+          },
+          {
+            "case_id": "121905124X00320251126:121905124X00320251126_149",
+            "ministry": "文部科学省",
+            "speaker": "松本洋平",
+            "position": "文部科学大臣",
+            "date": "2025-11-26",
+            "meeting": "文部科学委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121905124X00320251126/150",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121905124X00320251126/149",
+            "review_reason": "長時間労働削減の姿勢と具体策を問う答弁になっている",
+            "question_evidence": "学校の先生の長時間過密労働についてです。",
+            "answer_evidence": "今後、そうしたいわゆる働く時間をより適切なものに短くしていく取組を進めてまいりたい"
+          }
+        ],
+        "searched": [
+          "教員 長時間労働（2026–2026）",
+          "教員 長時間労働（2025–2025）",
+          "教員 長時間労働（2024–2024）",
+          "教職員 長時間労働（2026–2026）",
+          "教職員 長時間労働（2025–2025）",
+          "教職員 長時間労働（2024–2024）"
+        ],
+        "searched_queries": [
+          "教員 長時間労働",
+          "教職員 長時間労働"
+        ],
+        "requests_used": 10,
+        "retrieved_meetings": [
+          "122105124X00220260304",
+          "121905124X00320251126",
+          "121305270X00120240227",
+          "121705124X01020250423"
+        ],
+        "meetings_searched": 4,
+        "errors": [],
+        "partial": false,
+        "historical_only": false,
+        "recent_since": "2024-01-01",
+        "search_limited": true,
+        "routing_version": "20261009-24",
+        "query_concepts": [
+          "教員",
+          "長時間労働",
+          "是正"
+        ],
+        "assessment_status": "reviewed",
+        "assessment_method": "semantic",
+        "reviewed_candidates": 12,
+        "accepted_candidates": 7,
+        "rejected_candidates": 5,
+        "uncertain_candidates": 0,
+        "assessment_model": "gpt-5.4-mini-2026-03-17",
+        "retrieval_rounds": 1
+      }
+    },
+    {
+      "question": "医療機器の承認審査を迅速化すべきではないか",
+      "http_status": 200,
+      "duration_ms": 107361,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 415,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 383,
+            "output_tokens_details": {
+              "reasoning_tokens": 323
+            },
+            "total_tokens": 798
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "医療機器 承認審査",
+              "医療機器 審査迅速化",
+              "医療機器 薬事承認",
+              "医療機器 申請 審査"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 12072,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 800,
+            "output_tokens_details": {
+              "reasoning_tokens": 224
+            },
+            "total_tokens": 12872
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "reject",
+                "reason": "医薬品の承認資料の信頼性で、医療機器審査の迅速化ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c2",
+                "decision": "reject",
+                "reason": "SaMDの審査内容の確認で、迅速化の是非を問う質問ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c3",
+                "decision": "reject",
+                "reason": "患者申出療養の手続簡略化で、医療機器承認審査とは別論点",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c4",
+                "decision": "reject",
+                "reason": "薬事職の役割説明で、承認審査の迅速化への応答ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c5",
+                "decision": "reject",
+                "reason": "医薬品承認の資料要件の話で、医療機器の審査迅速化ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c6",
+                "decision": "reject",
+                "reason": "条件付承認制度の対象拡大で、医療機器の承認審査ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c7",
+                "decision": "reject",
+                "reason": "米国の迅速承認制度の評価で、医療機器審査の迅速化ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c8",
+                "decision": "reject",
+                "reason": "ワクチンの市販後安全対策と救済で、承認審査迅速化と異なる",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c9",
+                "decision": "reject",
+                "reason": "緊急避妊薬のOTC化・対面販売の論点で一致しない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "ドラッグロスの開発要請と出口戦略で、医療機器審査ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c11",
+                "decision": "reject",
+                "reason": "ワクチンの安全対策制度の説明で、医療機器審査迅速化と別",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c12",
+                "decision": "reject",
+                "reason": "障害年金の認定調査で、医療機器承認審査の話ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              }
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 633,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 280,
+            "output_tokens_details": {
+              "reasoning_tokens": 223
+            },
+            "total_tokens": 913
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "医療機器 早期承認",
+              "医療機器 優先審査",
+              "医療機器 審査期間",
+              "医療機器 承認迅速化"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 13067,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1295,
+            "output_tokens_details": {
+              "reasoning_tokens": 210
+            },
+            "total_tokens": 14362
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "reject",
+                "reason": "医療機器の審査迅速化ではなく附帯決議全般の賛意",
+                "question_evidence": "医薬品、医療機器等の品質、有効性及び安全性の確保等に関する法律等",
+                "answer_evidence": "その趣旨を十分尊重いたしまして努力してまいります"
+              },
+              {
+                "id": "c2",
+                "decision": "reject",
+                "reason": "医薬品の緊急承認運用で、医療機器の審査ではない",
+                "question_evidence": "まずは、緊急承認制度についてであります。",
+                "answer_evidence": "緊急承認制度の運用についての御指摘でありますが"
+              },
+              {
+                "id": "c3",
+                "decision": "reject",
+                "reason": "市販後の情報提供の話で、承認審査迅速化ではない",
+                "question_evidence": "厚労省さんとして、今この仕組みはどうなっていて、今後どのようにしていこうとされているのか",
+                "answer_evidence": "市販後に医薬品の使用成績の情報を調べたりですとか収集しまして"
+              },
+              {
+                "id": "c4",
+                "decision": "reject",
+                "reason": "治験体制強化の話で、医療機器承認審査の問いでない",
+                "question_evidence": "国内の治験体制の強化というものは、また非常に大事なことである",
+                "answer_evidence": "研究開発に向けたデータ基盤等の整備、また国際水準の臨床研究を担う病院での治験環境の整備"
+              },
+              {
+                "id": "c5",
+                "decision": "reject",
+                "reason": "再生医療等製品の条件付き承認で、医療機器審査ではない",
+                "question_evidence": "条件及び期限付早期承認制度は",
+                "answer_evidence": "この薬機法における再生医療等製品には該当しない"
+              },
+              {
+                "id": "c6",
+                "decision": "reject",
+                "reason": "ワクチン接種方針の質問で、承認審査迅速化ではない",
+                "question_evidence": "四回目の接種の議論",
+                "answer_evidence": "四回目接種を行うか否かを含めて検討を進めてまいりたい"
+              },
+              {
+                "id": "c7",
+                "decision": "reject",
+                "reason": "国家検定の簡素化で、医療機器の承認審査ではない",
+                "question_evidence": "国家検定の簡素化ができないか",
+                "answer_evidence": "国家検定の迅速化、簡素化に取り組んでまいりたい"
+              },
+              {
+                "id": "c8",
+                "decision": "reject",
+                "reason": "創薬人材支援の話で、医療機器承認審査の論点でない",
+                "question_evidence": "こういった野心的な、理系の野心的なベンチャーが活躍していくためには",
+                "answer_evidence": "PhDを取得した若手研究者への支援を始め"
+              },
+              {
+                "id": "c9",
+                "decision": "reject",
+                "reason": "緊急承認制度の法技術論で、医療機器の審査迅速化ではない",
+                "question_evidence": "緊急承認制度の対象となる一般薬の医薬品の場合と同様に考えることはできない",
+                "answer_evidence": "立法技術論としては、緊急承認制度、そして、再生医療等製品の制度において同様の規定を設ける"
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "治験基盤整備の説明で、医療機器承認審査の問いではない",
+                "question_evidence": "人材は増えたのか。また、国際共同治験",
+                "answer_evidence": "国内外の治験実施体制を整備することが重要"
+              },
+              {
+                "id": "c11",
+                "decision": "reject",
+                "reason": "ワクチン生産体制の議論で、医療機器の審査迅速化ではない",
+                "question_evidence": "今後ずっと予算をかけ続けて、追加をもしして、やる意味があるのか",
+                "answer_evidence": "国内で開発、生産できる体制を確立していくということは"
+              },
+              {
+                "id": "c12",
+                "decision": "reject",
+                "reason": "ワクチン説明体制と接種率の話で、承認審査迅速化ではない",
+                "question_evidence": "明確なガイドラインをお示ししていただきたい",
+                "answer_evidence": "現時点で、抗体価に関する基準を設けて、これと併せて接種を行っていくというようなことはなかなか難しい"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "shares": [],
+        "pairs": 0,
+        "evidence": [],
+        "searched": [
+          "医療機器 承認審査（2026–2026）",
+          "医療機器 承認審査（2025–2025）",
+          "医療機器 承認審査（2024–2024）",
+          "医療機器 審査迅速化（2026–2026）",
+          "医療機器 審査迅速化（2025–2025）",
+          "医療機器 審査迅速化（2024–2024）",
+          "医療機器 早期承認（2026–2026）",
+          "医療機器 早期承認（2025–2025）",
+          "医療機器 早期承認（2024–2024）",
+          "医療機器 早期承認（2020–2023）",
+          "医療機器 優先審査（2026–2026）",
+          "医療機器 優先審査（2025–2025）",
+          "医療機器 優先審査（2024–2024）",
+          "医療機器 優先審査（2020–2023）"
+        ],
+        "searched_queries": [
+          "医療機器 承認審査",
+          "医療機器 審査迅速化",
+          "医療機器 早期承認",
+          "医療機器 優先審査"
+        ],
+        "requests_used": 22,
+        "retrieved_meetings": [
+          "122115104X00920260609",
+          "121714260X01120250508",
+          "122115364X00620260617",
+          "121704260X00920250409",
+          "120404889X02520210519",
+          "120114260X00220200310",
+          "120104260X00120200304",
+          "120804260X01420220415"
+        ],
+        "meetings_searched": 8,
+        "errors": [],
+        "partial": false,
+        "historical_only": false,
+        "recent_since": "2024-01-01",
+        "search_limited": false,
+        "routing_version": "20261009-24",
+        "query_concepts": [
+          "医療機器",
+          "承認審査",
+          "迅速化"
+        ],
+        "assessment_status": "reviewed",
+        "assessment_method": "semantic",
+        "reviewed_candidates": 24,
+        "accepted_candidates": 0,
+        "rejected_candidates": 24,
+        "uncertain_candidates": 0,
+        "assessment_model": "gpt-5.4-mini-2026-03-17",
+        "search_feedback": [
+          "医療機器の審査迅速化ではなく附帯決議全般の賛意",
+          "医薬品の緊急承認運用で、医療機器の審査ではない",
+          "市販後の情報提供の話で、承認審査迅速化ではない",
+          "治験体制強化の話で、医療機器承認審査の問いでない",
+          "再生医療等製品の条件付き承認で、医療機器審査ではない",
+          "ワクチン接種方針の質問で、承認審査迅速化ではない"
+        ],
+        "retrieval_rounds": 2,
+        "initial_reviewed_candidates": 12
+      }
+    },
+    {
+      "question": "農産物の輸出を拡大すべきではないか",
+      "http_status": 200,
+      "duration_ms": 53724,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 306,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 155,
+            "output_tokens_details": {
+              "reasoning_tokens": 103
+            },
+            "total_tokens": 461
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "農産物 輸出",
+              "農産品 輸出",
+              "農林水産物 輸出",
+              "輸出拡大 農産物"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 13542,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 1482,
+            "output_tokens_details": {
+              "reasoning_tokens": 407
+            },
+            "total_tokens": 15024
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "accept",
+                "reason": "農産物輸出促進をEPA目的として述べている",
+                "question_evidence": "日本産農産物・食品の輸出促進を含め、新規市場開拓の上でも",
+                "answer_evidence": "日本産農産物・食品の輸出促進を含め、新規市場開拓の上でも大きな可能性"
+              },
+              {
+                "id": "c2",
+                "decision": "accept",
+                "reason": "輸出拡大を重要施策として明示している",
+                "question_evidence": "今回のバングラデシュのEPAや輸出の拡大や、マレーシアとの肥料協力は非常に重要",
+                "answer_evidence": "日本産食品の輸出拡大につなげてまいりたいというふうに思います"
+              },
+              {
+                "id": "c3",
+                "decision": "reject",
+                "reason": "日米交渉の受け止めで、輸出拡大の問いでない",
+                "question_evidence": "我が国の農産物が一つのカードとして何か織り込まれてやろうとしている",
+                "answer_evidence": "これに水を差すようなことは私はしてはならないというのが、私の基本的な考え方"
+              },
+              {
+                "id": "c4",
+                "decision": "reject",
+                "reason": "交渉体制の質問で、輸出拡大そのものではない",
+                "question_evidence": "交渉に当たる体制ですね、何かこういう特別なチームを組んでいくのか",
+                "answer_evidence": "現時点で具体的な体制はまだ確定してございませんけれども"
+              },
+              {
+                "id": "c5",
+                "decision": "reject",
+                "reason": "情報公開の可否で、輸出拡大への応答ではない",
+                "question_evidence": "相手方の関心事項、そして交渉による影響試算など、節目ごとの情報公開",
+                "answer_evidence": "現時点でお答えすることは差し控えさせていただきますが"
+              },
+              {
+                "id": "c6",
+                "decision": "reject",
+                "reason": "種苗法改正の説明で、輸出拡大への答弁ではない",
+                "question_evidence": "水活を畑にも広げるということになれば、支援単価を実質的に下げる",
+                "answer_evidence": "新品種を用いた国産農産物の産地形成や海外への輸出促進につなげていくことが重要"
+              },
+              {
+                "id": "c7",
+                "decision": "accept",
+                "reason": "輸出拡大に向けたアクセス拡大を明言している",
+                "question_evidence": "農水省としてはどのような姿勢で交渉に臨む予定でしょうか",
+                "answer_evidence": "牛肉などの輸出拡大に向けたアクセスの拡大など主張してまいりたい"
+              },
+              {
+                "id": "c8",
+                "decision": "reject",
+                "reason": "検疫や鶏肉影響の説明で、輸出拡大の問いではない",
+                "question_evidence": "重要五品目以外の鶏肉の生産、世界第三位ですし、輸出量は世界第二位",
+                "answer_evidence": "ブラジル産鶏肉と国産鶏肉の品質格差がないため"
+              },
+              {
+                "id": "c9",
+                "decision": "accept",
+                "reason": "農林水産物の輸出拡大を直接進める答弁",
+                "question_evidence": "輸出拡大をしっかりと取り組んでいただいてほしい",
+                "answer_evidence": "日本産食品の輸出拡大につなげてまいりたい"
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "米需給と在庫の話で、輸出拡大の是非ではない",
+                "question_evidence": "令和八年度産米をめぐる状況をどう捉えているのか",
+                "answer_evidence": "加工用や輸出用など多様な用途の米の実需者からのニーズ"
+              },
+              {
+                "id": "c11",
+                "decision": "reject",
+                "reason": "資材高騰対策の質問で、輸出拡大とは別論点",
+                "question_evidence": "価格高騰対策についても大臣にお伺いしたいと思います",
+                "answer_evidence": "資材の価格上昇が経営に与える影響は、農産物などの価格の動向などにより"
+              },
+              {
+                "id": "c12",
+                "decision": "reject",
+                "reason": "肥料支援の判断時期の質問で、輸出拡大ではない",
+                "question_evidence": "直近の秋肥、今年の秋肥についてどう判断するのか",
+                "answer_evidence": "肥料価格が経営に影響を及ぼすこの状況を見極めながら"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "shares": [
+          {
+            "ministry": "農林水産省",
+            "percent": 100,
+            "count": 2
+          }
+        ],
+        "pairs": 2,
+        "evidence": [
+          {
+            "case_id": "122115007X01420260709:122115007X01420260709_053",
+            "ministry": "農林水産省",
+            "speaker": "鈴木憲和",
+            "position": "農林水産大臣",
+            "date": "2026-07-09",
+            "meeting": "農林水産委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/122115007X01420260709/54",
+            "question_url": "https://kokkai.ndl.go.jp/txt/122115007X01420260709/53",
+            "review_reason": "輸出拡大に向けたアクセス拡大を明言している",
+            "question_evidence": "農水省としてはどのような姿勢で交渉に臨む予定でしょうか",
+            "answer_evidence": "牛肉などの輸出拡大に向けたアクセスの拡大など主張してまいりたい"
+          },
+          {
+            "case_id": "122115007X00820260512:122115007X00820260512_083",
+            "ministry": "農林水産省",
+            "speaker": "鈴木憲和",
+            "position": "農林水産大臣",
+            "date": "2026-05-12",
+            "meeting": "農林水産委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/122115007X00820260512/84",
+            "question_url": "https://kokkai.ndl.go.jp/txt/122115007X00820260512/83",
+            "review_reason": "農林水産物の輸出拡大を直接進める答弁",
+            "question_evidence": "輸出拡大をしっかりと取り組んでいただいてほしい",
+            "answer_evidence": "日本産食品の輸出拡大につなげてまいりたい"
+          }
+        ],
+        "searched": [
+          "農産物 輸出（2026–2026）",
+          "農産物 輸出（2025–2025）",
+          "農産物 輸出（2024–2024）",
+          "農産品 輸出（2026–2026）",
+          "農産品 輸出（2025–2025）",
+          "農産品 輸出（2024–2024）"
+        ],
+        "meetings_searched": 4,
+        "errors": [],
+        "partial": false,
+        "historical_only": false,
+        "recent_since": "2024-01-01",
+        "search_limited": true,
+        "routing_version": "20261009-23",
+        "query_concepts": [
+          "農産物",
+          "輸出",
+          "拡大"
+        ],
+        "assessment_status": "reviewed",
+        "assessment_method": "semantic",
+        "reviewed_candidates": 12,
+        "accepted_candidates": 2,
+        "rejected_candidates": 8,
+        "uncertain_candidates": 2,
+        "assessment_model": "gpt-5.4-mini-2026-03-17"
+      }
+    },
+    {
+      "question": "なでしこ銘柄の推進を進めるべきではないか",
+      "http_status": 200,
+      "duration_ms": 48313,
+      "model_calls": [
+        {
+          "operation": "kokkai_search_plan",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 309,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 565,
+            "output_tokens_details": {
+              "reasoning_tokens": 516
+            },
+            "total_tokens": 874
+          },
+          "status": "completed",
+          "output": {
+            "queries": [
+              "なでしこ銘柄",
+              "女性活躍推進銘柄",
+              "女性活躍推進",
+              "上場企業 女性活躍"
+            ]
+          }
+        },
+        {
+          "operation": "kokkai_context_review",
+          "http_status": 200,
+          "usage": {
+            "input_tokens": 12884,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 909,
+            "output_tokens_details": {
+              "reasoning_tokens": 334
+            },
+            "total_tokens": 13793
+          },
+          "status": "completed",
+          "output": {
+            "reviews": [
+              {
+                "id": "c1",
+                "decision": "accept",
+                "reason": "なでしこ銘柄の狙いと推進策を直接説明している",
+                "question_evidence": "経産省はなでしこ銘柄レポートというのを出していて",
+                "answer_evidence": "経済産業省としては、東京証券取引所と合同でなでしこ銘柄というものですとかを選定しておりまして"
+              },
+              {
+                "id": "c2",
+                "decision": "reject",
+                "reason": "卵子凍結の論点で、なでしこ銘柄は補足的言及にすぎない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c3",
+                "decision": "reject",
+                "reason": "育休取得制度と中小企業支援の質問で、別論点",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c4",
+                "decision": "reject",
+                "reason": "男性育休の履行状況に関する質疑で別論点",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c5",
+                "decision": "reject",
+                "reason": "次世代育成支援法の恒久化・期限延長の論点",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c6",
+                "decision": "reject",
+                "reason": "健康経営銘柄の話で、なでしこ銘柄とは別",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c7",
+                "decision": "reject",
+                "reason": "病児保育の改善が主題で、なでしこ銘柄は手段の一部",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c8",
+                "decision": "reject",
+                "reason": "医師の偏在・専門医取得の論点で別問題",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c9",
+                "decision": "reject",
+                "reason": "男女の生涯賃金差の質問で、なでしこ銘柄ではない",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c10",
+                "decision": "reject",
+                "reason": "男女賃金格差の政府試算を求める質疑で別論点",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c11",
+                "decision": "reject",
+                "reason": "取るだけ育休防止と取得期間の話で別論点",
+                "question_evidence": "",
+                "answer_evidence": ""
+              },
+              {
+                "id": "c12",
+                "decision": "reject",
+                "reason": "産後クライシス対策の質疑で、なでしこ銘柄とは無関係",
+                "question_evidence": "",
+                "answer_evidence": ""
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "shares": [
+          {
+            "ministry": "経済産業省",
+            "percent": 100,
+            "count": 1
+          }
+        ],
+        "pairs": 1,
+        "evidence": [
+          {
+            "case_id": "121304260X01620240424:121304260X01620240424_156",
+            "ministry": "経済産業省",
+            "speaker": "井上誠一郎",
+            "position": "経済産業省大臣官房審議官",
+            "date": "2024-04-24",
+            "meeting": "厚生労働委員会",
+            "url": "https://kokkai.ndl.go.jp/txt/121304260X01620240424/157",
+            "question_url": "https://kokkai.ndl.go.jp/txt/121304260X01620240424/156",
+            "review_reason": "なでしこ銘柄の狙いと推進策を直接説明している",
+            "question_evidence": "経産省はなでしこ銘柄レポートというのを出していて",
+            "answer_evidence": "経済産業省としては、東京証券取引所と合同でなでしこ銘柄というものですとかを選定しておりまして"
+          }
+        ],
+        "searched": [
+          "なでしこ銘柄（2026–2026）",
+          "なでしこ銘柄（2025–2025）",
+          "なでしこ銘柄（2024–2024）",
+          "女性活躍推進銘柄（2026–2026）",
+          "女性活躍推進銘柄（2025–2025）",
+          "女性活躍推進銘柄（2024–2024）"
+        ],
+        "meetings_searched": 3,
+        "errors": [],
+        "partial": false,
+        "historical_only": false,
+        "recent_since": "2024-01-01",
+        "search_limited": false,
+        "routing_version": "20261009-23",
+        "query_concepts": [
+          "なでしこ銘柄"
+        ],
+        "assessment_status": "reviewed",
+        "assessment_method": "semantic",
+        "reviewed_candidates": 12,
+        "accepted_candidates": 1,
+        "rejected_candidates": 11,
+        "uncertain_candidates": 0,
+        "assessment_model": "gpt-5.4-mini-2026-03-17"
+      }
+    }
+  ],
+  "domestic_scope_recheck": {
+    "question": "スタートアップ界の女性活躍推進を進めるべきではないか",
+    "note": "Rechecked the same publicly retrieved candidates with the explicit domestic-scope default; no new retrieval.",
+    "result": {
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 80,
+          "count": 4
+        },
+        {
+          "ministry": "金融庁",
+          "percent": 20,
+          "count": 1
+        }
+      ],
+      "pairs": 5,
+      "evidence": [
+        {
+          "case_id": "121704376X00220250212:121704376X00220250212_072",
+          "ministry": "金融庁",
+          "speaker": "油布志行",
+          "position": "金融庁企画市場局長",
+          "date": "2025-02-12",
+          "meeting": "財務金融委員会",
+          "url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/73",
+          "question_url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/72",
+          "review_reason": "女性起業家の環境整備とハラスメント対策の問い。",
+          "question_evidence": "女性起業家へのハラスメントが大きな問題となっている",
+          "answer_evidence": "御指摘のような調査そのものを私どもが主体的に実施したということはございません"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_194",
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "date": "2025-04-18",
+          "meeting": "経済産業委員会",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/195",
+          "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/194",
+          "review_reason": "女性起業家へのハラスメント禁止を求める趣旨で一致。",
+          "question_evidence": "女性起業家に対するハラスメントは絶対許さない",
+          "answer_evidence": "一義的には博覧会協会の裁量にこれは委ねられるべきものでございますが"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_182",
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "date": "2025-04-18",
+          "meeting": "経済産業委員会",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/183",
+          "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/182",
+          "review_reason": "女性起業家への投資家ハラスメント認識を問う同趣旨。",
+          "question_evidence": "スタートアップ企業に対する深刻なハラスメント問題なんですね。女性起業家に対するハラスメント問題",
+          "answer_evidence": "女性起業家が事業を継続し成長させていくためには、前提として、個人の尊厳と安全、安心等が守られるビジネス環境"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_184",
+          "ministry": "経済産業省",
+          "speaker": "武藤容治",
+          "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+          "date": "2025-04-18",
+          "meeting": "経済産業委員会",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/185",
+          "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/184",
+          "review_reason": "スタートアップ業界の女性起業家ハラスメント対策の問い。",
+          "question_evidence": "女性起業家では、過去一年間に五二・四%もの方がセクハラ被害を受けている",
+          "answer_evidence": "ハラスメント防止を含めたコンプライアンスの確保、これは責任ある企業であるための前提でありますので"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_186",
+          "ministry": "経済産業省",
+          "speaker": "井上誠一郎",
+          "position": "経済産業省大臣官房審議官",
+          "date": "2025-04-18",
+          "meeting": "経済産業委員会",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187",
+          "question_url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/186",
+          "review_reason": "女性起業家保護の制度整備を求める質問で一致。",
+          "question_evidence": "女性起業家へのセクハラは、個人が対応、対策をすればいいということではなくて、政治としてどう防ぐのか",
+          "answer_evidence": "国内ファンドの成長支援を行う官民ファンドとして、率先してこのような取組を進めることはスタートアップ業界の健全な発展において重要"
+        }
+      ],
+      "searched": [
+        "スタートアップ 女性（2026–2026）",
+        "スタートアップ 女性（2025–2025）",
+        "スタートアップ 女性（2024–2024）",
+        "女性起業家（2026–2026）",
+        "女性起業家（2025–2025）",
+        "女性起業家（2024–2024）"
+      ],
+      "searched_queries": [
+        "スタートアップ 女性",
+        "女性起業家"
+      ],
+      "requests_used": 10,
+      "retrieved_meetings": [
+        "122104319X00620260422",
+        "121704080X01120250418",
+        "121303968X00620240405",
+        "121704376X00220250212"
+      ],
+      "meetings_searched": 4,
+      "errors": [],
+      "partial": false,
+      "historical_only": false,
+      "recent_since": "2024-01-01",
+      "search_limited": true,
+      "routing_version": "20261009-24",
+      "query_concepts": [
+        "スタートアップ",
+        "女性"
+      ],
+      "assessment_status": "reviewed",
+      "assessment_method": "semantic",
+      "reviewed_candidates": 9,
+      "accepted_candidates": 5,
+      "rejected_candidates": 2,
+      "uncertain_candidates": 2,
+      "assessment_model": "gpt-5.4-mini-2026-03-17",
+      "search_feedback": [
+        "アフリカの女性スタートアップ支援で、国内の論点と別。",
+        "海外の生理用品やアフリカ支援の話で、国内スタートアップ論点でない。"
+      ],
+      "retrieval_rounds": 1
+    }
+  }
+}
