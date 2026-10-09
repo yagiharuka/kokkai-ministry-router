@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-18';
+export const routingVersion = '20261009-19';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -236,6 +236,41 @@ export function pairAnswers(meetings, plan, allowedQuestions = null) {
   }
   return [...rows.values()].sort((a, b) => b.relevance - a.relevance || b.date.localeCompare(a.date));
 }
+// Give the caller a wider set of actual question/answer turns. These are
+// evidence for a semantic reviewer, never automatically counted as matches.
+export function reviewCandidates(meetings, plan, limit = 12) {
+  const rows = new Map();
+  const subjects = plan.groups.filter(g => g.role !== 'requested_change');
+  for (const meeting of meetings) {
+    const speeches = [...(meeting.speechRecord || [])].sort((a, b) => Number(a.speechOrder || 0) - Number(b.speechOrder || 0));
+    for (let i = 0; i < speeches.length; i++) {
+      const ask = speeches[i];
+      if (!isQuestioner(ask)) continue;
+      const relevant = passages(ask.speech).map(p => {
+        const value = scorePassage(p.text, plan);
+        const subjectMatches = subjects.filter(g => groupHit(p.text, g).coverage >= .5).length;
+        return { ...p, score: value.score, subjectMatches };
+      }).filter(p => p.subjectMatches && p.score >= .2)
+        .sort((a, b) => b.subjectMatches - a.subjectMatches || b.score - a.score || a.text.length - b.text.length)[0];
+      if (!relevant) continue;
+      for (let j = i + 1; j < speeches.length; j++) {
+        const reply = speeches[j];
+        if (isQuestioner(reply)) break;
+        if (isChair(reply) || !reply.speechURL) continue;
+        const ministry = answeringMinistry(reply.speakerPosition, reply.speech);
+        if (!ministry) continue;
+        const answer = normalize(reply.speech);
+        if (answer.length < 15) continue;
+        const excerpt = passages(answer).sort((a, b) => scorePassage(b.text, plan).score - scorePassage(a.text, plan).score || a.text.length - b.text.length)[0];
+        const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
+        const key = `${caseId}:${ministry}`;
+        const row = { case_id: caseId, ministry, question: relevant.text.slice(0, 800), answer: (excerpt?.text || answer).slice(0, 1000), speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round(relevant.score * 1000) / 1000 };
+        if (!rows.has(key) || row.retrieval_score > rows.get(key).retrieval_score) rows.set(key, row);
+      }
+    }
+  }
+  return [...rows.values()].sort((a, b) => b.retrieval_score - a.retrieval_score || b.date.localeCompare(a.date)).slice(0, limit);
+}
 export function summarize(rows) {
   const byCase = new Map();
   for (const row of rows) { if (!byCase.has(row.case_id)) byCase.set(row.case_id, new Set()); byCase.get(row.case_id).add(row.ministry); }
@@ -280,7 +315,7 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') 
         if (new Set(rows.map(r => r.case_id)).size >= 4) break;
       } catch (error) { errors.push(error instanceof Error ? error.message : '会議録APIを取得できませんでした。'); }
     }
-    if (rows.length) return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: from < recentSince, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
+    if (rows.length) return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), review_candidates: reviewCandidates([...meetings.values()].flat(), plan), searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: from < recentSince, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
   }
-  return { shares: [], pairs: 0, evidence: [], candidates: [], searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: false, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
+  return { shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: reviewCandidates([...meetings.values()].flat(), plan), searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: false, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
 }
