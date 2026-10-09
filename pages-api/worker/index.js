@@ -15,11 +15,172 @@ function withCors(response) {
   return new Response(response.body, { status: response.status, headers });
 }
 
+const ministryPatterns = [
+  [/経済産業|通商産業|資源エネルギー庁|中小企業庁|特許庁/, "経済産業省"],
+  [/厚生労働|厚生省|労働省/, "厚生労働省"],
+  [/文部科学|文部省|科学技術庁|スポーツ庁|文化庁/, "文部科学省"],
+  [/総務省|自治省|郵政省|消防庁/, "総務省"],
+  [/財務省|大蔵省|国税庁/, "財務省"],
+  [/外務省|外務大臣/, "外務省"],
+  [/法務省|法務大臣|出入国在留管理庁/, "法務省"],
+  [/農林水産|農林省|水産庁|林野庁/, "農林水産省"],
+  [/国土交通|運輸省|建設省|観光庁|気象庁|海上保安庁/, "国土交通省"],
+  [/環境省|環境庁/, "環境省"],
+  [/防衛省|防衛庁|自衛隊/, "防衛省"],
+  [/デジタル庁|デジタル大臣/, "デジタル庁"],
+  [/こども家庭庁|こども政策担当|少子化対策担当/, "こども家庭庁"],
+  [/内閣府|内閣官房|内閣総理大臣|官房長官|国家公安委員会|警察庁|消費者庁|公正取引委員会/, "内閣府・内閣官房等"],
+];
+const wordSegmenter = new Intl.Segmenter("ja", { granularity: "word" });
+let requestQueue = Promise.resolve();
+let lastNdlRequest = 0;
+
+function cleaned(value) { return String(value || "").replace(/\s+/g, " ").trim(); }
+function ministryOf(value) {
+  for (const [pattern, ministry] of ministryPatterns) if (pattern.test(value || "")) return ministry;
+  return null;
+}
+function lawmaker(speech) {
+  const role = `${speech.speakerRole || ""} ${speech.speakerPosition || ""}`;
+  return Boolean(speech.speakerGroup) && !/委員長|議長|副委員長|理事|大臣|副大臣|政務官|政府参考人|長官|局長|審議官|統括官/.test(role);
+}
+function nearby(text, terms, maxGap = 180) {
+  const hits = terms.map(term => {
+    const found = []; let at = -1;
+    while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) found.push(at);
+    return found;
+  });
+  if (hits.some(list => !list.length)) return null;
+  let best = null;
+  for (const a of hits[0]) for (const b of hits[1]) {
+    const start = Math.min(a, b), end = Math.max(a + terms[0].length, b + terms[1].length);
+    const gap = Math.max(0, Math.max(a, b) - Math.min(a + terms[0].length, b + terms[1].length));
+    if (gap <= maxGap && (!best || end - start < best.end - best.start)) best = { start, end };
+  }
+  return best;
+}
+function around(text, span, limit = 320) {
+  const start = Math.max(0, (span?.start || 0) - 90);
+  return (start ? "…" : "") + text.slice(start, start + limit) + (start + limit < text.length ? "…" : "");
+}
+function reducedWord(phrase) {
+  const parts = [...wordSegmenter.segment(phrase)].filter(part => part.isWordLike && part.segment.length >= 2);
+  return parts[0]?.segment || phrase;
+}
+
+async function fetchMeetings(query, from, until) {
+  let release;
+  const next = new Promise(resolve => { release = resolve; });
+  const prior = requestQueue;
+  requestQueue = next;
+  await prior;
+  try {
+    const pause = Math.max(0, 3000 - (Date.now() - lastNdlRequest));
+    if (pause) await new Promise(resolve => setTimeout(resolve, pause));
+    const source = new URL("https://kokkai.ndl.go.jp/api/meeting");
+    source.searchParams.set("any", query);
+    source.searchParams.set("from", from);
+    source.searchParams.set("until", until);
+    source.searchParams.set("maximumRecords", "10");
+    source.searchParams.set("recordPacking", "json");
+    const response = await fetch(source, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(25000) });
+    if (!response.ok) throw new Error(`国会会議録API HTTP ${response.status}`);
+    const data = await response.json();
+    return data.meetingRecord || [];
+  } finally {
+    lastNdlRequest = Date.now();
+    release();
+  }
+}
+
+function extractCases(meetings, terms, query) {
+  const cases = new Map();
+  for (const meeting of meetings) {
+    const speeches = [...(meeting.speechRecord || [])].sort((a, b) => Number(a.speechOrder || 0) - Number(b.speechOrder || 0));
+    for (let i = 0; i < speeches.length; i++) {
+      const ask = speeches[i], question = cleaned(ask.speech);
+      if (!lawmaker(ask) || question.length < 20) continue;
+      const questionSpan = nearby(question, terms);
+      for (let j = i + 1; j < speeches.length; j++) {
+        const reply = speeches[j];
+        if (lawmaker(reply)) break;
+        const answer = cleaned(reply.speech), ministry = ministryOf(reply.speakerPosition);
+        if (!ministry || !answer || !reply.speechURL) continue;
+        const answerSpan = nearby(answer, terms);
+        if (!answerSpan && (!questionSpan || question.length > 1000)) continue;
+        const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
+        const key = `${caseId}:${ministry}`;
+        if (cases.has(key) && (cases.get(key).context === "answer" || !answerSpan)) continue;
+        cases.set(key, {
+          case_id: caseId, ministry, question: around(question, questionSpan),
+          answer: around(answer, answerSpan), speaker: reply.speaker || "答弁者",
+          position: reply.speakerPosition || "", date: meeting.date || "",
+          meeting: meeting.nameOfMeeting || "", url: reply.speechURL,
+          context: answerSpan ? "answer" : "question", query,
+        });
+      }
+    }
+  }
+  return [...cases.values()];
+}
+
+async function routeCases(first, second) {
+  const year = new Date().getUTCFullYear();
+  const cut = year - 2;
+  const periods = [[`${cut}-01-01`, `${year}-12-31`], ["2020-01-01", `${cut - 1}-12-31`]];
+  const relaxed = reducedWord(second);
+  const attempts = [[first, second]];
+  if (relaxed !== second && relaxed.length >= 2) attempts.push([first, relaxed]);
+  const cases = new Map(), searched = [];
+  let meetingCount = 0, errors = 0;
+  for (const terms of attempts) {
+    const query = terms.join(" ");
+    for (const [from, until] of periods) {
+      try {
+        const meetings = await fetchMeetings(query, from, until);
+        meetingCount += meetings.length;
+        for (const row of extractCases(meetings, terms, query)) {
+          const key = `${row.case_id}:${row.ministry}`;
+          if (!cases.has(key) || (cases.get(key).context !== "answer" && row.context === "answer")) cases.set(key, row);
+        }
+      } catch { errors++; }
+      searched.push(`${query}（${from.slice(0,4)}–${until.slice(0,4)}）`);
+    }
+    if (cases.size >= 3) break;
+  }
+  if (errors === searched.length) throw new Error("国会会議録APIが応答しませんでした。");
+  const rows = [...cases.values()].slice(0, 24);
+  const byCase = new Map();
+  for (const row of rows) {
+    if (!byCase.has(row.case_id)) byCase.set(row.case_id, new Set());
+    byCase.get(row.case_id).add(row.ministry);
+  }
+  const weights = new Map();
+  for (const ministries of byCase.values()) for (const ministry of ministries) weights.set(ministry, (weights.get(ministry) || 0) + 1 / ministries.size);
+  const shares = [...weights].map(([ministry, weight]) => ({ ministry, percent: Math.round(weight / byCase.size * 100), count: rows.filter(row => row.ministry === ministry).length })).sort((a, b) => b.percent - a.percent);
+  if (shares.length) shares[0].percent += 100 - shares.reduce((sum, row) => sum + row.percent, 0);
+  return { shares, evidence: rows.slice(0, 8), pairs: byCase.size, searched, meetings_searched: meetingCount, partial: errors > 0 };
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(rootPage, { headers: { "content-type": "text/html; charset=utf-8" } });
+    }
+    if (request.method === "GET" && url.pathname === "/api/cases") {
+      const first = (url.searchParams.get("first") || "").trim();
+      const second = (url.searchParams.get("second") || "").trim();
+      const valid = value => value.length >= 2 && value.length <= 30 && /^[\p{L}\p{N}々ー・]+$/u.test(value);
+      if (!valid(first) || !valid(second) || first === second) {
+        return withCors(Response.json({ error: "二つの政策語を確認してください。" }, { status: 400 }));
+      }
+      try {
+        const result = await routeCases(first, second);
+        return withCors(Response.json(result, { headers: { "cache-control": "public, max-age=600" } }));
+      } catch (error) {
+        return withCors(Response.json({ error: error instanceof Error ? error.message : "会議録を取得できませんでした。" }, { status: 502 }));
+      }
     }
     if (request.method === "GET" && url.pathname === "/api/jurisdiction") {
       const term = (url.searchParams.get("term") || "").trim();
