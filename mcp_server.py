@@ -200,7 +200,7 @@ mcp = FastMCP(
     "国会会議録・省庁担当判定",
     instructions=(
         "質問案に関係する国会会議録を検索し、答弁者の肩書きを根拠に担当省庁候補を示します。"
-        "質問案から固有性の高い検索語を2〜4個選び、search_answer_assignmentsを呼び出してください。"
+        "質問案の異なる核心概念を最初の2語に置き、search_answer_assignmentsを呼び出してください。関連例がない場合は意味を保つ言い換えで再検索してください。"
         "返された候補は機械的な検索一致だけでは関連性が確定しないため、質問案と質疑内容を読んで関連性を判定してください。"
         "関連事例だけを使って省庁別の構成比を計算し、根拠発言と会議録URLを提示してください。"
         "該当記録が取れない場合は割合を作らないでください。"
@@ -219,7 +219,7 @@ def search_answer_assignments(
     Args:
         question: The proposed question to route.
         search_terms: Two to four distinctive Japanese phrases selected from the question.
-            Use separate phrases, not a long sentence; the NDL API ANDs space-separated words.
+            Use two distinct core concepts first; the NDL API ANDs the first two in one search. Rephrase them and retry when evidence is sparse.
         since: Earliest meeting date in YYYY-MM-DD format (defaults to 2020-01-01).
     """
     question = " ".join((question or "").split())
