@@ -33,7 +33,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);if(!phrases.length)throw new Error("検索に使える政策名・制度名が見つかりません。質問を具体化してください。");
  const lawTerm=lawSearchTerm(phrases[0]);
  const lawRequest=getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true}));
- const params={question:input,v:"20261009-15"};
+ const params={question:input,v:"20261009-16"};
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),120000);
  const lawData=await lawRequest;
  return {...cases,unit:"質疑",laws:cases.shares.length?(lawData.matches||[]):[],lawTerm,lawTruncated:!!lawData.truncated,lawError:!!lawData.error,lawSkipped:!cases.shares.length};

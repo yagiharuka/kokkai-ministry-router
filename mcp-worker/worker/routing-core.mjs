@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-15';
+export const routingVersion = '20261009-16';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -25,9 +25,9 @@ function occurrences(text, term) {
   const found = []; let at = -1;
   while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) {
     const prefix = text.slice(Math.max(0, at - 30), at).match(/[\p{Script=Han}]+$/u)?.[0] || '';
-    const suffix = text.slice(at + term.length, at + term.length + 12);
+    const suffix = text.slice(at + term.length, at + term.length + 30);
     // A product mentioned only inside another entity's name is not its own topic.
-    if (prefix.length >= 2 && /^(?:等)?(?:法|機構|省|庁|委員会|協会)/.test(suffix)) continue;
+    if (prefix.length >= 2 && /^(?:[\p{Script=Han}等]{0,16})?(?:法|令|規則|機構|省|庁|委員会|審議会|部会|協会)(?=[^\p{Script=Han}]|$)/u.test(suffix)) continue;
     found.push(at);
   }
   return found;
@@ -44,7 +44,11 @@ function groupHit(text, group) {
   return { coverage: hits.length / parts.length, start: Math.min(...hits.map(h => h.at)), end: Math.max(...hits.map(h => h.at + h.length)) };
 }
 export function makePlan(question, hints = []) {
-  const groups = concepts(question);
+  // Infer a final request predicate from syntax rather than a policy vocabulary.
+  // Qualitative -化 expressions remain constraints (e.g. speed or digitisation).
+  const relevanceText = normalize(question).replace(/を([\p{Script=Han}]{2,4})(?:する|す)?べき/gu,
+    (whole, predicate) => predicate.endsWith('化') ? whole : 'を進めるべき');
+  const groups = concepts(relevanceText);
   // Hints change recall only. Full question concepts remain the relevance gate.
   const supplied = hints.map(normalize).filter(t => t.length >= 2 && t.length <= 80);
   if (!groups.length) for (const term of supplied) groups.push({ text: term, parts: [term] });
