@@ -1,13 +1,11 @@
 const frontendOrigin = "https://yagiharuka.github.io";
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
+const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁"];
 const lawTitles = new Map([
-  ["経済産業省組織令", "経済産業省"], ["厚生労働省組織令", "厚生労働省"],
-  ["文部科学省組織令", "文部科学省"], ["総務省組織令", "総務省"],
-  ["財務省組織令", "財務省"], ["外務省組織令", "外務省"],
-  ["法務省組織令", "法務省"], ["農林水産省組織令", "農林水産省"],
-  ["国土交通省組織令", "国土交通省"], ["環境省組織令", "環境省"],
-  ["防衛省組織令", "防衛省"], ["デジタル庁組織令", "デジタル庁"],
-  ["こども家庭庁組織令", "こども家庭庁"], ["内閣府本府組織令", "内閣府・内閣官房等"],
+  ...departments.flatMap(name => ["設置法", "組織令", "組織規則"].map(suffix => [`${name}${suffix}`, name])),
+  ["内閣府設置法", "内閣府・内閣官房等"],
+  ["内閣府本府組織令", "内閣府・内閣官房等"],
+  ["内閣府本府組織規則", "内閣府・内閣官房等"],
 ]);
 
 function withCors(response) {
@@ -30,7 +28,7 @@ export default {
       }
       const source = new URL("https://laws.e-gov.go.jp/api/2/keyword");
       source.searchParams.set("keyword", term);
-      source.searchParams.set("law_type", "CabinetOrder");
+      source.searchParams.set("law_type", "Act,CabinetOrder,MinisterialOrdinance");
       source.searchParams.set("limit", "1000");
       try {
         const response = await fetch(source, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(25000) });
@@ -40,10 +38,11 @@ export default {
           const title = item.revision_info?.law_title || "";
           const ministry = lawTitles.get(title);
           if (!ministry) return [];
-          const snippet = String(item.sentences?.[0]?.text || "").replace(/<[^>]*>/g, "").trim().slice(0,260);
+          const sentences = (item.sentences || []).map(sentence => String(sentence.text || "").replace(/<[^>]*>/g, "").trim());
+          const snippet = (sentences.find(text => text.includes("に関すること")) || sentences[0] || "").slice(0,260);
           return [{ ministry, title, snippet, url: `https://laws.e-gov.go.jp/law/${item.law_info.law_id}` }];
         });
-        return withCors(Response.json({ term, matches }, { headers: { "cache-control": "public, max-age=600" } }));
+        return withCors(Response.json({ term, matches, truncated: Boolean(data.next_offset) }, { headers: { "cache-control": "public, max-age=600" } }));
       } catch (error) {
         return withCors(Response.json({ error: error instanceof Error ? error.message : "法令を取得できませんでした。" }, { status: 502 }));
       }
