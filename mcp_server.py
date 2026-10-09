@@ -22,7 +22,7 @@ from mcp.server.fastmcp import FastMCP
 API_URL = "https://kokkai.ndl.go.jp/api/meeting"
 DEFAULT_SINCE = "2020-01-01"
 MAX_SEARCH_TERMS = 4
-MAX_MEETINGS_PER_TERM = 5
+MAX_MEETINGS_PER_TERM = 10
 MAX_CANDIDATES = 30
 REQUEST_PAUSE_SECONDS = 3
 _API_LOCK = threading.Lock()
@@ -78,6 +78,36 @@ def _relevance(search_terms: list[str], speech_text: str) -> float:
         return 0.0
     matched = sum(1 for term in terms if term in speech_text)
     return matched / len(terms)
+
+
+def _nearby(text: str, terms: list[str], max_gap: int = 180) -> tuple[int, int] | None:
+    core = terms[:2]
+    if not core or not all(term in text for term in core):
+        return None
+    positions: list[list[int]] = []
+    for term in core:
+        found = []
+        at = -1
+        while len(found) < 80:
+            at = text.find(term, at + 1)
+            if at < 0:
+                break
+            found.append(at)
+        positions.append(found)
+    if len(core) == 1:
+        return positions[0][0], positions[0][0] + len(core[0])
+    pairs = []
+    for a in positions[0]:
+        for b in positions[1]:
+            gap = max(0, max(a, b) - min(a + len(core[0]), b + len(core[1])))
+            if gap <= max_gap:
+                pairs.append((min(a, b), max(a + len(core[0]), b + len(core[1]))))
+    return min(pairs, key=lambda pair: pair[1] - pair[0]) if pairs else None
+
+
+def _excerpt(text: str, span: tuple[int, int] | None) -> str:
+    start = max(0, (span[0] - 140) if span else 0)
+    return ("…" if start else "") + text[start:start + 400] + ("…" if start + 400 < len(text) else "")
 
 
 def _fetch_meetings(term: str, since: str) -> list[dict[str, Any]]:
@@ -136,6 +166,12 @@ def _extract_assignments(meetings: list[dict[str, Any]], search_terms: list[str]
                 ministry = _ministry_from_title(title)
                 if not ministry:
                     continue
+                ask_span = _nearby(ask_text, search_terms)
+                reply_span = _nearby(reply_text, search_terms)
+                if not ask_span and not reply_span:
+                    continue
+                if len(ask_text) > 1000 and not reply_span:
+                    continue
                 relevance = max(
                     _relevance(search_terms, ask_text),
                     _relevance(search_terms, reply_text),
@@ -146,8 +182,8 @@ def _extract_assignments(meetings: list[dict[str, Any]], search_terms: list[str]
                 seen.add(key)
                 assignments.append({
                     "case_id": f"{meeting.get('issueID') or meeting.get('date') or ''}:{ask.get('speechID') or ask.get('speechOrder') or index}",
-                    "question": ask_text[:500],
-                    "answer": reply_text[:500],
+                    "question": _excerpt(ask_text, ask_span),
+                    "answer": _excerpt(reply_text, reply_span),
                     "ministry": ministry,
                     "speaker": reply.get("speaker") or "答弁者",
                     "speaker_title": title,
@@ -155,6 +191,7 @@ def _extract_assignments(meetings: list[dict[str, Any]], search_terms: list[str]
                     "meeting": meeting.get("nameOfMeeting") or "",
                     "url": reply.get("speechURL") or "",
                     "relevance": round(relevance, 3),
+                    "context_match": "answer" if reply_span else "question",
                 })
     return sorted(assignments, key=lambda item: item["relevance"], reverse=True)
 
@@ -202,7 +239,8 @@ def search_answer_assignments(
     meetings_by_id: dict[str, dict[str, Any]] = {}
     searched: list[str] = []
     errors: list[str] = []
-    for term in terms:
+    focused_query = " ".join(terms[:2])
+    for term in [focused_query]:
         searched.append(term)
         try:
             for meeting in _fetch_meetings(term, since):
@@ -211,12 +249,23 @@ def search_answer_assignments(
         except RuntimeError as exc:
             errors.append(str(exc))
 
+    if not meetings_by_id and len(terms) > 1 and not errors:
+        for term in terms[:2]:
+            searched.append(term)
+            try:
+                for meeting in _fetch_meetings(term, since):
+                    issue_id = meeting.get("issueID") or repr(meeting)
+                    meetings_by_id.setdefault(issue_id, meeting)
+            except RuntimeError as exc:
+                errors.append(str(exc))
+
     assignments = _extract_assignments(list(meetings_by_id.values()), terms)
     if not assignments and errors and len(errors) == len(searched):
         return {"error": "会議録APIから取得できませんでした。", "details": errors, "searched_terms": searched, "candidates": []}
 
     return {
         "searched_terms": searched,
+        "focused_query": focused_query,
         "meetings_searched": len(meetings_by_id),
         "candidate_count": len(assignments),
         "candidates": assignments[:MAX_CANDIDATES],
