@@ -9,9 +9,9 @@ const answer = (text, title, id = 'a', order = 2) => ({ speechID:id, speechOrder
 const record = (question, replies, id = 'meeting', date = '2025-01-01') => ({ issueID:id, nameOfMeeting:'委員会', date, speechRecord:[ask(question),...replies.map(([text,title],i)=>answer(text,title,'a'+i,i+2))] });
 const route = (prompt, question, replies) => pairAnswers([record(question,replies)],makePlan(prompt));
 const taxTitle = '財務大臣・内閣府特命担当大臣（金融）';
-check('税制答弁は財務大臣の所属を保持',()=>assert.equal(answeringMinistry(taxTitle,'研究開発税制を強化します。'),'財務省'));
+check('複数の所属が判別できなければ推測で割り振らない',()=>assert.equal(answeringMinistry(taxTitle,'研究開発税制を強化します。'),null));
 check('金融担当としての明示だけは兼務を分ける',()=>assert.equal(answeringMinistry(taxTitle,'金融庁として対応します。'),'金融庁'));
-check('他省への連携では答弁者の所属を変えない',()=>assert.equal(answeringMinistry(taxTitle,'金融庁と連携します。'),'財務省'));
+check('他省への連携では答弁者の所属を変えない',()=>assert.equal(answeringMinistry('財務大臣','金融庁と連携します。'),'財務省'));
 check('所管の他省への言及でラベルを変えない',()=>assert.equal(answeringMinistry('内閣府特命担当大臣','したがいまして、所管の厚生労働省においては対応します。'),'内閣府・内閣官房等'));
 check('対象省の大臣肩書きを一般に読む',()=>assert.equal(answeringMinistry('総務大臣'),'総務省'));
 check('長音と前後の漢字を保持',()=>assert.equal(concepts('脱炭素化とカスタマーハラスメント').map(g=>g.text).join(' '),'脱炭素化 カスタマーハラスメント'));
@@ -30,8 +30,9 @@ check('答弁内の遠く離れた論点をつなげない',()=>assert.equal(rou
 check('承認への質問を開発支援の答弁に割り振らない',()=>assert.equal(route('医療機器の承認を迅速化すべきではないか','医療機器の承認を迅速化すべきではないか伺います。',[['医療機器の開発支援を進めます。','経済産業大臣']]).length,0));
 check('委員長の手続発言は答弁に数えない',()=>assert.equal(route('水道の耐震化について伺います。','水道の耐震化について伺います。',[['水道の耐震化について大臣お願いします。','委員長'],['水道の耐震化を進めます。','国土交通大臣']]).length,1));
 check('後の議員質問で答弁の対応を打ち切る',()=>{ const m=record('水道の耐震化について伺います。',[['水道の耐震化を進めます。','国土交通大臣']]);m.speechRecord.splice(1,0,ask('別の質問について伺います。','q2',2));m.speechRecord[2].speechOrder=3; assert.equal(pairAnswers([m],makePlan('水道の耐震化について伺います。')).length,0);});
-check('同じ省の反復答弁を一質疑として数える',()=>assert.equal(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。',taxTitle],['研究開発税制を検討します。',taxTitle]])).pairs,1));
-check('複数省の割合は一質疑の重みを分ける',()=>assert.deepEqual(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。',taxTitle],['研究開発税制を拡充します。','経済産業大臣']])).shares.map(x=>x.percent),[50,50]));
+check('同じ省の反復答弁を一質疑として数える',()=>assert.equal(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。','財務大臣'],['研究開発税制を検討します。','財務大臣']])).pairs,1));
+check('複数省の割合は一質疑の重みを分ける',()=>assert.deepEqual(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。','財務大臣'],['研究開発税制を拡充します。','経済産業大臣']])).shares.map(x=>x.percent),[50,50]));
+check('同じ対象の直前の答弁で兼務を判別',()=>assert.equal(answeringMinistry(taxTitle,'スタートアップの環境を改善します。','金融庁としてスタートアップの課題に対応します。'),'金融庁'));
 const examples = JSON.parse(await readFile(new URL('./real-excerpts.json', import.meta.url),'utf8'));
 let realPassed=0;
 for(const item of examples) {

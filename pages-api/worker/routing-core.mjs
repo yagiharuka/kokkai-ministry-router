@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-14';
+export const routingVersion = '20261009-15';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -127,25 +127,34 @@ const titleRules = [
   [/個人情報保護委員会/, '個人情報保護委員会'],
   [/内閣府|内閣官房|内閣総理大臣|官房長官|国家公安委員会|警察庁|消費者庁|公正取引委員会/, '内閣府・内閣官房等'],
 ];
-export function answeringMinistry(title, answer = '') {
+export function answeringMinistry(title, answer = '', previousAnswer = '') {
   const normalized = normalize(title);
   const candidates = titleRules.map(([pattern, name]) => ({ name, at: normalized.search(pattern) })).filter(r => r.at >= 0).sort((a, b) => a.at - b.at).map(r => r.name);
-  const explicit = name => {
+  const explicit = (name, source = answer) => {
     const pattern = new RegExp(`${name}(?:として|では|において|からは|といたしましては)`, 'g');
-    for (const m of normalize(answer).slice(0, 900).matchAll(pattern)) {
-      const before = answer.slice(Math.max(0, m.index - 20), m.index);
+    const text = normalize(source);
+    for (const m of text.slice(0, 900).matchAll(pattern)) {
+      const before = text.slice(Math.max(0, m.index - 20), m.index);
       if (/(?:所管の|担当の|関係する|連携する|対して|による|ですが、)\s*$/.test(before)) continue;
       if (/(?:私ども|我々|当省|当庁)\s*$/.test(before) || m.index === 0 || /[。 ]$/.test(before)) return true;
     }
     return false;
   };
-  const named = candidates.filter(explicit);
+  const named = candidates.filter(name => explicit(name));
   if (named.length === 1) return named[0];
+  if (candidates.length > 1 && previousAnswer) {
+    const previous = candidates.filter(name => explicit(name, previousAnswer));
+    if (previous.length === 1) return previous[0];
+  }
   if (candidates.length === 1 && candidates[0] === '内閣府・内閣官房等') {
     const direct = titleRules.map(([, name]) => name).filter(name => name !== candidates[0] && explicit(name));
     if (direct.length === 1) return direct[0];
   }
-  return candidates[0] || null;
+  const specific = candidates.filter(name => name !== '内閣府・内閣官房等');
+  // A concurrent appointment is not evidence of which capacity the speaker used.
+  // If the answer and nearby same-topic answer do not resolve it, abstain.
+  if (specific.length > 1) return null;
+  return specific[0] || candidates[0] || null;
 }
 export function rankQuestions(speeches, plan, limit = 4) {
   const weights = makeWeights(plan, speeches.filter(isQuestioner).map(s => s.speech));
@@ -172,8 +181,8 @@ function alignAnswer(answer, question, plan) {
   const direct = passages(answer).map(p => ({ ...p, shared: overlap(p.text), bridge: bridgeParts.filter(part => occurrences(p.text, part).length).length })).filter(p => p.shared >= 3 && p.bridge >= 2);
   for (const p of direct.sort((a, b) => b.shared - a.shared || a.text.length - b.text.length)) {
     const conflicting = others.some(tokens => [...new Set(tokens)].filter(part => occurrences(p.text, part).length).length >= p.shared);
-    const anySubject = plan.groups.some(g => groupHit(p.text, g).coverage >= .66);
-    if (!conflicting && anySubject) return { ...p, score: .75, bridged: true };
+    const subjectRetained = groupHit(p.text, plan.groups[0]).coverage >= .66;
+    if (!conflicting && subjectRetained) return { ...p, score: .75, bridged: true };
   }
   // Elliptical short replies can inherit the topic only for a single-topic turn.
   // A different substantive topic must never inherit a previous topic's ministry.
@@ -200,7 +209,11 @@ export function pairAnswers(meetings, plan, allowedQuestions = null) {
         const reply = speeches[j];
         if (isQuestioner(reply)) break;
         if (isChair(reply)) continue;
-        const answer = normalize(reply.speech), ministry = answeringMinistry(reply.speakerPosition, answer);
+        const previous = speeches.slice(Math.max(0, i - 5), i).reverse().find(s =>
+          !isQuestioner(s) && !isChair(s) && s.speaker === reply.speaker &&
+          s.speakerPosition === reply.speakerPosition &&
+          groupHit(normalize(s.speech), plan.groups[0]).coverage >= .66);
+        const answer = normalize(reply.speech), ministry = answeringMinistry(reply.speakerPosition, answer, previous?.speech || '');
         if (!ministry || !reply.speechURL) continue;
         const aligned = alignAnswer(answer, question, plan);
         if (!aligned) continue;
