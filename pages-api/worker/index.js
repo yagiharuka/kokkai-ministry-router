@@ -20,7 +20,7 @@ const ministryPatterns = [
   [/厚生労働|厚生省|労働省/, "厚生労働省"],
   [/文部科学|文部省|科学技術庁|スポーツ庁|文化庁/, "文部科学省"],
   [/総務省|自治省|郵政省|消防庁/, "総務省"],
-  [/金融庁|金融担当|特命担当大臣（金融）/, "金融庁"],
+  [/金融庁|金融担当|特命担当大臣[（(]金融[）)]/, "金融庁"],
   [/財務省|財務大臣|大蔵省|国税庁/, "財務省"],
   [/外務省|外務大臣/, "外務省"],
   [/法務省|法務大臣|出入国在留管理庁/, "法務省"],
@@ -39,13 +39,16 @@ let lastNdlRequest = 0;
 
 function cleaned(value) { return String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim(); }
 function ministryOf(value, answer = "") {
-  const candidates = ministryPatterns.filter(([pattern]) => pattern.test(value || "")).map(([, name]) => name);
+  const title = cleaned(value);
+  const candidates = ministryPatterns.map(([pattern, name]) => ({ name, at: title.search(pattern) }))
+    .filter(row => row.at >= 0).sort((a, b) => a.at - b.at).map(row => row.name);
+  const selfReference = name => new RegExp(`${name}(?:として|では|において|からは|といたしましては)`).test(answer.slice(0, 900));
   if (candidates.length === 1 && candidates[0] === "内閣府・内閣官房等") {
-    const named = departments.filter(name => new RegExp(`${name}(?:として|では|において|からは)`).test(answer.slice(0, 900)));
+    const named = departments.filter(selfReference);
     if (named.length === 1) return named[0];
   }
   if (candidates.length > 1) {
-    const explicit = candidates.find(name => answer.slice(0, 800).includes(name));
+    const explicit = candidates.find(selfReference);
     if (explicit) return explicit;
   }
   return candidates[0] || null;
@@ -113,11 +116,12 @@ async function fetchNdl(path, parameters) {
   }
 }
 
-function questionMatch(speech, terms) {
+function questionMatch(speech, terms, focus = "") {
   const question = cleaned(speech.speech);
   if (!lawmaker(speech) || question.length < 20) return null;
   const span = nearby(question, terms, 90);
   if (!span) return null;
+  if (focus && !question.slice(Math.max(0, span.start - 140), span.end + 240).includes(reducedWord(focus))) return null;
   if (/^(拡大|拡充|推進|促進|支援|強化|改善|整備|見直し|充実)$/.test(terms[1])) {
     if (!question.startsWith(terms[0], span.start)) return null;
     const between = question.slice(span.start + terms[0].length, span.end - terms[1].length);
@@ -129,11 +133,11 @@ function questionMatch(speech, terms) {
   if (/質問しません|質問ではありません/.test(context) && !/[？?]|伺|お尋ね|いかが|べき/.test(context)) return null;
   return span;
 }
-function selectQuestions(speeches, terms, limit = 4) {
+function selectQuestions(speeches, terms, limit = 4, focus = "") {
   const selected = new Map();
   for (const speech of speeches) {
     if (speech.nameOfMeeting === "本会議") continue;
-    const span = questionMatch(speech, terms);
+    const span = questionMatch(speech, terms, focus);
     if (!span || !speech.issueID || !speech.speechID) continue;
     const question = cleaned(speech.speech);
     const score = 500 - (span.end - span.start) - Math.min(question.length, 2200) / 20 +
@@ -143,14 +147,14 @@ function selectQuestions(speeches, terms, limit = 4) {
   }
   return [...selected].sort((a, b) => b[1].score - a[1].score).slice(0, limit);
 }
-function extractCases(meetings, terms, query, allowedQuestions = null) {
+function extractCases(meetings, terms, query, allowedQuestions = null, focus = "") {
   const cases = new Map();
   for (const meeting of meetings) {
     const speeches = [...(meeting.speechRecord || [])].sort((a, b) => Number(a.speechOrder || 0) - Number(b.speechOrder || 0));
     for (let i = 0; i < speeches.length; i++) {
       const ask = speeches[i], question = cleaned(ask.speech);
       if (allowedQuestions && !allowedQuestions.has(ask.speechID)) continue;
-      const questionSpan = questionMatch(ask, terms);
+      const questionSpan = questionMatch(ask, terms, focus);
       if (!questionSpan) continue;
       for (let j = i + 1; j < speeches.length; j++) {
         const reply = speeches[j];
@@ -158,10 +162,11 @@ function extractCases(meetings, terms, query, allowedQuestions = null) {
         const answer = cleaned(reply.speech), ministry = ministryOf(reply.speakerPosition, answer);
         if (!ministry || !answer || !reply.speechURL) continue;
         const answerSpan = nearby(answer, terms);
-        if (/^(拡大|拡充|推進|促進|支援|強化|改善|整備|見直し|充実)$/.test(terms[1]) &&
-            !answer.split(/[。！？]/).some(sentence => nearby(sentence.replace(/の/g, ""), terms, 60))) continue;
-        if (terms.length > 1 && !answerSpan && !answer.slice(0, 1200).includes(terms[0]) &&
-            !answer.slice(0, 1200).includes(terms[1])) {
+        const genericAction = /^(拡大|拡充|推進|促進|支援|強化|改善|整備|見直し|充実)$/.test(terms[1]);
+        // An answer can reject or paraphrase the requested action. It must still
+        // address the named policy, rather than repeat the verb verbatim.
+        if (genericAction && !answer.slice(0, 1200).includes(terms[0])) continue;
+        if (!genericAction && terms.length > 1 && !answerSpan && !answer.slice(0, 1200).includes(reducedWord(terms[1]))) {
           const related = relatedWord(question, terms[0], reducedWord(terms[1]));
           if (!related || !answer.slice(0, 1200).includes(related)) continue;
         }
@@ -182,40 +187,42 @@ function extractCases(meetings, terms, query, allowedQuestions = null) {
   return [...cases.values()];
 }
 
-async function routeCases(first, second) {
+async function routeCases(first, second, focus = "") {
   const year = new Date().getUTCFullYear();
   const cut = year - 2;
   const periods = [[`${cut}-01-01`, `${year}-12-31`], ["2020-01-01", `${cut - 1}-12-31`]];
   const relaxed = second ? reducedWord(second) : "";
   const cases = new Map(), searched = [];
   let meetingCount = 0, errors = 0;
+  const fullQuery = terms => [...terms, ...(focus ? [reducedWord(focus)] : [])].join(" ");
   const addCase = row => {
     const key = `${row.case_id}:${row.ministry}`;
     if (!cases.has(key) || (cases.get(key).context !== "answer" && row.context === "answer")) cases.set(key, row);
   };
   async function search(terms) {
-    const query = terms.join(" ");
+    const query = fullQuery(terms);
     let found = 0;
     for (const [from, until] of periods) {
       try {
         const data = await fetchNdl("speech", { any: query, from, until, maximumRecords: "100" });
-        const candidates = selectQuestions(data.speechRecord || [], terms, 3);
+        const candidates = selectQuestions(data.speechRecord || [], terms, 3, focus);
         for (const [issueID, item] of candidates) {
           const result = await fetchNdl("meeting", { issueID, maximumRecords: "1" });
           const meetings = result.meetingRecord || [];
           meetingCount += meetings.length;
-          for (const row of extractCases(meetings, terms, query, new Set([item.speechID]))) { addCase(row); found++; }
+          for (const row of extractCases(meetings, terms, query, new Set([item.speechID]), focus)) { addCase(row); found++; }
           if (found >= 4) break;
         }
       } catch { errors++; }
       searched.push(`${query}（${from.slice(0,4)}–${until.slice(0,4)}）`);
-      if (found >= 4) break;
+      // Do not merge older answering ministries into recent routing evidence.
+      if (found > 0) break;
     }
   }
   await search(second ? [first, second] : [first]);
   const exactCount = cases.size;
   if (second && exactCount > 0 && exactCount < 3 && relaxed !== second) {
-    const seed = [...cases.values()].find(row => row.query === [first, second].join(" "));
+    const seed = [...cases.values()].find(row => row.query === fullQuery([first, second]));
     const alias = seed && relatedWord(seed.question, first, relaxed);
     if (alias && alias !== first && alias !== relaxed) {
       await search([first, relaxed + alias]);
@@ -223,9 +230,11 @@ async function routeCases(first, second) {
   }
   if (second && !cases.size && relaxed !== second && relaxed.length >= 2) await search([first, relaxed]);
   const genericAction = /^(拡大|拡充|推進|促進|支援|強化|改善|整備|見直し|充実)$/.test(second);
-  if (!cases.size && genericAction && first.length >= 4) await search([first]);
+  if (!cases.size && genericAction && !focus && first.length >= 4) await search([first]);
   if (errors === searched.length) throw new Error("国会会議録APIが応答しませんでした。");
-  const rows = [...cases.values()].slice(0, 24);
+  const allRows = [...cases.values()];
+  const recentRows = allRows.filter(row => row.date >= `${cut}-01-01`);
+  const rows = (recentRows.length ? recentRows : allRows).slice(0, 24);
   const byCase = new Map();
   for (const row of rows) {
     if (!byCase.has(row.case_id)) byCase.set(row.case_id, new Set());
@@ -235,7 +244,9 @@ async function routeCases(first, second) {
   for (const ministries of byCase.values()) for (const ministry of ministries) weights.set(ministry, (weights.get(ministry) || 0) + 1 / ministries.size);
   const shares = [...weights].map(([ministry, weight]) => ({ ministry, percent: Math.round(weight / byCase.size * 100), count: rows.filter(row => row.ministry === ministry).length })).sort((a, b) => b.percent - a.percent);
   if (shares.length) shares[0].percent += 100 - shares.reduce((sum, row) => sum + row.percent, 0);
-  return { shares, evidence: rows.slice(0, 8), pairs: byCase.size, searched, meetings_searched: meetingCount, partial: errors > 0, broadened: Boolean(second) && rows.some(row => row.query === first) };
+  return { shares, evidence: rows.slice(0, 8), pairs: byCase.size, searched, meetings_searched: meetingCount, partial: errors > 0,
+    historical_only: rows.length > 0 && recentRows.length === 0, recent_since: `${cut}-01-01`,
+    broadened: Boolean(second) && rows.some(row => row.query === first) };
 }
 
 export default {
@@ -247,12 +258,13 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/cases") {
       const first = (url.searchParams.get("first") || "").normalize("NFKC").trim();
       const second = (url.searchParams.get("second") || "").normalize("NFKC").trim();
+      const focus = (url.searchParams.get("focus") || "").normalize("NFKC").trim();
       const valid = value => value.length >= 2 && value.length <= 30 && /^[\p{L}\p{N}々ー・]+$/u.test(value);
-      if (!valid(first) || (second && (!valid(second) || first === second))) {
+      if (!valid(first) || (second && (!valid(second) || first === second)) || (focus && !valid(focus))) {
         return withCors(Response.json({ error: "政策語を確認してください。" }, { status: 400 }));
       }
       try {
-        const result = await routeCases(first, second);
+        const result = await routeCases(first, second, focus);
         return withCors(Response.json(result, { headers: { "cache-control": "public, max-age=600" } }));
       } catch (error) {
         return withCors(Response.json({ error: error instanceof Error ? error.message : "会議録を取得できませんでした。" }, { status: 502 }));
