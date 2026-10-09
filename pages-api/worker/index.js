@@ -75,7 +75,9 @@ function relatedWord(question, first, second) {
   const between = a < b ? passage.slice(a + first.length, b) : passage.slice(b + second.length, a);
   const words = [...wordSegmenter.segment(between)]
     .filter(part => part.isWordLike && part.segment.length >= 2 && !/^(について|として|ため|こと|もの|それ|これ|から|まで|など|支援|推進|活躍)$/.test(part.segment));
-  return words[0]?.segment || null;
+  if (!words.length) return null;
+  const next = [...wordSegmenter.segment(between)].find(part => part.index === words[0].index + words[0].segment.length);
+  return words[0].segment + (next?.isWordLike && /^[\p{Script=Han}]$/u.test(next.segment) ? next.segment : "");
 }
 
 async function fetchMeetings(query, from, until) {
@@ -165,7 +167,7 @@ async function routeCases(first, second) {
     const seed = [...cases.values()].find(row => row.context === "question");
     const alias = seed && relatedWord(seed.question, first, relaxed);
     if (alias && alias !== first && alias !== relaxed) {
-      const terms = [relaxed, alias], query = terms.join(" ");
+      const terms = [first, relaxed + alias], query = terms.join(" ");
       for (const [from, until] of periods) {
         try {
           const meetings = await fetchMeetings(query, from, until);
