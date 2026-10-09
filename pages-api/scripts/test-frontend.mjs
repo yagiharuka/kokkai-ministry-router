@@ -23,8 +23,15 @@ assert.ok(rejected.includes('12件の候補を確認'));
 assert.ok(!rejected.includes('100%'));
 assert.ok(!rejected.includes('会議録が存在しない'));
 const quota=render({...base,assessment_status:'failed',assessment_error:'quota_exhausted',review_candidates:[]});
-assert.ok(quota.includes('判定用APIの利用枠が不足しています'));
+assert.ok(quota.includes('AI判定の本日の無料枠を使い切りました'));
 assert.ok(!quota.includes('100%'));
+assert.ok(quota.includes('国会図書館のAPIではなく'));
+assert.ok(!quota.includes('候補 0件'));
+const setup = render({...base,assessment_status:'not_configured',review_candidates:[]});
+assert.ok(setup.includes('自動判定の接続を準備しています'));
+assert.ok(!setup.includes('候補 0件'));
+assert.ok(!setup.includes('ChatGPTに貼り付け'));
+assert.ok(!setup.includes('100%'));
 // Slow supplementary law searches must not block the result, and an earlier
 // question's delayed laws must never overwrite a later question's references.
 const laws=[];

@@ -1,25 +1,26 @@
 import assert from 'node:assert/strict';
-import { prepareSemanticPlan, reviewAssignments } from '../worker/semantic-review.mjs';
+import { prepareSemanticPlan, reviewAssignments, semanticConfiguration } from '../worker/semantic-review.mjs';
 import { makePlan, reviewCandidates, retrieveAssignments, summarize } from '../worker/routing-core.mjs';
 import worker from '../worker/model-api.js';
 
-const env = { OPENAI_API_KEY: 'test-only-not-a-real-key', OPENAI_ROUTER_MODEL: 'test-model' };
+const env = { CLOUDFLARE_API_TOKEN: 'test-only-not-a-real-token', CLOUDFLARE_ACCOUNT_ID: '0123456789abcdef0123456789abcdef', CLOUDFLARE_WORKERS_PLAN: 'free' };
+const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' + env.CLOUDFLARE_ACCOUNT_ID + '/ai/run/@cf/qwen/qwen3-30b-a3b-fp8';
 const row = (caseId, ministry, suffix = '', question = '教員の負担を減らすにはどうしますか。', answer = '教師の時間外在校等時間を縮減します。') => ({ case_id: caseId, ministry, question, answer, position: ministry + '大臣', date: '2025-06-10', url: 'https://kokkai.ndl.go.jp/txt/fixture/' + caseId + suffix, screening: 'unverified' });
 const rows = [row('q1','文部科学省','a'),row('q1','文部科学省','b'),row('q1','内閣府・内閣官房等'),row('q2','文部科学省'),row('q3','厚生労働省')];
 const result = { shares: [{ ministry: '厚生労働省', percent: 100 }], pairs: 1, evidence: rows, candidates: [], review_candidates: rows, recent_since: '2024-01-01' };
-const response = data => Response.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(data) }] }] });
+const response = data => Response.json({ success: true, result: { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(data) } }] }, errors: [] });
 const accept = (id, r) => ({ id, decision: 'accept', reason: '教員の勤務負担を減らす方策に答えている。', question_evidence: r.question, answer_evidence: r.answer });
 const decisions = rows.map((r, i) => i < 4 ? accept('c' + (i + 1), r) : { id: 'c5', decision: 'reject', reason: '別分野への答弁。', question_evidence: '', answer_evidence: '' });
 let calls = 0;
 const mock = async (url, init) => {
   calls++;
-  assert.equal(url, 'https://api.openai.com/v1/responses');
-  assert.equal(init.headers.Authorization, 'Bearer ' + env.OPENAI_API_KEY);
+  assert.equal(url, endpoint);
+  assert.equal(init.headers.Authorization, 'Bearer ' + env.CLOUDFLARE_API_TOKEN);
   const body = JSON.parse(init.body);
-  assert.equal(body.store, false);
-  assert.equal(body.text.format.strict, true);
-  assert.equal(body.text.format.schema.additionalProperties, false);
-  assert.ok(!JSON.stringify(body.input).includes('retrieval_score'));
+  assert.equal(body.stream, false);
+  assert.equal(body.response_format.type, 'json_schema');
+  assert.equal(body.response_format.json_schema.additionalProperties, false);
+  assert.ok(!JSON.stringify(body.messages).includes('retrieval_score'));
   assert.ok(!('previous_response_id' in body));
   return response({ reviews: decisions });
 };
@@ -38,6 +39,43 @@ assert.deepEqual(unavailable.shares,[]);
 assert.equal(unavailable.pairs,0);
 assert.equal(unavailable.evidence.length,0);
 assert.equal(unavailable.review_candidates.length,5);
+
+// The public site must not spend from an old paid key, an unverified plan,
+// or an arbitrary account/endpoint supplied in configuration.
+for (const disabled of [
+  { OPENAI_API_KEY: 'old-key-must-be-ignored' },
+  { ...env, CLOUDFLARE_WORKERS_PLAN: undefined },
+  { ...env, CLOUDFLARE_WORKERS_PLAN: 'paid' },
+  { ...env, CLOUDFLARE_ACCOUNT_ID: '../other-account' },
+  { ...env, CLOUDFLARE_API_TOKEN: '' },
+]) {
+  assert.equal(semanticConfiguration(disabled).ready, false);
+  let externalCalls = 0;
+  const priorFetch = globalThis.fetch;
+  globalThis.fetch = async () => { externalCalls++; throw new Error('must not call any external service'); };
+  try {
+    const data = await (await worker.fetch(new Request('https://example.invalid/api/cases?' + new URLSearchParams({ question: 'なでしこ銘柄の推進を進めるべきではないか' })), disabled)).json();
+    assert.equal(data.assessment_status, 'not_configured');
+    assert.equal(data.requests_used, 0);
+    assert.deepEqual(data.shares, []);
+    assert.equal(externalCalls, 0);
+  } finally { globalThis.fetch = priorFetch; }
+}
+const nativeJson = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, env,
+  async () => Response.json({success:true,result:{response:{reviews:decisions}},errors:[]}));
+assert.equal(nativeJson.accepted_candidates, 4);
+for (const partial of [
+  {success:true,result:{choices:[{finish_reason:'length',message:{role:'assistant',content:JSON.stringify({reviews:decisions})}}]}},
+  {success:true,result:{choices:[{finish_reason:'stop',message:{role:'assistant',content:'<think>not a JSON object</think>'}}]}},
+  {success:false,errors:[{code:3036}]},
+]) {
+  const data = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, env, async () => Response.json(partial));
+  assert.equal(data.assessment_status, 'failed');
+  assert.deepEqual(data.shares, []);
+}
+const busy = await prepareSemanticPlan('教員の負担を減らすべきではないか', env,
+  async () => Response.json({success:false,errors:[{code:3040}]},{status:429}));
+assert.equal(busy.error_code, 'model_busy', 'Temporary congestion is not daily quota exhaustion');
 
 for (const invalid of [
   { reviews: [...decisions.slice(0,4), { ...decisions[4],id:'invented' }] },
@@ -114,11 +152,11 @@ assert.equal((await reviewAssignments(question,{...result,candidates:[],review_c
 const realFetch=globalThis.fetch,realNow=Date.now;let now=realNow(),modelCalls=0;
 Date.now=()=>{now+=3001;return now;};
 globalThis.fetch=async(url,init)=>{
-  if(String(url)==='https://api.openai.com/v1/responses') {
+  if(String(url)===endpoint) {
     modelCalls++;
     const body=JSON.parse(init.body);
-    if(body.text.format.name==='kokkai_search_plan')return response({queries:['教員 働き方改革','教師 勤務時間']});
-    const input=JSON.parse(body.input[0].content);
+    if(body.response_format.json_schema.properties.queries)return response({queries:['教員 働き方改革','教師 勤務時間']});
+    const input=JSON.parse(body.messages[1].content);
     assert.equal(input.proposed_question,question);
     return response({reviews:input.candidates.map(c=>({id:c.id,decision:'accept',reason:'教員の勤務負担を減らす方策への答弁。',question_evidence:c.source_question,answer_evidence:c.source_answer}))});
   }
@@ -134,7 +172,7 @@ try {
   assert.equal(data.shares[0].ministry,'文部科学省');
   assert.equal(data.pairs,1);
   assert.equal(modelCalls,2);
-  assert.ok(!JSON.stringify(data).includes(env.OPENAI_API_KEY));
+  assert.ok(!JSON.stringify(data).includes(env.CLOUDFLARE_API_TOKEN));
   await worker.fetch(request,env);
   assert.equal(modelCalls,2,'Cached requests must not spend more model calls');
   const status=await (await worker.fetch(new Request('https://example.invalid/api/status'),{})).json();
@@ -149,17 +187,17 @@ try {
   ]};
   let retryModelCalls=0,ndlCalls=0;
   globalThis.fetch=async(url,init)=>{
-    if(String(url)==='https://api.openai.com/v1/responses') {
+    if(String(url)===endpoint) {
       retryModelCalls++;
       const body=JSON.parse(init.body);
-      if(body.text.format.name==='kokkai_search_plan') {
-        const input=JSON.parse(body.input[0].content);
+      if(body.response_format.json_schema.properties.queries) {
+        const input=JSON.parse(body.messages[1].content);
         if(retryModelCalls===1)return response({queries:['医療機器 薬事承認','医療機器 承認審査','医療機器 審査期間']});
         assert.ok(input.search_feedback.searched_queries.length);
         assert.ok(input.search_feedback.rejected_reasons.length);
         return response({queries:['医療機器 審査期間','医療機器']});
       }
-      const input=JSON.parse(body.input[0].content);
+      const input=JSON.parse(body.messages[1].content);
       return response({reviews:input.candidates.map(c=>({id:c.id,decision:c.source_answer.includes('審査期間')?'accept':'reject',reason:'審査期間の短縮という問いに対応するかで確認。',question_evidence:c.source_question,answer_evidence:c.source_answer}))});
     }
     ndlCalls++;
@@ -182,7 +220,7 @@ const twelve = Array.from({length:12}, (_,i) => row('parallel'+i, '文部科学�
 const parallel = await reviewAssignments(question, { ...result, candidates: [], review_candidates: twelve }, env, async (url, init) => {
   active++; peak = Math.max(peak, active);
   await new Promise(resolve => setTimeout(resolve, 5));
-  const input = JSON.parse(JSON.parse(init.body).input[0].content);
+  const input = JSON.parse(JSON.parse(init.body).messages[1].content);
   assert.equal(input.candidates.length, 6);
   active--;
   return response({ reviews: input.candidates.map(c => accept(c.id, { question: c.source_question, answer: c.source_answer })) });
@@ -190,7 +228,7 @@ const parallel = await reviewAssignments(question, { ...result, candidates: [], 
 assert.equal(peak, 2, 'Independent semantic batches should overlap');
 assert.equal(parallel.accepted_candidates, 12, 'Parallel review must keep all candidates and evidence');
 assert.equal(parallel.pairs, 12);
-const quota = () => Response.json({error:{code:'credit_balance_exhausted',message:'private provider billing detail'}},{status:429});
+const quota = () => Response.json({success:false,errors:[{code:3036,message:'private provider billing detail'}]},{status:429});
 const quotaPlan = await prepareSemanticPlan(question,env,quota);
 assert.equal(quotaPlan.error_code,'quota_exhausted');
 const quotaReview = await reviewAssignments(question,result,env,quota);
@@ -198,7 +236,7 @@ assert.equal(quotaReview.assessment_error,'quota_exhausted');
 let failFastCalls=0;
 globalThis.fetch=async url=>{
   failFastCalls++;
-  assert.equal(String(url),'https://api.openai.com/v1/responses','Quota failure must not trigger slow NDL searches');
+  assert.equal(String(url),endpoint,'Quota failure must not trigger slow NDL searches');
   return quota();
 };
 try{

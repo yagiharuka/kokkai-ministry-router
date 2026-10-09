@@ -13,37 +13,54 @@ uncertain: 抜粋が不足するなど、質問と答弁の対応を判断でき
 全候補について一度ずつ判定してください。候補IDだけを使い、所属を変更しないでください。reason は日本語60字以内を目安にした短い採否理由です。accept の question_evidence と answer_evidence は、それぞれその候補の source_question と source_answer から、対応を示す連続した原文を1〜90字で引用してください。引用符や説明を付け足さず、原文の文字列だけを返してください。proposed_question を根拠の引用にしてはいけません。reject/uncertain の引用は空文字でも構いません。`;
 
 export function semanticConfiguration(env = {}) {
-  const apiKey = typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY.trim() : '';
-  const model = typeof env.OPENAI_ROUTER_MODEL === 'string' ? env.OPENAI_ROUTER_MODEL.trim() : 'gpt-5.4-mini-2026-03-17';
-  return { apiKey, model, ready: Boolean(apiKey && model) };
+  const apiKey = typeof env.CLOUDFLARE_API_TOKEN === 'string' ? env.CLOUDFLARE_API_TOKEN.trim() : '';
+  const accountId = typeof env.CLOUDFLARE_ACCOUNT_ID === 'string' ? env.CLOUDFLARE_ACCOUNT_ID.trim() : '';
+  const model = '@cf/qwen/qwen3-30b-a3b-fp8';
+  // An operator must first verify Workers Free in the Cloudflare dashboard.
+  // This flag records that check; it cannot verify or change the account plan.
+  // OpenAI credentials and arbitrary models/endpoints are intentionally ignored.
+  const freePlanConfirmed = env.CLOUDFLARE_WORKERS_PLAN === 'free';
+  return { apiKey, accountId, model, provider: 'cloudflare',
+    ready: Boolean(apiKey && /^[a-f0-9]{32}$/i.test(accountId) && freePlanConfirmed) };
 }
 
 async function structuredModel(config, name, schema, instructions, input, fetchModel) {
-  const effort = name === 'kokkai_search_plan' && /^gpt-5\.4-mini(?:-|$)/.test(config.model) ? 'none' : 'low';
-  const response = await fetchModel('https://api.openai.com/v1/responses', {
+  const response = await fetchModel(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${config.model}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: config.model, store: false, max_output_tokens: 6144, instructions,
-      ...(/^gpt-5(?:[.-]|$)/.test(config.model) ? { reasoning: { effort } } : {}),
-      input: [{ role: 'user', content: JSON.stringify(input) }],
-      text: { format: { type: 'json_schema', name, schema, strict: true } } }),
+    body: JSON.stringify({ stream: false, temperature: 0.1,
+      max_tokens: name === 'kokkai_search_plan' ? 1024 : 3072,
+      messages: [{ role: 'system', content: instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
+        { role: 'user', content: JSON.stringify(input) }],
+      response_format: { type: 'json_schema', json_schema: schema } }),
     signal: AbortSignal.timeout(40000),
   });
   // Provider error bodies may contain request details. Never expose them or
   // credentials through the public API, and never count a failed review.
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    if (['credit_balance_exhausted', 'insufficient_quota'].includes(error.error?.code)) throw new Error('quota_exhausted');
+  const data = await response.json().catch(() => null);
+  if (!response.ok || data?.success === false) {
+    const codes = (Array.isArray(data?.errors) ? data.errors : []).map(error => Number(error?.code));
+    if (codes.includes(3036)) throw new Error('quota_exhausted');
+    if (response.status === 429 || codes.includes(3040)) throw new Error('model_busy');
     throw new Error('model_request_failed');
   }
-  const data = await response.json();
-  if (data.status !== 'completed' || data.error) throw new Error('model_incomplete');
-  const content = (data.output || []).filter(item => item.type === 'message' && item.role === 'assistant').flatMap(item => item.content || []);
-  if (content.some(item => item.type === 'refusal')) throw new Error('model_refusal');
-  const texts = content.filter(item => item.type === 'output_text' && typeof item.text === 'string');
-  if (texts.length !== 1) throw new Error('invalid_model_output');
-  return JSON.parse(texts[0].text);
+  if (data?.success !== true || !data.result || data.result.error) throw new Error('model_incomplete');
+  // Workers AI's native JSON mode can return an object in response; the Qwen
+  // model also documents a chat.completion result. Both still pass local,
+  // exhaustive ID/schema/quotation validation below. Never repair invented text.
+  let output = data.result.response;
+  if (Array.isArray(data.result.choices)) {
+    const choices = data.result.choices;
+    if (choices.length !== 1 || choices[0].finish_reason !== 'stop' ||
+        choices[0].message?.role !== 'assistant' || choices[0].message.refusal) throw new Error('model_incomplete');
+    output = choices[0].message.content;
+  }
+  if (typeof output === 'string') return JSON.parse(output);
+  if (output && typeof output === 'object' && !Array.isArray(output)) return output;
+  throw new Error('invalid_model_output');
 }
+
+const publicModelError = error => ['quota_exhausted', 'model_busy'].includes(error?.message) ? error.message : 'model_unavailable';
 
 export async function prepareSemanticPlan(question, env = {}, fetchModel = fetch, searchFeedback = null) {
   const plan = makePlan(question), config = semanticConfiguration(env);
@@ -64,7 +81,7 @@ export async function prepareSemanticPlan(question, env = {}, fetchModel = fetch
     const recallGroups = [...new Map(queries.flatMap(concepts).map(g => [g.text, g])).values()];
     return { plan: { ...plan, queries: [...new Set([...queries, plan.queries.at(-1)].filter(Boolean))].slice(0, 5), recall_groups: recallGroups }, status: 'ready' };
   } catch (error) {
-    return { plan, status: 'failed', error_code: error?.message === 'quota_exhausted' ? 'quota_exhausted' : 'model_unavailable' };
+    return { plan, status: 'failed', error_code: publicModelError(error) };
   }
 }
 
@@ -145,6 +162,6 @@ export async function reviewAssignments(question, result, env = {}, fetchModel =
       historical_only: unique.length > 0 && unique.every(row => row.date && row.date < result.recent_since),
     };
   } catch (error) {
-    return { ...base, assessment_status: 'failed', assessment_error: error?.message === 'quota_exhausted' ? 'quota_exhausted' : 'model_unavailable' };
+    return { ...base, assessment_status: 'failed', assessment_error: publicModelError(error) };
   }
 }
