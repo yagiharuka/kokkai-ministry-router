@@ -57,10 +57,17 @@ function lawmaker(speech) {
   const role = `${speech.speakerRole || ""} ${speech.speakerPosition || ""}`;
   return Boolean(speech.speakerGroup) && !/委員長|議長|副委員長|理事|大臣|副大臣|政務官|政府参考人|長官|局長|審議官|統括官/.test(role);
 }
+function embeddedEntityMention(text, at, term) {
+  const prefix = text.slice(Math.max(0, at - 30), at).match(/[\p{Script=Han}]+$/u)?.[0] || "";
+  const suffix = text.slice(at + term.length, at + term.length + 12);
+  return prefix.length >= 2 && /^(?:等)?(?:法|機構|省|庁|委員会|協会)/.test(suffix);
+}
 function nearby(text, terms, maxGap = 180) {
   const hits = terms.map(term => {
     const found = []; let at = -1;
-    while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) found.push(at);
+    while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) {
+      if (!embeddedEntityMention(text, at, term)) found.push(at);
+    }
     return found;
   });
   if (hits.some(list => !list.length)) return null;
@@ -88,7 +95,9 @@ function relatedWord(question, first, second) {
   const a = passage.indexOf(first), b = passage.indexOf(second);
   const between = a < b ? passage.slice(a + first.length, b) : passage.slice(b + second.length, a);
   const words = [...wordSegmenter.segment(between)]
-    .filter(part => part.isWordLike && part.segment.length >= 2 && !/^(について|として|ため|こと|もの|それ|これ|から|まで|など|支援|推進|活躍)$/.test(part.segment));
+    .filter(part => part.isWordLike && part.segment.length >= 2 &&
+      /^[\p{Script=Han}\p{Script=Katakana}\p{Script=Latin}\p{N}ー]+$/u.test(part.segment) &&
+      !/^(支援|推進|活躍)$/.test(part.segment));
   if (!words.length) return null;
   const next = [...wordSegmenter.segment(between)].find(part => part.index === words[0].index + words[0].segment.length);
   return words[0].segment + (next?.isWordLike && /^[\p{Script=Han}]$/u.test(next.segment) ? next.segment : "");
@@ -142,10 +151,12 @@ function selectQuestions(speeches, terms, limit = 4, focus = "") {
     const question = cleaned(speech.speech);
     const score = 500 - (span.end - span.start) - Math.min(question.length, 2200) / 20 +
       (/予算委員会|決算委員会/.test(speech.nameOfMeeting || "") ? 0 : 30);
-    const current = selected.get(speech.issueID);
-    if (!current || current.score < score) selected.set(speech.issueID, { score, speechID: speech.speechID });
+    const current = selected.get(speech.issueID) || [];
+    current.push({ score, speechID: speech.speechID });
+    selected.set(speech.issueID, current.sort((a, b) => b.score - a.score).slice(0, 3));
   }
-  return [...selected].sort((a, b) => b[1].score - a[1].score).slice(0, limit);
+  return [...selected].map(([id, items]) => [id, { score: items[0].score, speechIDs: items.map(row => row.speechID) }])
+    .sort((a, b) => b[1].score - a[1].score).slice(0, limit);
 }
 function extractCases(meetings, terms, query, allowedQuestions = null, focus = "") {
   const cases = new Map();
@@ -210,7 +221,7 @@ async function routeCases(first, second, focus = "") {
           const result = await fetchNdl("meeting", { issueID, maximumRecords: "1" });
           const meetings = result.meetingRecord || [];
           meetingCount += meetings.length;
-          for (const row of extractCases(meetings, terms, query, new Set([item.speechID]), focus)) { addCase(row); found++; }
+          for (const row of extractCases(meetings, terms, query, new Set(item.speechIDs), focus)) { addCase(row); found++; }
           if (found >= 4) break;
         }
       } catch { errors++; }
