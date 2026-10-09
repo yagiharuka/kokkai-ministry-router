@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-20';
+export const routingVersion = '20261009-22';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -61,13 +61,15 @@ export function makePlan(question, hints = []) {
   const plans = [];
   const add = terms => { const query = [...new Set(terms.filter(Boolean))].join(' '); if (query && !plans.includes(query)) plans.push(query); };
   if (supplied.length) add(supplied);
-  add(groups.slice(0, 3).map(g => g.text));
-  add(anchors.slice(0, 3));
+  const subjects = groups.filter(g => g.role !== 'requested_change');
+  add(subjects.slice(0, 3).map(g => g.text));
+  add(anchors.filter((_, i) => groups[i].role !== 'requested_change').slice(0, 3));
   // Widen the API request without dropping context from subsequent scoring.
   if (groups.length > 1) add(anchors.slice(0, 2));
   if (groups.length > 1) add([groups[1].text]);
   add([anchors[0]]);
-  return { question: normalize(question), groups, queries: plans.length > 5 ? [...plans.slice(0, 4), plans.at(-1)] : plans };
+  return { question: normalize(question), groups, queries: plans.length > 5 ? [...plans.slice(0, 4), plans.at(-1)] : plans,
+    ...(supplied.length ? { recall_groups: supplied.flatMap(concepts) } : {}) };
 }
 export function isChair(speech) { return /委員長|議長|副委員長/.test(`${speech.speakerRole || ''} ${speech.speakerPosition || ''}`); }
 export function isQuestioner(speech) {
@@ -178,6 +180,32 @@ export function rankQuestions(speeches, plan, limit = 4) {
   }
   return [...byMeeting].map(([id, items]) => [id, { score: items[0].score, speechIDs: items.map(r => r.speechID) }]).sort((a, b) => b[1].score - a[1].score).slice(0, limit);
 }
+function recallPassage(value, plan) {
+  const subjects = [...plan.groups.filter(g => g.role !== 'requested_change'), ...(plan.recall_groups || [])];
+  return passages(value).map(p => {
+    const matches = subjects.map(g => groupHit(p.text, g).coverage);
+    const subjectMatches = matches.filter(coverage => coverage >= .5).length;
+    return { ...p, subjectMatches, score: matches.reduce((a, b) => a + b, 0) / (subjects.length || 1) };
+  }).filter(p => p.subjectMatches > 0)
+    .sort((a, b) => b.score - a.score || a.text.length - b.text.length)[0] || null;
+}
+// Retrieval is deliberately permissive. Neither this score nor an exact word
+// match decides whether an answer belongs in the final ministry shares.
+export function rankRecallQuestions(speeches, plan, limit = 4) {
+  const byMeeting = new Map();
+  for (const speech of speeches) {
+    if (isChair(speech) || !speech.issueID || !speech.speechID) continue;
+    if (!isQuestioner(speech) && !answeringMinistry(speech.speakerPosition, speech.speech)) continue;
+    const match = recallPassage(speech.speech, plan);
+    if (!match) continue;
+    const score = match.score + (isQuestioner(speech) ? .05 : 0);
+    const current = byMeeting.get(speech.issueID) || { score: 0, speechIDs: [] };
+    current.score = Math.max(current.score, score);
+    if (!current.speechIDs.includes(speech.speechID)) current.speechIDs.push(speech.speechID);
+    byMeeting.set(speech.issueID, current);
+  }
+  return [...byMeeting].sort((a, b) => b[1].score - a[1].score).slice(0, limit);
+}
 function alignAnswer(answer, question, plan) {
   const matches = passages(answer).map(p => ({ ...p, ...scorePassage(p.text, plan) })).filter(p => p.supported);
   if (matches.length) return matches.sort((a, b) => b.score - a.score || a.text.length - b.text.length)[0];
@@ -240,19 +268,12 @@ export function pairAnswers(meetings, plan, allowedQuestions = null) {
 // evidence for a semantic reviewer, never automatically counted as matches.
 export function reviewCandidates(meetings, plan, limit = 12) {
   const rows = new Map();
-  const subjects = plan.groups.filter(g => g.role !== 'requested_change');
   for (const meeting of meetings) {
     const speeches = [...(meeting.speechRecord || [])].sort((a, b) => Number(a.speechOrder || 0) - Number(b.speechOrder || 0));
     for (let i = 0; i < speeches.length; i++) {
       const ask = speeches[i];
       if (!isQuestioner(ask)) continue;
-      const relevant = passages(ask.speech).map(p => {
-        const value = scorePassage(p.text, plan);
-        const subjectMatches = subjects.filter(g => groupHit(p.text, g).coverage >= .5).length;
-        return { ...p, score: value.score, subjectMatches };
-      }).filter(p => p.subjectMatches && p.score >= .2)
-        .sort((a, b) => b.subjectMatches - a.subjectMatches || b.score - a.score || a.text.length - b.text.length)[0];
-      if (!relevant) continue;
+      const relevant = recallPassage(ask.speech, plan);
       for (let j = i + 1; j < speeches.length; j++) {
         const reply = speeches[j];
         if (isQuestioner(reply)) break;
@@ -260,14 +281,19 @@ export function reviewCandidates(meetings, plan, limit = 12) {
         const ministry = answeringMinistry(reply.speakerPosition, reply.speech);
         if (!ministry) continue;
         const answer = normalize(reply.speech);
-        if (answer.length < 15 || (answer.length < 120 && /拍手|登壇/.test(answer))) continue;
-        const excerpt = passages(answer).sort((a, b) => scorePassage(b.text, plan).score - scorePassage(a.text, plan).score || a.text.length - b.text.length)[0];
+        if (answer.length < 8 || (answer.length < 120 && /拍手|登壇/.test(answer))) continue;
+        const answerMatch = recallPassage(answer, plan);
+        if (!relevant && !answerMatch) continue;
+        const excerpt = answerMatch || passages(answer)[0];
         const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
-        const key = `${caseId}:${ministry}`;
+        // Keep separate answer speeches until semantic review. An off-topic
+        // first reply must not hide a later relevant reply from the same agency.
+        const key = `${caseId}:${ministry}:${reply.speechID || reply.speechURL}`;
         const questionText = normalize(ask.speech);
-        const questionContext = questionText.slice(Math.max(0, relevant.start - 180), Math.min(questionText.length, relevant.end + 550)).slice(0, 1200);
-        const answerContext = answer.slice(Math.max(0, (excerpt?.start || 0) - 250), Math.min(answer.length, (excerpt?.end || 0) + 700)).slice(0, 1400);
-        const row = { case_id: caseId, ministry, question: questionContext, answer: answerContext, speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round(relevant.score * 1000) / 1000 };
+        const questionContext = questionText.length <= 1600 ? questionText : questionText.slice(Math.max(0, (relevant?.start || 0) - 300), Math.min(questionText.length, (relevant?.end || 0) + 1000)).slice(0, 1600);
+        const answerContext = answer.length <= 2000 ? answer : answer.slice(Math.max(0, (excerpt?.start || 0) - 300), Math.min(answer.length, (excerpt?.end || 0) + 1100)).slice(0, 2000);
+        const previousContext = !relevant ? speeches.slice(Math.max(0, i - 2), i).filter(s => !isChair(s)).map(s => normalize(s.speech).slice(-350)).join(' ') : '';
+        const row = { case_id: caseId, ministry, question: questionContext, answer: answerContext, previous_context: previousContext, question_truncated: questionContext.length < questionText.length, answer_truncated: answerContext.length < answer.length, speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round((relevant?.score ?? answerMatch.score) * 1000) / 1000 };
         if (!rows.has(key) || row.retrieval_score > rows.get(key).retrieval_score) rows.set(key, row);
       }
     }
@@ -279,7 +305,7 @@ export function summarize(rows) {
   for (const row of rows) { if (!byCase.has(row.case_id)) byCase.set(row.case_id, new Set()); byCase.get(row.case_id).add(row.ministry); }
   const weights = new Map();
   for (const ministries of byCase.values()) for (const ministry of ministries) weights.set(ministry, (weights.get(ministry) || 0) + 1 / ministries.size);
-  const shares = [...weights].map(([ministry, weight]) => ({ ministry, percent: Math.round(weight / byCase.size * 100), count: rows.filter(r => r.ministry === ministry).length })).sort((a, b) => b.percent - a.percent || a.ministry.localeCompare(b.ministry));
+  const shares = [...weights].map(([ministry, weight]) => ({ ministry, percent: Math.round(weight / byCase.size * 100), count: [...byCase.values()].filter(ministries => ministries.has(ministry)).length })).sort((a, b) => b.percent - a.percent || a.ministry.localeCompare(b.ministry));
   if (shares.length) shares[0].percent += 100 - shares.reduce((sum, row) => sum + row.percent, 0);
   return { shares, pairs: byCase.size };
 }
@@ -294,31 +320,57 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') 
   }
   if (since < recentSince) periods.push([since, `${year - 3}-12-31`]);
   const searched = [], errors = [], meetings = new Map(); let requests = 0, searchLimited = false;
-  for (const [from, until] of periods) {
-    const pool = new Map(), fetched = new Set(); let rows = [];
-    for (const query of plan.queries) {
+  const search = async ([from, until], query, pool) => {
+    try {
+      requests++;
+      const data = await fetchNdl('speech', { any: query, from, until, maximumRecords: '100' });
+      searchLimited ||= Boolean(data.nextRecordPosition);
+      searched.push(`${query}（${from.slice(0, 4)}–${until.slice(0, 4)}）`);
+      for (const speech of data.speechRecord || []) pool.set(speech.speechID, speech);
+    } catch (error) { errors.push(error instanceof Error ? error.message : '会議録APIを取得できませんでした。'); }
+  };
+  const retrievePeriods = async ranges => {
+    const pools = ranges.map(range => ({ range, pool: new Map() }));
+    const searchBudget = ranges.some(([from]) => from >= recentSince) ? 8 : 10;
+    // Search recent years before spending the budget on full meetings. Include
+    // one concise subject search, so exact proposal wording cannot block recall.
+    const initial = [...new Set([plan.queries[0], plan.recall_groups ? plan.queries[1] : plan.queries.at(-1)].filter(Boolean))];
+    for (const query of initial) for (const item of pools) {
+      if (requests >= searchBudget) { searchLimited = true; break; }
+      await search(item.range, query, item.pool);
+    }
+    if (!pools.some(item => rankRecallQuestions([...item.pool.values()], plan, 1).length)) {
+      for (const query of plan.queries.filter(q => !initial.includes(q))) for (const item of pools) {
+        if (requests >= searchBudget) { searchLimited = true; break; }
+        await search(item.range, query, item.pool);
+      }
+    }
+    const ranked = pools.map(item => rankRecallQuestions([...item.pool.values()], plan, 4));
+    const selected = new Map();
+    // Reserve a place for each year; a busy recent year must not mask last year.
+    for (const list of ranked) if (list.length) selected.set(list[0][0], list[0][1]);
+    for (const [id, item] of ranked.flat().sort((a, b) => b[1].score - a[1].score)) {
+      if (selected.size >= 4) break;
+      selected.set(id, item);
+    }
+    searchLimited ||= ranked.flat().some(([id]) => !selected.has(id));
+    for (const [issueID] of selected) {
       if (requests >= 14) { searchLimited = true; break; }
       try {
         requests++;
-        const data = await fetchNdl('speech', { any: query, from, until, maximumRecords: '100' });
-        searchLimited ||= Boolean(data.nextRecordPosition);
-        searched.push(`${query}（${from.slice(0, 4)}–${until.slice(0, 4)}）`);
-        for (const speech of data.speechRecord || []) pool.set(speech.speechID, speech);
-        const selected = rankQuestions([...pool.values()], plan, 4);
-        for (const [issueID, item] of selected) {
-          if (!fetched.has(issueID)) {
-            if (fetched.size >= 4 || requests >= 14) { searchLimited = true; continue; }
-            requests++;
-            const result = await fetchNdl('meeting', { issueID, maximumRecords: '1' });
-            meetings.set(issueID, result.meetingRecord || []); fetched.add(issueID);
-          }
-        }
-        const allowed = new Set(selected.flatMap(([, item]) => item.speechIDs));
-        rows = pairAnswers([...fetched].flatMap(id => meetings.get(id)), plan, allowed);
-        if (new Set(rows.map(r => r.case_id)).size >= 4) break;
+        const data = await fetchNdl('meeting', { issueID, maximumRecords: '1' });
+        meetings.set(issueID, data.meetingRecord || []);
       } catch (error) { errors.push(error instanceof Error ? error.message : '会議録APIを取得できませんでした。'); }
     }
-    if (rows.length) return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), review_candidates: reviewCandidates([...meetings.values()].flat(), plan), searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: from < recentSince, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
+  };
+  const recent = periods.filter(([from]) => from >= recentSince);
+  await retrievePeriods(recent);
+  let historicalOnly = false;
+  if (!reviewCandidates([...meetings.values()].flat(), plan).length) {
+    const older = periods.filter(([from]) => from < recentSince);
+    if (older.length && requests < 10) { await retrievePeriods(older); historicalOnly = true; }
   }
-  return { shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: reviewCandidates([...meetings.values()].flat(), plan), searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: false, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
+  const records = [...meetings.values()].flat();
+  const rows = pairAnswers(records, plan), review = reviewCandidates(records, plan);
+  return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), review_candidates: review, searched, meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: historicalOnly && review.length > 0, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
 }

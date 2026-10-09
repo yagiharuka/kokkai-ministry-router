@@ -1,0 +1,1 @@
+{"name":"kokkai-pages-api","private":true,"type":"module","scripts":{"build":"bash scripts/build.sh","test":"node scripts/test-routing.mjs && node scripts/test-frontend.mjs","test:semantic":"node scripts/test-semantic.mjs"}}

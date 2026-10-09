@@ -1,4 +1,5 @@
-import { makePlan, retrieveAssignments, routingVersion } from './routing-core.mjs';
+import { retrieveAssignments, routingVersion } from './routing-core.mjs';
+import { prepareSemanticPlan, reviewAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
@@ -45,17 +46,18 @@ async function fetchNdl(path, parameters) {
 async function routeCases(first, second, focus = "", question = "", env = {}) {
   const hints = [first, second, focus].filter(Boolean);
   const fullQuestion = question || hints.join("の") + "について伺います。";
-  const plan = makePlan(fullQuestion, question ? [] : hints);
+  const prepared = await prepareSemanticPlan(fullQuestion, env);
+  const plan = prepared.plan;
   if (!plan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
   const result = await retrieveAssignments(plan, fetchNdl);
   if (result.errors.length && !result.searched.length) throw new Error(result.errors[0]);
-  return { ...result, shares: [], pairs: 0, evidence: [], candidates: [],
-    assessment_status: 'external_review', assessment_method: 'external_review' };
+  return reviewAssignments(fullQuestion, result, env, fetch, prepared.status);
 }
 
 const routeCache = new Map(), routesInFlight = new Map();
 async function cachedRoute(first, second, focus, question, env) {
-  const key = JSON.stringify([first, second, focus, question, routingVersion]);
+  const config = semanticConfiguration(env);
+  const key = JSON.stringify([first, second, focus, question, config.ready, config.model]);
   const cached = routeCache.get(key);
   if (cached && cached.until > Date.now()) return cached.result;
   if (routesInFlight.has(key)) return routesInFlight.get(key);
@@ -74,8 +76,8 @@ export default {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/api/status") {
-      return withCors(Response.json({ routing_version: routingVersion, assessment_method: 'external_review',
-        model_ready: false }, { headers: { 'cache-control': 'no-store' } }));
+      return withCors(Response.json({ routing_version: routingVersion, assessment_method: 'semantic',
+        model_ready: semanticConfiguration(env).ready }, { headers: { 'cache-control': 'no-store' } }));
     }
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(rootPage, { headers: { "content-type": "text/html; charset=utf-8" } });
