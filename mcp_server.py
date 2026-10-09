@@ -218,7 +218,7 @@ def search_answer_assignments(
 
     Args:
         question: The proposed question to route.
-        search_terms: Two to four distinctive Japanese phrases selected from the question.
+        search_terms: Two distinct core concepts selected from the question.
             Use two distinct core concepts first; the NDL API ANDs the first two in one search. Rephrase them and retry when evidence is sparse.
         since: Earliest meeting date in YYYY-MM-DD format (defaults to 2020-01-01).
     """
@@ -234,7 +234,7 @@ def search_answer_assignments(
             terms.append(term)
     if not terms:
         return {"error": "検索語を1つ以上指定してください。", "shares": [], "evidence": []}
-    terms = terms[:MAX_SEARCH_TERMS]
+    terms = terms[:2]
 
     meetings_by_id: dict[str, dict[str, Any]] = {}
     searched: list[str] = []
