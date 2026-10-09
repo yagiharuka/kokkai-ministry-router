@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kokkai-ministry-router",
+  "main": "pages-api/dist/server/index.js",
+  "compatibility_date": "2026-10-09",
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "CLOUDFLARE_WORKERS_PLAN": "free"
+  }
+}
