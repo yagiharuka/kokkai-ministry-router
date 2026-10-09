@@ -1,6 +1,6 @@
 const frontendOrigin = "https://yagiharuka.github.io";
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
-const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁"];
+const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
   ...departments.flatMap(name => ["設置法", "組織令", "組織規則"].map(suffix => [`${name}${suffix}`, name])),
   ["内閣府設置法", "内閣府・内閣官房等"],
@@ -30,15 +30,20 @@ const ministryPatterns = [
   [/防衛省|防衛庁|自衛隊/, "防衛省"],
   [/デジタル庁|デジタル大臣/, "デジタル庁"],
   [/こども家庭庁|こども政策担当|少子化対策担当/, "こども家庭庁"],
+  [/個人情報保護委員会/, "個人情報保護委員会"],
   [/内閣府|内閣官房|内閣総理大臣|官房長官|国家公安委員会|警察庁|消費者庁|公正取引委員会/, "内閣府・内閣官房等"],
 ];
 const wordSegmenter = new Intl.Segmenter("ja", { granularity: "word" });
 let requestQueue = Promise.resolve();
 let lastNdlRequest = 0;
 
-function cleaned(value) { return String(value || "").replace(/\s+/g, " ").trim(); }
+function cleaned(value) { return String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim(); }
 function ministryOf(value, answer = "") {
   const candidates = ministryPatterns.filter(([pattern]) => pattern.test(value || "")).map(([, name]) => name);
+  if (candidates.length === 1 && candidates[0] === "内閣府・内閣官房等") {
+    const named = departments.filter(name => new RegExp(`${name}(?:として|では|において|からは)`).test(answer.slice(0, 900)));
+    if (named.length === 1) return named[0];
+  }
   if (candidates.length > 1) {
     const explicit = candidates.find(name => answer.slice(0, 800).includes(name));
     if (explicit) return explicit;
@@ -120,6 +125,7 @@ function questionMatch(speech, terms) {
   }
   const context = question.slice(Math.max(0, span.start - 80), Math.min(question.length, span.end + 170));
   if (!/[？?]|伺|お尋ね|いかが|どう|所見|べき|問う|質問/.test(context)) return null;
+  if (/次に[、，]/.test(question.slice(span.end, span.end + 160))) return null;
   if (/質問しません|質問ではありません/.test(context) && !/[？?]|伺|お尋ね|いかが|べき/.test(context)) return null;
   return span;
 }
@@ -154,6 +160,11 @@ function extractCases(meetings, terms, query, allowedQuestions = null) {
         const answerSpan = nearby(answer, terms);
         if (/^(拡大|拡充|推進|促進|支援|強化|改善|整備|見直し|充実)$/.test(terms[1]) &&
             !answer.split(/[。！？]/).some(sentence => nearby(sentence.replace(/の/g, ""), terms, 60))) continue;
+        if (terms.length > 1 && !answerSpan && !answer.slice(0, 1200).includes(terms[0]) &&
+            !answer.slice(0, 1200).includes(terms[1])) {
+          const related = relatedWord(question, terms[0], reducedWord(terms[1]));
+          if (!related || !answer.slice(0, 1200).includes(related)) continue;
+        }
         if (!answerSpan && question.length > 1000) continue;
         const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
         const key = `${caseId}:${ministry}`;
@@ -234,8 +245,8 @@ export default {
       return new Response(rootPage, { headers: { "content-type": "text/html; charset=utf-8" } });
     }
     if (request.method === "GET" && url.pathname === "/api/cases") {
-      const first = (url.searchParams.get("first") || "").trim();
-      const second = (url.searchParams.get("second") || "").trim();
+      const first = (url.searchParams.get("first") || "").normalize("NFKC").trim();
+      const second = (url.searchParams.get("second") || "").normalize("NFKC").trim();
       const valid = value => value.length >= 2 && value.length <= 30 && /^[\p{L}\p{N}々ー・]+$/u.test(value);
       if (!valid(first) || (second && (!valid(second) || first === second))) {
         return withCors(Response.json({ error: "政策語を確認してください。" }, { status: 400 }));
