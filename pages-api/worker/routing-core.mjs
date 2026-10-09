@@ -1,7 +1,7 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-16';
+export const routingVersion = '20261009-17';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
-const filler = new Set(['について','における','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
+const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
 const distinctive = word => word.length >= 2 && !filler.has(word) && !/^\d+$/.test(word);
 export function concepts(value) {
@@ -60,8 +60,9 @@ export function makePlan(question, hints = []) {
   add(anchors.slice(0, 3));
   // Widen the API request without dropping context from subsequent scoring.
   if (groups.length > 1) add(anchors.slice(0, 2));
+  if (groups.length > 1) add([groups[1].text]);
   add([anchors[0]]);
-  return { question: normalize(question), groups, queries: plans.length > 4 ? [...plans.slice(0, 3), plans.at(-1)] : plans };
+  return { question: normalize(question), groups, queries: plans.length > 5 ? [...plans.slice(0, 4), plans.at(-1)] : plans };
 }
 export function isChair(speech) { return /委員長|議長|副委員長/.test(`${speech.speakerRole || ''} ${speech.speakerPosition || ''}`); }
 export function isQuestioner(speech) {
@@ -182,7 +183,8 @@ function alignAnswer(answer, question, plan) {
   const overlap = text => [...new Set(local)].filter(part => occurrences(text, part).length).length;
   const queryParts = new Set(plan.groups.flatMap(g => g.parts));
   const bridgeParts = [...new Set(local)].filter(part => !queryParts.has(part) && !/^(説明|確認|内容|制度|取組|考え|認識|指摘|御指摘|所見)$/.test(part));
-  const direct = passages(answer).map(p => ({ ...p, shared: overlap(p.text), bridge: bridgeParts.filter(part => occurrences(p.text, part).length).length })).filter(p => p.shared >= 3 && p.bridge >= 2);
+  const otherQuestions = (question.fullText.match(/[?？]|伺|お尋ね|教示/g) || []).length;
+  const direct = passages(answer).map(p => ({ ...p, shared: overlap(p.text), bridge: bridgeParts.filter(part => occurrences(p.text, part).length).length })).filter(p => p.shared >= (otherQuestions > 1 ? 3 : 2) && p.bridge >= (otherQuestions > 1 ? 2 : 1));
   for (const p of direct.sort((a, b) => b.shared - a.shared || a.text.length - b.text.length)) {
     const conflicting = others.some(tokens => [...new Set(tokens)].filter(part => occurrences(p.text, part).length).length >= p.shared);
     const subjectRetained = groupHit(p.text, plan.groups[0]).coverage >= .66;
@@ -192,7 +194,6 @@ function alignAnswer(answer, question, plan) {
   // A different substantive topic must never inherit a previous topic's ministry.
   const substantive = concepts(answer).filter(g => !/^(お答え|御指摘|指摘|承知|認識|考え|取組|取り組み|実施|実行|内容|制度|委員|提案|所存)/.test(g.text));
   const subjectHits = plan.groups.map(g => groupHit(answer, g).coverage);
-  const otherQuestions = (question.fullText.match(/[?？]|伺|お尋ね|教示/g) || []).length;
   if (answer.length <= 250 && substantive.length <= 1 && otherQuestions <= 1 &&
       (subjectHits.some(x => x >= .5) || /御指摘|おっしゃ|その点|その取組|本件/.test(answer))) {
     return { text: answer, score: .5, inherited: true };
@@ -241,7 +242,14 @@ export function summarize(rows) {
 }
 export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01') {
   const year = new Date().getUTCFullYear(), recentSince = `${year - 2}-01-01`;
-  const periods = since < recentSince ? [[recentSince, `${year}-12-31`], [since, `${year - 3}-12-31`]] : [[since, `${year}-12-31`]];
+  // The API returns newest records first, capped at 100 per request. Search each
+  // recent year separately so a busy current year cannot hide older debates.
+  const periods = [];
+  for (let y = year; y >= year - 2; y--) {
+    const from = `${y}-01-01`;
+    if (since <= `${y}-12-31`) periods.push([since > from ? since : from, `${y}-12-31`]);
+  }
+  if (since < recentSince) periods.push([since, `${year - 3}-12-31`]);
   const searched = [], errors = [], meetings = new Map(); let requests = 0, searchLimited = false;
   for (const [from, until] of periods) {
     const pool = new Map(), fetched = new Set(); let rows = [];
