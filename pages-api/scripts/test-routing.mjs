@@ -1,55 +1,52 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-
-// Load private helpers without adding diagnostic endpoints or production exports.
-const source = await readFile(new URL('../worker/index.js', import.meta.url), 'utf8');
-const core = await import('data:text/javascript;base64,' + Buffer.from(source + '\nexport { ministryOf, questionMatch, extractCases, selectQuestions, routeCases, relatedWord };').toString('base64'));
+import worker from '../worker/index.js';
+import { concepts, makePlan, matchQuestion, answeringMinistry, pairAnswers, summarize, retrieveAssignments, passages } from '../worker/routing-core.mjs';
 let passed = 0;
 const check = (name, fn) => { fn(); passed++; console.log('PASS ' + name); };
-const speech = (id, order, text, position = '', group = '') => ({
-  speechID: id, speechOrder: order, speech: text, speakerPosition: position, speakerGroup: group,
-  speechURL: 'https://kokkai.ndl.go.jp/txt/fixture/' + id,
-});
-const meeting = (id, date, question, answers) => ({ issueID: id, date, nameOfMeeting: '委員会',
-  speechRecord: [speech(id + '_q', 1, question, '', '会派'), ...answers.map(([text, position], i) => speech(id + '_a' + i, i + 2, text, position))] });
+const ask = (text, id = 'q', order = 1) => ({ speechID:id, speechOrder:order, speech:text, speakerGroup:'会派', speechURL:'https://kokkai.ndl.go.jp/txt/fixture/'+id });
+const answer = (text, title, id = 'a', order = 2) => ({ speechID:id, speechOrder:order, speech:text, speakerPosition:title, speechURL:'https://kokkai.ndl.go.jp/txt/fixture/'+id });
+const record = (question, replies, id = 'meeting', date = '2025-01-01') => ({ issueID:id, nameOfMeeting:'委員会', date, speechRecord:[ask(question),...replies.map(([text,title],i)=>answer(text,title,'a'+i,i+2))] });
+const route = (prompt, question, replies) => pairAnswers([record(question,replies)],makePlan(prompt));
 const taxTitle = '財務大臣・内閣府特命担当大臣（金融）';
-check('兼務大臣の税制答弁を金融庁へ自動で振らない', () => assert.equal(core.ministryOf(taxTitle, '研究開発税制を見直します。'), '財務省'));
-check('金融庁としての自己言及を優先', () => assert.equal(core.ministryOf(taxTitle, '金融庁として女性起業家を支えます。'), '金融庁'));
-check('他省庁との連携への言及だけでは所属を変えない', () => assert.equal(core.ministryOf(taxTitle, '金融庁と連携します。租税の制度を見直します。'), '財務省'));
-check('内閣府副大臣の金融庁答弁を判別', () => assert.equal(core.ministryOf('内閣府副大臣', '金融庁として地域金融力を強化します。'), '金融庁'));
-check('全角英字と英数半角を照合', () => assert.ok(core.questionMatch(speech('q', 1, '生成ＡＩによる個人情報保護の課題について伺います。', '', '会派'), ['生成AI', '個人情報保護'])));
-check('３つ目の目的を省略しない', () => assert.equal(core.questionMatch(speech('q', 1, '医療機器の承認審査の仕組みについて伺います。', '', '会派'), ['医療機器', '承認'], '迅速化'), null));
-check('迅速化の語幹でも質問の目的を照合', () => assert.ok(core.questionMatch(speech('q', 1, '医療機器の承認を迅速に進める方策について伺います。', '', '会派'), ['医療機器', '承認'], '迅速化')));
-check('水道だけの答弁を耐震化の答弁として採らない', () => assert.equal(core.extractCases([meeting('water', '2025-01-01', '水道の耐震化にどのような対策を講じるのか伺います。', [['水道サービスのため都市の立地を誘導します。', '国土交通大臣']])], ['水道', '耐震化'], '水道 耐震化').length, 0));
-check('拡充を強化と言い換えた答弁を落とさない', () => assert.equal(core.extractCases([meeting('tax', '2025-01-01', '研究開発税制の拡充について、制度をどう進めるのか伺います。', [['研究開発税制についてインセンティブを強化します。', taxTitle]])], ['研究開発税制', '拡充'], '研究開発税制 拡充')[0].ministry, '財務省'));
-check('次の論点へ移った質問を除外', () => assert.equal(core.questionMatch(speech('q', 1, '外国人労働者の受入れに課題があります。次に、避難所の対策について伺います。', '', '会派'), ['外国人労働者', '受入れ']), null));
-check('助動詞を関連政策語にしない', () => assert.equal(core.relatedWord('水道水に含まれる水質基準', '水道水', '水質'), null));
-check('法律名の一部だけで別製品の承認を拾わない', () => assert.equal(core.questionMatch(speech('q', 1, 'ワクチンの承認は医薬品医療機器等法の特例で短縮されたと思いますが、いかがでしょうか。', '', '会派'), ['医療機器', '承認']), null));
-check('組織名の一部だけで別製品の承認を拾わない', () => assert.equal(core.questionMatch(speech('q', 1, '医薬品の承認審査を行う医薬品医療機器総合機構について簡単に説明していただけますか。', '', '会派'), ['医療機器', '承認']), null));
-check('同一会議の別の関連質問も候補に残す', () => {
-  const q = { ...speech('q1', 1, '水道の耐震化について、その対策を伺います。', '', '会派'), issueID: 'same', nameOfMeeting: '委員会' };
-  assert.deepEqual(core.selectQuestions([q, { ...q, speechID: 'q2' }], ['水道', '耐震化'])[0][1].speechIDs, ['q1', 'q2']);
-});
-
-const frontend = await readFile(new URL('../../dist/app.js', import.meta.url), 'utf8');
-const parse = new Function(frontend.slice(frontend.indexOf('const stop='), frontend.indexOf('function ministry(')) + ';return policyPhrases;')();
-check('カタカナの長音を保持', () => assert.deepEqual(parse('カスタマーハラスメント対策を強化すべきではないか'), ['カスタマーハラスメント対策']));
-check('否定・汎用動詞ではなく３つの核心概念を保持', () => assert.deepEqual(parse('医療機器の承認を迅速化すべきではないか'), ['医療機器', '承認', '迅速化']));
-
-const recent = meeting('recent', '2025-01-01', '水道の耐震化を進める対策について、政府に伺います。', [['水道の耐震化を支援します。', '国土交通大臣']]);
-const old = meeting('old', '2023-01-01', recent.speechRecord[0].speech, [['水道の耐震化を支援します。', '厚生労働大臣']]);
-const calls = [];
-globalThis.fetch = async input => {
-  const u = new URL(input); calls.push(u);
-  if (u.pathname === '/api/speech') {
-    const record = u.searchParams.get('from') >= '2024-01-01' ? recent : old;
-    if (!u.searchParams.get('any').includes('水道')) return Response.json({ speechRecord: [] });
-    return Response.json({ speechRecord: record.speechRecord.map(x => ({ ...x, issueID: record.issueID, nameOfMeeting: record.nameOfMeeting, date: record.date })) });
-  }
-  return Response.json({ meetingRecord: [u.searchParams.get('issueID') === 'recent' ? recent : old] });
-};
-const recentResult = await core.routeCases('水道', '耐震化');
-check('最近の答弁に移管前の所属を合算しない', () => { assert.deepEqual(recentResult.shares.map(x => x.ministry), ['国土交通省']); assert.equal(recentResult.historical_only, false); assert.ok(!calls.some(u => u.searchParams.get('until') === '2023-12-31')); });
-const empty = await core.routeCases('存在しない政策', '検証');
-check('前の検索結果を引き継がない', () => { assert.equal(empty.pairs, 0); assert.deepEqual(empty.shares, []); });
-console.log(`${passed} regression checks passed (synthetic fixtures, not an accuracy benchmark).`);
+check('税制答弁は財務大臣の所属を保持',()=>assert.equal(answeringMinistry(taxTitle,'研究開発税制を強化します。'),'財務省'));
+check('金融担当としての明示だけは兼務を分ける',()=>assert.equal(answeringMinistry(taxTitle,'金融庁として対応します。'),'金融庁'));
+check('他省への連携では答弁者の所属を変えない',()=>assert.equal(answeringMinistry(taxTitle,'金融庁と連携します。'),'財務省'));
+check('所管の他省への言及でラベルを変えない',()=>assert.equal(answeringMinistry('内閣府特命担当大臣','したがいまして、所管の厚生労働省においては対応します。'),'内閣府・内閣官房等'));
+check('対象省の大臣肩書きを一般に読む',()=>assert.equal(answeringMinistry('総務大臣'),'総務省'));
+check('長音と前後の漢字を保持',()=>assert.equal(concepts('脱炭素化とカスタマーハラスメント').map(g=>g.text).join(' '),'脱炭素化 カスタマーハラスメント'));
+check('検索語を粗くしても質問全文の対象を保持',()=>assert.equal(makePlan('スタートアップ界の女性活躍推進を進めるべきではないか',['女性']).groups[0].text,'スタートアップ'));
+check('単一の短い語へ制度名を破壊しない',()=>assert.ok(makePlan('研究開発税制の拡充を検討すべきではないか').queries.every(q=>q.includes('研究開発税制'))));
+const startup = 'スタートアップ界の女性活躍推進を進めるべきではないか';
+check('女性だけ一致する別分野の質疑を除外',()=>assert.equal(route(startup,'職場の女性活躍を進めるべきではないか伺います。',[['職場の女性活躍を進めます。','厚生労働大臣']]).length,0));
+check('スタートアップの対象があれば保持',()=>assert.equal(route(startup,'スタートアップの女性起業家の活躍について伺います。',[['スタートアップの女性起業家の活躍を支えます。','経済産業大臣']])[0].ministry,'経済産業省'));
+check('語順が変わっても同じ対象を保持',()=>assert.ok(matchQuestion(ask('女性起業家がスタートアップで活躍するための方策を伺います。'),makePlan(startup))));
+check('３つ目以降の文脈を捨てない',()=>assert.equal(route('自治体のシステム標準化とガバメントクラウドの費用について伺います。','教育のシステム標準化の費用について伺います。',[['教育システム標準化の費用を支えます。','文部科学大臣']]).length,0));
+check('医療機器と医療一般を区別',()=>assert.equal(route('医療機器の承認について伺います。','医療の承認制度について伺います。',[['医療の承認制度を改善します。','厚生労働大臣']]).length,0));
+check('法律名に含まれる製品名を対象と誤認しない',()=>assert.equal(route('医療機器の承認について伺います。','ワクチンの承認は医薬品医療機器等法の特例ですがいかがでしょうか。',[['ワクチンの承認を進めます。','厚生労働大臣']]).length,0));
+check('同じ発言内の論点移動を越えて語をつなげない',()=>assert.equal(route('外国人労働者の受入れについて伺います。','外国人労働者の状況があります。次に、農作物の受入れについて伺います。',[['農作物の受入れを改善します。','農林水産大臣']]).length,0));
+check('複数論点でも該当する質問部分を切り出す',()=>assert.equal(route('水道の耐震化について伺います。','まず学校給食について伺います。次に、水道の耐震化について伺います。',[['学校給食の予算を確保します。','文部科学大臣'],['水道の耐震化を進めます。','国土交通大臣']])[0].ministry,'国土交通省'));
+check('答弁内の遠く離れた論点をつなげない',()=>assert.equal(route('水道の耐震化について伺います。','水道の耐震化について伺います。',[['水道の利用料金を考えます。次に、橋の耐震化を進めます。','国土交通大臣']]).length,0));
+check('承認への質問を開発支援の答弁に割り振らない',()=>assert.equal(route('医療機器の承認を迅速化すべきではないか','医療機器の承認を迅速化すべきではないか伺います。',[['医療機器の開発支援を進めます。','経済産業大臣']]).length,0));
+check('委員長の手続発言は答弁に数えない',()=>assert.equal(route('水道の耐震化について伺います。','水道の耐震化について伺います。',[['水道の耐震化について大臣お願いします。','委員長'],['水道の耐震化を進めます。','国土交通大臣']]).length,1));
+check('後の議員質問で答弁の対応を打ち切る',()=>{ const m=record('水道の耐震化について伺います。',[['水道の耐震化を進めます。','国土交通大臣']]);m.speechRecord.splice(1,0,ask('別の質問について伺います。','q2',2));m.speechRecord[2].speechOrder=3; assert.equal(pairAnswers([m],makePlan('水道の耐震化について伺います。')).length,0);});
+check('同じ省の反復答弁を一質疑として数える',()=>assert.equal(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。',taxTitle],['研究開発税制を検討します。',taxTitle]])).pairs,1));
+check('複数省の割合は一質疑の重みを分ける',()=>assert.deepEqual(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。',taxTitle],['研究開発税制を拡充します。','経済産業大臣']])).shares.map(x=>x.percent),[50,50]));
+const examples = JSON.parse(await readFile(new URL('./real-excerpts.json', import.meta.url),'utf8'));
+let realPassed=0;
+for(const item of examples) {
+  const rows=route(item.prompt,item.question,[[item.answer,item.title]]);
+  assert.equal(rows[0]?.ministry || null,item.expected,item.url);
+  realPassed++;
+}
+const recent=record('水道の耐震化について伺います。',[['水道の耐震化を進めます。','国土交通大臣']],'new','2025-01-01');
+const oldMeeting={...recent,issueID:'old',date:'2023-01-01',speechRecord:[...recent.speechRecord.slice(0,1),answer('水道の耐震化を進めます。','厚生労働大臣')]};
+const calls=[];
+const fakeFetch=async (path,p)=>{calls.push({path,...p});if(path==='speech'){const m=p.from>='2024-01-01'?recent:oldMeeting;return {speechRecord:p.any.includes('水道')?m.speechRecord.map(s=>({...s,issueID:m.issueID})):[]};}return {meetingRecord:[p.issueID==='new'?recent:oldMeeting]};};
+const result=await retrieveAssignments(makePlan('水道の耐震化について伺います。'),fakeFetch);
+check('最近の例と移管前の例を合算しない',()=>{assert.equal(result.shares[0].ministry,'国土交通省');assert.ok(!calls.some(c=>c.until==='2023-12-31'));});
+const empty=await retrieveAssignments(makePlan('存在しない制度の審査について伺います。'),fakeFetch);
+check('次の検索へ前の結果を持ち込まない',()=>assert.equal(empty.pairs,0));
+const invalid=await worker.fetch(new Request('https://example.invalid/api/cases?question=a'));
+check('質問の長さをAPIで検証',()=>assert.equal(invalid.status,400));
+console.log(`${passed} behavioral checks and ${realPassed} real-excerpt cases passed. This is not a representative accuracy benchmark.`);
