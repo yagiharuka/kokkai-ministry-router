@@ -90,7 +90,7 @@ for (const partial of [
   {success:false,errors:[{code:3036}]},
 ]) {
   const data = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, env, async () => Response.json(partial));
-  assert.equal(data.assessment_status, 'failed');
+  assert.equal(data.assessment_status, 'failed', JSON.stringify(partial));
   assert.deepEqual(data.shares, []);
 }
 const busy = await prepareSemanticPlan('教員の負担を減らすべきではないか', env,
@@ -279,6 +279,17 @@ const parallel = await reviewAssignments(question, { ...result, candidates: [], 
 assert.equal(peak, 2, 'Independent semantic batches should overlap');
 assert.equal(parallel.accepted_candidates, 8, 'Parallel review must keep the bounded top candidates and evidence');
 assert.equal(parallel.pairs, 8);
+let degradedCalls = 0;
+const degraded = await reviewAssignments(question, { ...result, candidates: [], review_candidates: twelve }, env, async (url, init) => {
+  degradedCalls++;
+  const input = JSON.parse(JSON.parse(init.body).messages[1].content);
+  if (input.candidates.length === 4) return new Response('temporary incomplete response', { status: 500 });
+  return response({ reviews: input.candidates.map(c => accept(c.id, { question: c.source_question, answer: c.source_answer })) });
+});
+assert.equal(degraded.assessment_status, 'reviewed');
+assert.equal(degraded.accepted_candidates, 8, 'Failed four-row batches should recover as smaller batches');
+assert.equal(degraded.pairs, 8);
+assert.ok(degradedCalls >= 6);
 const quota = () => Response.json({success:false,errors:[{code:3036,message:'private provider billing detail'}]},{status:429});
 const quotaPlan = await prepareSemanticPlan(question,env,quota);
 assert.equal(quotaPlan.error_code,'quota_exhausted');
