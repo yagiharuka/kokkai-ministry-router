@@ -205,13 +205,22 @@ export function rankRecallQuestions(speeches, plan, limit = 4) {
     if (!match) continue;
     const isAsk = isQuestioner(speech);
     const score = match.score;
-    const current = byMeeting.get(speech.issueID) || { score: 0, speechIDs: [] };
+    const current = byMeeting.get(speech.issueID) || { score: 0, speechIDs: [], question_matches: 0, answer_matches: 0 };
     current.score = Math.max(current.score, score);
     current.has_question = Boolean(current.has_question || isAsk);
-    if (!current.speechIDs.includes(speech.speechID)) current.speechIDs.push(speech.speechID);
+    if (!current.speechIDs.includes(speech.speechID)) {
+      current.speechIDs.push(speech.speechID);
+      if (isAsk) current.question_matches++; else current.answer_matches++;
+    }
     byMeeting.set(speech.issueID, current);
   }
-  return [...byMeeting].sort((a, b) => Number(b[1].has_question) - Number(a[1].has_question) || b[1].score - a[1].score).slice(0, limit);
+  // A committee meeting with repeated matching questions and government
+  // answers is stronger retrieval evidence than a one-off plenary report or
+  // passing mention. This ranks meetings, not ministries, so it remains
+  // neutral about which agency should ultimately receive the label.
+  return [...byMeeting].sort((a, b) => Number(b[1].has_question) - Number(a[1].has_question) ||
+    (b[1].question_matches + Math.min(b[1].answer_matches, 4)) - (a[1].question_matches + Math.min(a[1].answer_matches, 4)) ||
+    b[1].score - a[1].score).slice(0, limit);
 }
 function alignAnswer(answer, question, plan) {
   const matches = passages(answer).map(p => ({ ...p, ...scorePassage(p.text, plan) })).filter(p => p.supported);
