@@ -19,8 +19,8 @@ function policyPhrases(input){
  return [...new Set(chunks.filter(x=>x.length>=2))].slice(0,3);
 }
 function escape(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-const api="https://kokkai-pages-api.haru620328.chatgpt.site/api/";
-async function getJson(url,timeout=25000){
+const api="https://kokkai-ministry-router.haru620328.workers.dev/api/";
+async function getJson(url,timeout=70000){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
  try{const response=await fetch(url,{signal:controller.signal});if(!response.ok){const detail=await response.json().catch(()=>({}));throw new Error(detail.error||"検索APIが応答しませんでした。")}return await response.json()}
  finally{clearTimeout(timer)}
