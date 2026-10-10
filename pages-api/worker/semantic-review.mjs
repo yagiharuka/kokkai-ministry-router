@@ -125,7 +125,7 @@ function semanticCandidates(result) {
     const key = `${row.case_id}:${row.ministry}:${row.url}`;
     if (!rows.has(key)) rows.set(key, { ...row, screening: 'unverified' });
   }
-  return [...rows.values()].slice(0, 12).map((row, i) => ({ ...row, candidate_id: `c${i + 1}` }));
+  return [...rows.values()].slice(0, 8).map((row, i) => ({ ...row, candidate_id: `c${i + 1}` }));
 }
 
 function groundedCitation(value, source) {
@@ -165,9 +165,10 @@ export async function reviewAssignments(question, result, env = {}, fetchModel =
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== batch.length || data.reviews.some(r => !ids.has(r?.id))) throw new Error('invalid_review');
       return data.reviews;
     };
-    // Each candidate is judged independently. Keep the same twelve candidates
-    // and original context, but avoid one long serial model response.
-    const batches = candidates.length > 6 ? [candidates.slice(0, 6), candidates.slice(6)] : [candidates];
+    // Each candidate is judged independently. Broad searches can produce long
+    // question/answer turns, so keep each model input small enough for the free
+    // Workers AI model while evaluating two batches in parallel.
+    const batches = candidates.length > 6 ? [candidates.slice(0, 4), candidates.slice(4, 8)] : [candidates];
     const data = { reviews: (await Promise.all(batches.map(judgeBatch))).flat() };
     if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== candidates.length) throw new Error('invalid_review');
     const byId = new Map(candidates.map(row => [row.candidate_id, row])), seen = new Set(), reviewed = [];
