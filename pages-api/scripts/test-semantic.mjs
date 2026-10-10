@@ -272,13 +272,13 @@ const parallel = await reviewAssignments(question, { ...result, candidates: [], 
   active++; peak = Math.max(peak, active);
   await new Promise(resolve => setTimeout(resolve, 5));
   const input = JSON.parse(JSON.parse(init.body).messages[1].content);
-  assert.equal(input.candidates.length, 6);
+  assert.equal(input.candidates.length, 4);
   active--;
   return response({ reviews: input.candidates.map(c => accept(c.id, { question: c.source_question, answer: c.source_answer })) });
 });
 assert.equal(peak, 2, 'Independent semantic batches should overlap');
-assert.equal(parallel.accepted_candidates, 12, 'Parallel review must keep all candidates and evidence');
-assert.equal(parallel.pairs, 12);
+assert.equal(parallel.accepted_candidates, 8, 'Parallel review must keep the bounded top candidates and evidence');
+assert.equal(parallel.pairs, 8);
 const quota = () => Response.json({success:false,errors:[{code:3036,message:'private provider billing detail'}]},{status:429});
 const quotaPlan = await prepareSemanticPlan(question,env,quota);
 assert.equal(quotaPlan.error_code,'quota_exhausted');
