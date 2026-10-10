@@ -64,6 +64,14 @@ for (const disabled of [
 const nativeJson = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, env,
   async () => Response.json({success:true,result:{response:{reviews:decisions}},errors:[]}));
 assert.equal(nativeJson.accepted_candidates, 4);
+let transientCalls = 0;
+const recovered = await reviewAssignments('教員の長時間労働を是正すべきではないか', result, env, async () => {
+  transientCalls++;
+  return transientCalls === 1 ? new Response('temporary failure', { status: 500 }) : response({ reviews: decisions });
+});
+assert.equal(transientCalls, 2);
+assert.equal(recovered.assessment_status, 'reviewed');
+assert.equal(recovered.accepted_candidates, 4);
 let bindingCalls = 0;
 const bindingEnv = { CLOUDFLARE_WORKERS_PLAN: 'free', AI: { run: async (model, body) => {
   bindingCalls++;
