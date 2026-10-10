@@ -52,7 +52,10 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2020-01-0
   for (const [issueID] of ranked.slice(0, 2)) {
     if (requests >= requestLimit) { searchLimited = true; break; }
     if (full.size) {
-      const rows = reviewCandidates(records(), plan);
+      // Sparse search records can accidentally look like enough evidence and
+      // stop expansion before a richer committee meeting is downloaded. Only
+      // complete meetings may satisfy the early-stop condition.
+      const rows = reviewCandidates([...full.values()], plan);
       if (new Set(rows.map(r => r.case_id)).size >= 4) break;
     }
     try {
