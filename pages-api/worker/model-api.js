@@ -2,7 +2,7 @@ import { routingVersion, makePlan } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewCompactAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-39';
+const publicRoutingVersion = '20261010-40';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -123,6 +123,32 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
 }
 
 const routeCache = new Map(), routesInFlight = new Map();
+let quotaBlockedUntil = 0;
+const nextQuotaReset = () => (Math.floor(Date.now() / 86400000) + 1) * 86400000;
+const quotaCacheKey = () => `https://kokkai-ministry-router.haru620328.workers.dev/__quota_state/${Math.floor(Date.now() / 86400000)}`;
+async function knownQuotaPause(env) {
+  const now = Date.now(), recorded = Date.parse(env.CLOUDFLARE_AI_QUOTA_PAUSED_UNTIL || '');
+  // A recorded, observed limit expires automatically at the next UTC reset.
+  if (recorded > now && recorded <= nextQuotaReset()) quotaBlockedUntil = Math.max(quotaBlockedUntil, recorded);
+  if (quotaBlockedUntil > now) return quotaBlockedUntil;
+  quotaBlockedUntil = 0;
+  try {
+    const hit = typeof caches !== 'undefined' && await caches.default.match(quotaCacheKey());
+    if (hit) {
+      const state = await hit.json();
+      if (typeof state.until === 'number' && state.until > now && state.until <= nextQuotaReset()) quotaBlockedUntil = state.until;
+    }
+  } catch { /* A cache fault cannot invent a quota state. */ }
+  return quotaBlockedUntil;
+}
+async function recordQuotaPause(ctx) {
+  quotaBlockedUntil = nextQuotaReset();
+  if (typeof caches === 'undefined') return;
+  const save = caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil }, {
+    headers: { 'cache-control': `public, max-age=${Math.max(1, Math.ceil((quotaBlockedUntil - Date.now()) / 1000))}` },
+  })).catch(() => {});
+  if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;
+}
 async function cachedRoute(first, second, focus, question, env, ctx = {}) {
   const started = Date.now();
   const config = semanticConfiguration(env);
@@ -147,13 +173,29 @@ async function cachedRoute(first, second, focus, question, env, ctx = {}) {
   if (routesInFlight.has(key)) return routesInFlight.get(key);
   const refreshed = routeCache.get(key);
   if (refreshed && refreshed.until > Date.now()) return cacheHit(refreshed.result);
+  const pausedUntil = config.ready && await knownQuotaPause(env);
+  if (pausedUntil) return { shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: [],
+    searched: [], searched_queries: [], errors: [], requests_used: 0, meetings_searched: 0,
+    assessment_status: 'failed', assessment_method: 'semantic', assessment_error: 'quota_exhausted',
+    quota_reset_at: new Date(pausedUntil).toISOString(), routing_version: publicRoutingVersion,
+    timing: { total_ms: Date.now() - started } };
+  if (routesInFlight.has(key)) return routesInFlight.get(key);
+  const afterQuotaCheck = routeCache.get(key);
+  if (afterQuotaCheck && afterQuotaCheck.until > Date.now()) return cacheHit(afterQuotaCheck.result);
   if (routesInFlight.size >= 2) return null;
   const pending = routeCases(first, second, focus, question, env).then(result => ({ ...result, routing_version: publicRoutingVersion }));
   routesInFlight.set(key, pending);
   try {
     const result = await pending;
+    if (result.assessment_error === 'quota_exhausted') {
+      await recordQuotaPause(ctx);
+      result.quota_reset_at = new Date(quotaBlockedUntil).toISOString();
+    }
     if (routeCache.size >= 32) routeCache.delete(routeCache.keys().next().value);
-    routeCache.set(key, { result, until: Date.now() + (result.assessment_status === 'failed' ? 30000 : 600000) });
+    const now = Date.now();
+    const until = result.assessment_status === 'failed' ?
+      (result.assessment_error === 'quota_exhausted' ? Math.min(now + 30000, quotaBlockedUntil) : now + 30000) : now + 600000;
+    routeCache.set(key, { result, until });
     if (edgeKey && result.assessment_status === 'reviewed' && !result.assessment_partial && !result.partial) {
       const save = edge.put(edgeKey, Response.json(result, { headers: { 'cache-control': 'public, max-age=600' } })).catch(() => {});
       if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;
@@ -166,8 +208,10 @@ export default {
   async fetch(request, env = {}, ctx = {}) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/api/status") {
+      const ready = semanticConfiguration(env).ready, paused = ready && await knownQuotaPause(env);
       return withCors(Response.json({ routing_version: publicRoutingVersion, assessment_method: 'semantic',
-        model_provider: 'cloudflare', model_ready: semanticConfiguration(env).ready,
+        model_provider: 'cloudflare', model_ready: ready, can_analyze: Boolean(ready && !paused),
+        ...(paused ? { assessment_error: 'quota_exhausted', quota_reset_at: new Date(paused).toISOString() } : {}),
         paid_fallback: false }, { headers: { 'cache-control': 'no-store' } }));
     }
     if (request.method === "GET" && url.pathname === "/") {

@@ -1,0 +1,318 @@
+{
+  "recorded_at": "2026-10-10T04:50:29.591Z",
+  "release_version": "20261010-40",
+  "note": "Small development integration observations, not an accuracy benchmark. Timings have different source-cache states. The final four-candidate model batches could not be tested live because the existing Workers Free allocation was exhausted.",
+  "model": "@cf/openai/gpt-oss-20b",
+  "paid_fallback": false,
+  "latest_live_model_check": "blocked_by_daily_quota",
+  "reset_utc": "2026-10-11T00:00:00.000Z",
+  "reset_jst": "2026-10-11T09:00:00+09:00",
+  "local_checks": [
+    "npm test (alignment, agency labels, real excerpts, query grammar, progressive retrieval, source references, 4-candidate parallel review, clipped plenary hold, exact-question cache, quota stop and automatic UTC reset)",
+    "npm run build",
+    "node --check dist/server/index.js",
+    "git diff --check"
+  ],
+  "remaining_live_checks": [
+    "After the free reset, test the short startup/female-activity question and the natural long wording. Require complete batches and inspect the actual source-backed METI/Financial Services Agency replies; never force an agency into results.",
+    "Test teacher working-hours: clipped plenary prime-minister replies must remain pending and must not contribute to the shares.",
+    "Repeat the identical long question to verify the exact-question cache. Stop if quota or a model failure occurs; use only the existing Workers Free configuration."
+  ],
+  "observations": [
+    {
+      "label": "baseline_long_question",
+      "observed_at": "2026-10-10T04:20:34.395Z",
+      "routing_version": "20261010-36",
+      "assessment_status": "no_candidates",
+      "assessment_error": null,
+      "assessment_partial": false,
+      "source_cases": 0,
+      "reviewed_candidates": 0,
+      "accepted_cases": 0,
+      "shares": [],
+      "wire_elapsed_ms": null,
+      "timing": {
+        "retrieval_ms": 14964,
+        "review_ms": 0,
+        "total_ms": 14964
+      },
+      "analysis_cache_hit": false,
+      "review_diagnostics": [],
+      "evidence_sources": []
+    },
+    {
+      "label": "baseline_short_question",
+      "observed_at": "2026-10-10T04:21:47.623Z",
+      "routing_version": "20261010-36",
+      "assessment_status": "reviewed",
+      "assessment_error": null,
+      "assessment_partial": false,
+      "source_cases": 33,
+      "reviewed_candidates": 24,
+      "accepted_cases": 2,
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 100,
+          "count": 2
+        }
+      ],
+      "wire_elapsed_ms": null,
+      "timing": {
+        "retrieval_ms": 32,
+        "review_ms": 9479,
+        "total_ms": 9511
+      },
+      "analysis_cache_hit": false,
+      "review_diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 13648,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        },
+        {
+          "expected": 8,
+          "input_chars": 12821,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        },
+        {
+          "expected": 8,
+          "input_chars": 13247,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        }
+      ],
+      "evidence_sources": [
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_182",
+          "ministry": "経済産業省",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/183"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_186",
+          "ministry": "経済産業省",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187"
+        }
+      ]
+    },
+    {
+      "label": "completed_v38_long_question",
+      "observed_at": "2026-10-10T04:37:08.261Z",
+      "routing_version": "20261010-38",
+      "assessment_status": "reviewed",
+      "assessment_error": null,
+      "assessment_partial": false,
+      "source_cases": 62,
+      "reviewed_candidates": 24,
+      "accepted_cases": 2,
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 50,
+          "count": 1
+        },
+        {
+          "ministry": "金融庁",
+          "percent": 50,
+          "count": 1
+        }
+      ],
+      "wire_elapsed_ms": 9433,
+      "timing": {
+        "retrieval_ms": 61,
+        "review_ms": 9243,
+        "total_ms": 9304
+      },
+      "analysis_cache_hit": false,
+      "review_diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 12284,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        },
+        {
+          "expected": 8,
+          "input_chars": 14523,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        },
+        {
+          "expected": 8,
+          "input_chars": 10717,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        }
+      ],
+      "evidence_sources": [
+        {
+          "case_id": "121704376X00220250212:121704376X00220250212_072",
+          "ministry": "金融庁",
+          "url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/74"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_186",
+          "ministry": "経済産業省",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187"
+        }
+      ]
+    },
+    {
+      "label": "completed_v38_exact_repeat",
+      "observed_at": "2026-10-10T04:37:08.325Z",
+      "routing_version": "20261010-38",
+      "assessment_status": "reviewed",
+      "assessment_error": null,
+      "assessment_partial": false,
+      "source_cases": 62,
+      "reviewed_candidates": 24,
+      "accepted_cases": 2,
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 50,
+          "count": 1
+        },
+        {
+          "ministry": "金融庁",
+          "percent": 50,
+          "count": 1
+        }
+      ],
+      "wire_elapsed_ms": 63,
+      "timing": {
+        "total_ms": 0,
+        "cached": true
+      },
+      "analysis_cache_hit": true,
+      "review_diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 12284,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        },
+        {
+          "expected": 8,
+          "input_chars": 14523,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        },
+        {
+          "expected": 8,
+          "input_chars": 10717,
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8
+        }
+      ],
+      "evidence_sources": [
+        {
+          "case_id": "121704376X00220250212:121704376X00220250212_072",
+          "ministry": "金融庁",
+          "url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/74"
+        },
+        {
+          "case_id": "121704080X01120250418:121704080X01120250418_186",
+          "ministry": "経済産業省",
+          "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187"
+        }
+      ]
+    },
+    {
+      "label": "final_v39_model_check_blocked",
+      "observed_at": "2026-10-10T04:44:27.079Z",
+      "routing_version": "20261010-39",
+      "assessment_status": "failed",
+      "assessment_error": "quota_exhausted",
+      "assessment_partial": true,
+      "source_cases": 62,
+      "reviewed_candidates": 0,
+      "accepted_cases": 0,
+      "shares": [],
+      "wire_elapsed_ms": 864,
+      "timing": {
+        "retrieval_ms": 254,
+        "review_ms": 192,
+        "total_ms": 446
+      },
+      "analysis_cache_hit": false,
+      "review_diagnostics": [
+        {
+          "expected": 4,
+          "input_chars": 6992,
+          "error": "quota_exhausted",
+          "completed": 0
+        },
+        {
+          "expected": 4,
+          "input_chars": 5358,
+          "error": "quota_exhausted",
+          "completed": 0
+        },
+        {
+          "expected": 4,
+          "input_chars": 7697,
+          "error": "quota_exhausted",
+          "completed": 0
+        },
+        {
+          "expected": 4,
+          "input_chars": 6464,
+          "error": "quota_exhausted",
+          "completed": 0
+        },
+        {
+          "expected": 4,
+          "input_chars": 5609,
+          "error": "quota_exhausted",
+          "completed": 0
+        },
+        {
+          "expected": 4,
+          "input_chars": 5387,
+          "error": "quota_exhausted",
+          "completed": 0
+        }
+      ],
+      "evidence_sources": []
+    }
+  ]
+}
