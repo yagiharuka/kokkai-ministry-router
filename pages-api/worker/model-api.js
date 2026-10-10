@@ -2,7 +2,7 @@ import { routingVersion } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-27';
+const publicRoutingVersion = '20261010-28';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -93,7 +93,8 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
     rejected_reasons: assessed.search_feedback || [],
     result: assessed.assessment_status === 'no_candidates' ? '質問と答弁の候補が見つからなかった' : '候補を読んだが、質問案の対象と措置に対応する答弁を確認できなかった',
   });
-  if (refined.status !== 'ready') return { ...assessed, retrieval_rounds: 1, expansion_status: 'failed', assessment_status: 'failed', assessment_error: refined.error_code };
+  if (refined.status !== 'ready') return { ...assessed, retrieval_rounds: 1,
+    expansion_status: 'failed', expansion_error: refined.error_code };
   const more = await retrieveFastAssignments(refined.plan, fetchNdl, '2020-01-01', {
     maxRequests: 8 - result.requests_used, excludeMeetings: result.retrieved_meetings, includeOlder: true,
   });
