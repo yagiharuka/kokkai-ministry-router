@@ -137,6 +137,15 @@ const prepared = await prepareSemanticPlan(question,env,async()=>response({queri
 assert.equal(prepared.status,'ready');
 assert.equal(prepared.plan.question,question);
 assert.ok(prepared.plan.recall_groups.some(g=>g.text==='教師'));
+let namedPolicyPrompt = '';
+const namedPolicy = await prepareSemanticPlan('なでしこ銘柄の推進を進めるべきではないか',env,async(url,init)=>{
+  namedPolicyPrompt = JSON.parse(init.body).messages[0].content;
+  return response({queries:['なでしこ銘柄','女性活躍 なでしこ銘柄']});
+});
+assert.equal(namedPolicy.status,'ready');
+assert.ok(namedPolicy.plan.queries.includes('なでしこ銘柄'));
+assert.match(namedPolicyPrompt,/固有の制度名・事業名・計画名・銘柄名/);
+assert.match(namedPolicyPrompt,/原文の名称をそのまま残/);
 for(const queries of [['教師'],['教師','教師'],['教師','https://example.com'],['教師',123]]) {
   assert.equal((await prepareSemanticPlan(question,env,async()=>response({queries}))).status,'failed');
 }
@@ -225,6 +234,28 @@ try {
   assert.equal(retryModelCalls,4);
   assert.ok(ndlCalls<=8);
   assert.equal(retried.requests_used,ndlCalls);
+
+  let fallbackModelCalls=0;
+  globalThis.fetch=async(url,init)=>{
+    if(String(url)===endpoint) {
+      fallbackModelCalls++;
+      const body=JSON.parse(init.body);
+      if(body.response_format.json_schema.properties.queries) {
+        if(fallbackModelCalls===1)return response({queries:['ワクチン 評価','予防接種 評価']});
+        return new Response('temporary model failure',{status:500});
+      }
+      const input=JSON.parse(body.messages[1].content);
+      return response({reviews:input.candidates.map(c=>({id:c.id,decision:'reject',reason:'質問案とは別の政策課題。',question_evidence:'',answer_evidence:''}))});
+    }
+    const target=new URL(url);
+    return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[offTopic]}:{speechRecord:offTopic.speechRecord.map(s=>({...s,issueID:offTopic.issueID}))});
+  };
+  const fallback=await (await worker.fetch(new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'ワクチン評価制度を改善すべきではないか'})),env)).json();
+  assert.equal(fallback.assessment_status,'reviewed','Optional expansion failure must preserve the completed first review');
+  assert.equal(fallback.expansion_status,'failed');
+  assert.equal(fallback.expansion_error,'model_unavailable');
+  assert.equal(fallback.retrieval_rounds,1);
+  assert.ok(fallbackModelCalls>=3);
 }finally{globalThis.fetch=realFetch;Date.now=realNow;}
 
 let active = 0, peak = 0;
