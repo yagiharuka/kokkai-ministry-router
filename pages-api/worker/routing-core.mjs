@@ -1,8 +1,11 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261009-24';
+export const routingVersion = '20261010-37';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+// Grammar and generic scope words are not literal parts of a policy name.
+// The complete question is still passed unchanged to the semantic reviewer.
+for (const word of ['分野','領域','業界','どの','よう','どんな','いかなる','なぜ','行って','行う','行い','いるか','いく','図る','図って','伺う','お聞き','考えて','考える','取り組む','取り組んで','されて','されています','でしょうか','なって','なります']) filler.add(word);
 const distinctive = word => word.length >= 2 && !filler.has(word) && !/^\d+$/.test(word);
 export function concepts(value) {
   const groups = []; let run = [], prefix = '';
@@ -62,6 +65,10 @@ export function makePlan(question, hints = []) {
   const add = terms => { const query = [...new Set(terms.filter(Boolean))].join(' '); if (query && !plans.includes(query)) plans.push(query); };
   if (supplied.length) add(supplied);
   const subjects = groups.filter(g => g.role !== 'requested_change');
+  // Start with two concrete concepts. Reserve a concise subject search next,
+  // rather than spending both requests on nearly identical long AND strings.
+  add(subjects.slice(0, 2).map(g => g.text));
+  add([anchors[0]]);
   add(subjects.slice(0, 3).map(g => g.text));
   add(anchors.filter((_, i) => groups[i].role !== 'requested_change').slice(0, 3));
   // Widen the API request without dropping context from subsequent scoring.
@@ -313,7 +320,11 @@ export function reviewCandidates(meetings, plan, limit = 12) {
         const questionContext = questionText.length <= 1600 ? questionText : questionText.slice(Math.max(0, (relevant?.start || 0) - 300), Math.min(questionText.length, (relevant?.end || 0) + 1000)).slice(0, 1600);
         const answerContext = answer.length <= 2000 ? answer : answer.slice(Math.max(0, (excerpt?.start || 0) - 300), Math.min(answer.length, (excerpt?.end || 0) + 1100)).slice(0, 2000);
         const previousContext = !relevant ? speeches.slice(Math.max(0, i - 2), i).filter(s => !isChair(s)).map(s => normalize(s.speech).slice(-350)).join(' ') : '';
-        const row = { case_id: caseId, ministry, question: questionContext, answer: answerContext, previous_context: previousContext, question_truncated: questionContext.length < questionText.length, answer_truncated: answerContext.length < answer.length, speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round((relevant?.score ?? answerMatch.score) * 1000) / 1000 };
+        // A multi-topic question must not give every unrelated later answer
+        // the same high priority. This affects recall order, never acceptance.
+        const qScore = relevant?.score || 0, aScore = answerMatch?.score || 0;
+        const retrievalScore = .75 * Math.max(qScore, aScore) + .25 * Math.min(qScore, aScore);
+        const row = { case_id: caseId, ministry, question: questionContext, answer: answerContext, previous_context: previousContext, question_truncated: questionContext.length < questionText.length, answer_truncated: answerContext.length < answer.length, speaker: reply.speaker || '答弁者', position: reply.speakerPosition || '', date: meeting.date || '', meeting: meeting.nameOfMeeting || '', url: reply.speechURL, question_url: ask.speechURL || '', screening: 'unverified', retrieval_score: Math.round(retrievalScore * 1000) / 1000 };
         if (!rows.has(key) || row.retrieval_score > rows.get(key).retrieval_score) rows.set(key, row);
       }
     }
@@ -321,10 +332,9 @@ export function reviewCandidates(meetings, plan, limit = 12) {
   return diversifyCandidates([...rows.values()].sort((a, b) => b.retrieval_score - a.retrieval_score || b.date.localeCompare(a.date)), limit);
 }
 
-// Round-robin actual meetings and distinct question turns before repeated
-// replies. A long debate or one speaker must not consume the entire review
-// budget; a reply from another agency in the same turn is still retained.
-// This never inserts agencies or accepts a candidate because of its label.
+// Balance recall relevance with coverage of actual meetings. A weak match in
+// another meeting must not displace a much stronger question/answer turn.
+// Agency labels never determine priority or acceptance.
 export function diversifyCandidates(rows, limit = 24) {
   const buckets = new Map();
   for (const row of rows) {
@@ -332,18 +342,21 @@ export function diversifyCandidates(rows, limit = 24) {
     if (!buckets.has(issue)) buckets.set(issue, []);
     buckets.get(issue).push(row);
   }
-  const selected = [], used = new Set(), cases = new Set();
+  for (const bucket of buckets.values()) bucket.sort((a, b) => (b.retrieval_score || 0) - (a.retrieval_score || 0));
+  const selected = [], used = new Set(), cases = new Set(), meetingCounts = new Map();
   const key = row => `${row.case_id}:${row.ministry}:${row.url}`;
   const take = distinctOnly => {
-    let added = true;
-    while (selected.length < limit && added) {
-      added = false;
-      for (const bucket of buckets.values()) {
+    while (selected.length < limit) {
+      let best = null, bestIssue = '', priority = -Infinity;
+      for (const [issue, bucket] of buckets) {
         const row = bucket.find(r => !used.has(key(r)) && (!distinctOnly || !cases.has(`${r.case_id}:${r.ministry}`)));
         if (!row) continue;
-        selected.push(row); used.add(key(row)); cases.add(`${row.case_id}:${row.ministry}`); added = true;
-        if (selected.length >= limit) break;
+        const score = (row.retrieval_score || 0) + .15 / (1 + (meetingCounts.get(issue) || 0));
+        if (score > priority) { best = row; bestIssue = issue; priority = score; }
       }
+      if (!best) break;
+      selected.push(best); used.add(key(best)); cases.add(`${best.case_id}:${best.ministry}`);
+      meetingCounts.set(bestIssue, (meetingCounts.get(bestIssue) || 0) + 1);
     }
   };
   take(true); take(false);

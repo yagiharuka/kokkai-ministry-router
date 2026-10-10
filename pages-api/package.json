@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "bash scripts/build.sh",
-    "test": "node scripts/test-routing.mjs && node scripts/test-fast-retrieval.mjs && node scripts/test-frontend.mjs && node scripts/test-semantic.mjs && node scripts/test-compact-review.mjs",
+    "test": "node scripts/test-routing.mjs && node scripts/test-fast-retrieval.mjs && node scripts/test-frontend.mjs && node scripts/test-semantic.mjs && node scripts/test-compact-review.mjs && node scripts/test-cache.mjs",
     "test:semantic": "node scripts/test-semantic.mjs"
   }
 }

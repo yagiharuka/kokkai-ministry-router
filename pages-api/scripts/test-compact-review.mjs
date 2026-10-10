@@ -16,6 +16,9 @@ const diverse=diversifyCandidates(clustered,24);
 assert.equal(new Set(diverse.map(r=>r.case_id)).size,24);
 assert.ok(diverse.some(r=>r.ministry==='財務省'));
 assert.ok(diverse.some(r=>r.ministry==='経済産業省'));
+const relevant = {...row('strong:q1','経済産業省'),retrieval_score:1};
+const distractions=Array.from({length:30},(_,i)=>({...row(`weak${i}:q1`),retrieval_score:.5}));
+assert.ok(diversifyCandidates([...distractions,relevant],24).some(r=>r.case_id==='strong:q1'),'Weak matches in many meetings must not crowd out stronger evidence');
 const twentyfour=result(clustered);
 let active=0,peak=0,calls=0;
 const parallel=await reviewCompactAssignments('教員の長時間労働の是正について',twentyfour,{...env,AI:{run:async(model,payload)=>{
@@ -80,8 +83,8 @@ globalThis.fetch=async url=>{ndl++;startedWithSource ||= model===0;const u=new U
 try {
  const req=new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'教員の長時間労働を是正すべきではないか'}));
  const data=await (await worker.fetch(req,publicEnv)).json();
- assert.equal(data.search_plan_status,'direct');assert.equal(data.pairs,1);assert.equal(model,1);assert.equal(ndl,2);assert.equal(startedWithSource,true);
- await worker.fetch(req,publicEnv);assert.equal(model,1);assert.equal(ndl,2);
+ assert.equal(data.search_plan_status,'direct');assert.equal(data.pairs,1);assert.equal(model,1);assert.equal(ndl,3);assert.equal(startedWithSource,true);
+ const repeatedResult=await (await worker.fetch(req,publicEnv)).json();assert.equal(model,1);assert.equal(ndl,3);assert.equal(repeatedResult.analysis_cache_hit,true);
  // Semantically rewrite colloquial wording only when direct recall has no Q/A.
  let planning=0;
  globalThis.fetch=async url=>{const u=new URL(url);const any=u.searchParams.get('any');return Response.json(any==='教師 勤務時間'? (u.pathname.endsWith('meeting')?{meetingRecord:[meeting]}:{speechRecord:meeting.speechRecord.map(s=>({...s,issueID:meeting.issueID}))}):{speechRecord:[]});};

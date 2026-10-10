@@ -108,7 +108,9 @@ export async function prepareSemanticPlan(question, env = {}, fetchModel = fetch
     if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.queries) || data.queries.length < 2 || data.queries.length > 4) throw new Error('invalid_search_plan');
     const queries = [...new Set(data.queries.map(query => {
       if (typeof query !== 'string') throw new Error('invalid_search_query');
-      const text = normalize(query);
+      // NDL uses spaces for AND. Models sometimes spell the operator out;
+      // sending it literally searches for the word "AND" and loses all hits.
+      const text = normalize(query).replace(/\s+AND\s+/gi, ' ');
       if (text.length < 2 || text.length > 80 || !/^[\p{L}\p{N}々ー・\s]+$/u.test(text)) throw new Error('invalid_search_query');
       return text;
     }))];

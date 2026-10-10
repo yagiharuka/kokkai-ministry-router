@@ -145,6 +145,9 @@ const prepared = await prepareSemanticPlan(question,env,async()=>response({queri
 assert.equal(prepared.status,'ready');
 assert.equal(prepared.plan.question,question);
 assert.ok(prepared.plan.recall_groups.some(g=>g.text==='教師'));
+const literalAnd = await prepareSemanticPlan(question,env,async()=>response({queries:['教員 AND 長時間労働','教師 AND 勤務時間']}));
+assert.equal(literalAnd.status,'ready');
+assert.deepEqual(literalAnd.plan.queries.slice(0,2),['教員 長時間労働','教師 勤務時間']);
 let namedPolicyPrompt = '';
 const namedPolicy = await prepareSemanticPlan('なでしこ銘柄の推進を進めるべきではないか',env,async(url,init)=>{
   namedPolicyPrompt = JSON.parse(init.body).messages[0].content;

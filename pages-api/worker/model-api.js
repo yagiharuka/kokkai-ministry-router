@@ -2,7 +2,7 @@ import { routingVersion, makePlan } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewCompactAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-36';
+const publicRoutingVersion = '20261010-37';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -123,12 +123,30 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
 }
 
 const routeCache = new Map(), routesInFlight = new Map();
-async function cachedRoute(first, second, focus, question, env) {
+async function cachedRoute(first, second, focus, question, env, ctx = {}) {
+  const started = Date.now();
   const config = semanticConfiguration(env);
-  const key = JSON.stringify([first, second, focus, question, config.ready, config.model]);
+  const key = JSON.stringify([publicRoutingVersion, first, second, focus, question, config.ready, config.model]);
+  const cacheHit = result => ({ ...result, analysis_cache_hit: true, timing: { total_ms: Date.now() - started, cached: true } });
   const cached = routeCache.get(key);
-  if (cached && cached.until > Date.now()) return cached.result;
+  if (cached && cached.until > Date.now()) return cacheHit(cached.result);
   if (routesInFlight.has(key)) return routesInFlight.get(key);
+  // Exact-question results survive isolate restarts. Include the deployed
+  // routing version and model configuration so old decisions cannot leak in.
+  const edge = config.ready && typeof caches !== 'undefined' ? caches.default : null;
+  let edgeKey = '';
+  try {
+    if (edge) {
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))].map(b => b.toString(16).padStart(2, '0')).join('');
+      edgeKey = `https://kokkai-ministry-router.haru620328.workers.dev/__analysis_cache/${hash}`;
+      const hit = await edge.match(edgeKey);
+      if (hit) return cacheHit(await hit.json());
+    }
+  } catch { /* Cache faults must not prevent a fresh review. */ }
+  // Another request may have started while the asynchronous cache lookup ran.
+  if (routesInFlight.has(key)) return routesInFlight.get(key);
+  const refreshed = routeCache.get(key);
+  if (refreshed && refreshed.until > Date.now()) return cacheHit(refreshed.result);
   if (routesInFlight.size >= 2) return null;
   const pending = routeCases(first, second, focus, question, env).then(result => ({ ...result, routing_version: publicRoutingVersion }));
   routesInFlight.set(key, pending);
@@ -136,12 +154,16 @@ async function cachedRoute(first, second, focus, question, env) {
     const result = await pending;
     if (routeCache.size >= 32) routeCache.delete(routeCache.keys().next().value);
     routeCache.set(key, { result, until: Date.now() + (result.assessment_status === 'failed' ? 30000 : 600000) });
+    if (edgeKey && result.assessment_status === 'reviewed' && !result.assessment_partial && !result.partial) {
+      const save = edge.put(edgeKey, Response.json(result, { headers: { 'cache-control': 'public, max-age=600' } })).catch(() => {});
+      if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;
+    }
     return result;
   } finally { routesInFlight.delete(key); }
 }
 
 export default {
-  async fetch(request, env = {}) {
+  async fetch(request, env = {}, ctx = {}) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/api/status") {
       return withCors(Response.json({ routing_version: publicRoutingVersion, assessment_method: 'semantic',
@@ -161,7 +183,7 @@ export default {
         return withCors(Response.json({ error: "政策語を確認してください。" }, { status: 400 }));
       }
       try {
-        const result = await cachedRoute(first, second, focus, question, env);
+        const result = await cachedRoute(first, second, focus, question, env, ctx);
         if (!result) return withCors(Response.json({ error: "ほかの検索を処理中です。少し時間を置いて再試行してください。" }, { status: 429, headers: { 'Retry-After': '30' } }));
         return withCors(Response.json(result, { headers: { "cache-control": result.assessment_status === 'reviewed' ? "public, max-age=600" : "no-store" } }));
       } catch (error) {

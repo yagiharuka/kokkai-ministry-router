@@ -28,8 +28,9 @@ const result = await retrieveFastAssignments(plan, async (path, params) => {
   if (path === 'speech') return { speechRecord: params.any === plan.queries[0] ? [q] : [a], nextRecordPosition: 101 };
   return { meetingRecord: [full] };
 });
-assert.equal(calls.length, 2, 'Reuse one speech search, then batch full meetings only for a thin sample');
-assert.equal(calls.filter(c => c.path === 'speech').length, 1);
+assert.equal(calls.length, 3, 'A thin non-empty sample must still try the alternate wording within the request budget');
+assert.equal(calls.filter(c => c.path === 'speech').length, 2);
+assert.equal(calls.filter(c => c.path === 'meeting')[0].maximumRecords, '10');
 assert.ok(calls.filter(c => c.path === 'speech').every(c => c.from === '2001-01-01'));
 assert.equal(result.review_candidates.length, 1);
 assert.deepEqual(result.shares, [], 'Retrieval alone must not assign a ministry');
@@ -50,4 +51,14 @@ assert.deepEqual(wideCalls,['speech']);
 const multi=await retrieveFastAssignments(plan,async(path,p)=>path==='speech'?{speechRecord:[q]}:{meetingRecord:[full,{...full,issueID:'m2',speechRecord:[speech(1,true,q.speech,'m2'),speech(2,false,a.speech,'m2')]}]});
 assert.equal(multi.full_meetings,2,'A single full-output request can add multiple meetings');
 assert.equal(multi.retrieved_cases,2);
+const newlyFound = {...full,issueID:'additional',speechRecord:[speech(1,true,q.speech,'additional'),speech(2,false,a.speech,'additional')]};
+const progressiveCalls=[];
+const progressive=await retrieveFastAssignments(plan,async(path,p)=>{
+  progressiveCalls.push({path,...p});
+  if(path==='meeting')return {meetingRecord:[full]};
+  return {speechRecord:p.any===plan.queries[0]?[q,a]:newlyFound.speechRecord};
+});
+assert.equal(progressive.retrieved_cases,2,'The second expression can add actual turns even when the first already returned a valid pair');
+assert.equal(progressive.requests_used,3);
+assert.equal(progressive.review_candidates.some(r=>r.case_id.startsWith('additional:')),true);
 console.log('Contiguous-turn safety, consolidated retrieval, source deduplication and bounded expansion checks passed.');

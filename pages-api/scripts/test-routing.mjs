@@ -16,6 +16,14 @@ check('所管の他省への言及でラベルを変えない',()=>assert.equal(
 check('対象省の大臣肩書きを一般に読む',()=>assert.equal(answeringMinistry('総務大臣'),'総務省'));
 check('長音と前後の漢字を保持',()=>assert.equal(concepts('脱炭素化とカスタマーハラスメント').map(g=>g.text).join(' '),'脱炭素化 カスタマーハラスメント'));
 check('検索語を粗くしても質問全文の対象を保持',()=>assert.equal(makePlan('スタートアップ界の女性活躍推進を進めるべきではないか',['女性']).groups[0].text,'スタートアップ'));
+check('自然な質問文の文法語で同じ政策の検索を狭めない',()=>{
+  const short=makePlan('スタートアップ界の女性活躍推進を進めるべきではないか');
+  const long=makePlan('スタートアップ分野における女性活躍を推進するため、政府はどのような支援を行っているか。');
+  assert.deepEqual(long.groups,short.groups);
+  assert.equal(long.queries[0],'スタートアップ 女性');
+  assert.ok(long.queries.slice(0,2).includes('スタートアップ'));
+  assert.ok(long.question.includes('どのような支援を行っているか'));
+});
 check('単一の短い語へ制度名を破壊しない',()=>assert.ok(makePlan('研究開発税制の拡充を検討すべきではないか').queries.every(q=>q.includes('研究開発税制'))));
 check('助詞を政策名につなげない',()=>assert.deepEqual(makePlan('生成AIによる個人情報保護を強化すべきではないか').groups.map(g=>g.text),['生成AI','個人情報保護','強化']));
 check('複合語側からも会議録を検索する',()=>assert.ok(makePlan('教員の長時間労働を是正すべきではないか').queries.includes('長時間労働')));
