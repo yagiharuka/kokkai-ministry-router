@@ -2,7 +2,7 @@ import { routingVersion } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-32';
+const publicRoutingVersion = '20261010-33';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -76,7 +76,7 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
   const fullQuestion = question || hints.join("の") + "について伺います。";
   const prepared = await prepareSemanticPlan(fullQuestion, env);
   const plan = prepared.plan;
-  if (prepared.status !== 'ready') {
+  if (prepared.status === 'not_configured' || (prepared.status === 'failed' && prepared.error_code !== 'model_unavailable')) {
     const empty = { candidates: [], review_candidates: [], searched: [], searched_queries: [], errors: [], requests_used: 0, meetings_searched: 0, retrieved_meetings: [] };
     return { ...await reviewAssignments(fullQuestion, empty, env, fetch, prepared.status),
       assessment_error: prepared.error_code, retrieval_rounds: 0 };
@@ -84,7 +84,7 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
   if (!plan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
   const result = await retrieveFastAssignments(plan, fetchNdl);
   if (result.errors.length && !result.searched.length) throw new Error(result.errors[0]);
-  const assessed = await reviewAssignments(fullQuestion, result, env, fetch, prepared.status);
+  const assessed = { ...await reviewAssignments(fullQuestion, result, env, fetch, 'ready'), search_plan_status: prepared.status };
   // Rejection is evidence about these candidates, not evidence that no relevant
   // debate exists. Try unused natural-language searches and older records once.
   if (prepared.status !== 'ready' || !['reviewed', 'no_candidates'].includes(assessed.assessment_status) || assessed.pairs) return { ...assessed, retrieval_rounds: 1 };
