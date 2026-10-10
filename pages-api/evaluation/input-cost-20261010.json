@@ -1,0 +1,20 @@
+{
+  "recorded_at": "2026-10-10T10:36:28.964Z",
+  "release_version": "20261010-41",
+  "measurement": "Local payload comparison using the same previously retrieved startup/women source cases. No AI requests.",
+  "question": "スタートアップ界の女性活躍推進を進めるべきではないか",
+  "before_input_characters": 48211,
+  "after_input_characters": 45951,
+  "input_character_reduction_percent": 4.7,
+  "candidate_count": 24,
+  "model_batches": 6,
+  "all_candidate_source_text_and_context_preserved": true,
+  "exact_result_cache_hours": 24,
+  "exact_question_and_source_judgment_cache_days": 7,
+  "live_token_and_quality_comparison": "pending_free_quota_reset",
+  "notes": [
+    "Character reduction is not token/neuron reduction. Actual provider token usage is now recorded when supplied.",
+    "Cache reuse depends on availability and exact question/source/prompt/model/release matching. New questions still need AI judgment.",
+    "The new reference-sharing input format has local grounding tests but has not yet been validated with the live model."
+  ]
+}

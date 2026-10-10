@@ -2,7 +2,8 @@ import { routingVersion, makePlan } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewCompactAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-40';
+const publicRoutingVersion = '20261010-41';
+const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -119,6 +120,7 @@ async function routeCases(first, second, focus = "", question = "", env = {}) {
   const retrieved = Date.now();
   const assessed = await reviewCompactAssignments(fullQuestion, result, env);
   return { ...assessed, search_plan_status: planStatus, retrieval_rounds: rounds,
+    analyzed_at: new Date(Date.now()).toISOString(),
     timing: { retrieval_ms: retrieved - started, review_ms: Date.now() - retrieved, total_ms: Date.now() - started } };
 }
 
@@ -153,7 +155,11 @@ async function cachedRoute(first, second, focus, question, env, ctx = {}) {
   const started = Date.now();
   const config = semanticConfiguration(env);
   const key = JSON.stringify([publicRoutingVersion, first, second, focus, question, config.ready, config.model]);
-  const cacheHit = result => ({ ...result, analysis_cache_hit: true, timing: { total_ms: Date.now() - started, cached: true } });
+  const cacheHit = result => ({ ...result, analysis_cache_hit: true, review_model_calls: 0,
+    review_cache_hits: (result.review_diagnostics || []).filter(d => d.completed === d.expected && !d.error).length,
+    review_diagnostics: (result.review_diagnostics || []).map(({ usage, ...diagnostic }) => ({ ...diagnostic,
+      cache_hit: diagnostic.completed === diagnostic.expected && !diagnostic.error, model_called: false })),
+    timing: { total_ms: Date.now() - started, cached: true } });
   const cached = routeCache.get(key);
   if (cached && cached.until > Date.now()) return cacheHit(cached.result);
   if (routesInFlight.has(key)) return routesInFlight.get(key);
@@ -166,7 +172,10 @@ async function cachedRoute(first, second, focus, question, env, ctx = {}) {
       const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))].map(b => b.toString(16).padStart(2, '0')).join('');
       edgeKey = `https://kokkai-ministry-router.haru620328.workers.dev/__analysis_cache/${hash}`;
       const hit = await edge.match(edgeKey);
-      if (hit) return cacheHit(await hit.json());
+      if (hit) {
+        const saved = await hit.json(), at = Date.parse(saved.analyzed_at || '');
+        if (at <= Date.now() && at + analysisCacheSeconds * 1000 > Date.now()) return cacheHit(saved);
+      }
     }
   } catch { /* Cache faults must not prevent a fresh review. */ }
   // Another request may have started while the asynchronous cache lookup ran.
@@ -193,11 +202,13 @@ async function cachedRoute(first, second, focus, question, env, ctx = {}) {
     }
     if (routeCache.size >= 32) routeCache.delete(routeCache.keys().next().value);
     const now = Date.now();
+    const complete = result.assessment_status === 'reviewed' && !result.assessment_partial && !result.partial;
     const until = result.assessment_status === 'failed' ?
-      (result.assessment_error === 'quota_exhausted' ? Math.min(now + 30000, quotaBlockedUntil) : now + 30000) : now + 600000;
+      (result.assessment_error === 'quota_exhausted' ? Math.min(now + 30000, quotaBlockedUntil) : now + 30000) :
+      now + (complete ? analysisCacheSeconds * 1000 : 30000);
     routeCache.set(key, { result, until });
-    if (edgeKey && result.assessment_status === 'reviewed' && !result.assessment_partial && !result.partial) {
-      const save = edge.put(edgeKey, Response.json(result, { headers: { 'cache-control': 'public, max-age=600' } })).catch(() => {});
+    if (edgeKey && complete) {
+      const save = edge.put(edgeKey, Response.json(result, { headers: { 'cache-control': `public, max-age=${analysisCacheSeconds}` } })).catch(() => {});
       if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;
     }
     return result;

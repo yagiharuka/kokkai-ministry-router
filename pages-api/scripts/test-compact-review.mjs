@@ -5,7 +5,7 @@ import worker from '../worker/model-api.js';
 
 const row = (id, ministry='文部科学省', suffix='') => ({case_id:id,ministry,question:'教員の長時間労働を是正するにはどうしますか。',answer:'教員の長時間労働を減らすため支援員を配置します。',date:'2026-05-01',position:'文部科学大臣',url:`https://kokkai.ndl.go.jp/txt/fixture/${id}${suffix}`,retrieval_score:1});
 const env = {CLOUDFLARE_WORKERS_PLAN:'free', AI:{run: async () => { throw new Error('override per case'); }}};
-const reviews = input => input.candidates.map(c=>({id:c.id,decision:'accept',reason:'教員の勤務負担軽減への答弁。',question_part:Object.keys(c.source_question)[0],answer_part:Object.keys(c.source_answer)[0]}));
+const reviews = input => input.candidates.map(c=>({id:c.id,decision:'accept',reason:'教員の勤務負担軽減への答弁。',question_part:Object.keys(c.source_question || input.candidates.find(other => other.id === c.source_question_ref).source_question)[0],answer_part:Object.keys(c.source_answer)[0]}));
 const result = rows => ({review_candidates:rows,recent_since:'2024-01-01',searched:[],requests_used:1,errors:[]});
 const parts=sourceParts('原文の文章です。'+ '長い文章'.repeat(80)+'。','q');
 assert.ok(Object.values(parts).every(p=>p.length<=160));
