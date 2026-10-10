@@ -148,7 +148,7 @@ export async function reviewAssignments(question, result, env = {}, fetchModel =
   if (planStatus === 'failed') return { ...base, assessment_status: 'failed' };
   if (!candidates.length) return { ...base, assessment_status: 'no_candidates' };
   try {
-    const judgeBatch = async batch => {
+    const judgeBatch = async (batch, allowSplit = true) => {
       const schema = { type: 'object', properties: { reviews: { type: 'array', items: {
         type: 'object', properties: {
           id: { type: 'string', enum: batch.map(row => row.candidate_id) },
@@ -160,16 +160,30 @@ export async function reviewAssignments(question, result, env = {}, fetchModel =
         id: row.candidate_id, source_question: row.question, source_answer: row.answer, position: row.position,
         previous_context: row.previous_context || '', question_truncated: Boolean(row.question_truncated), answer_truncated: Boolean(row.answer_truncated),
       })) };
-      const data = await structuredModel(config, 'kokkai_context_review', schema, semanticInstructions, input, fetchModel);
-      const ids = new Set(batch.map(row => row.candidate_id));
-      if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== batch.length || data.reviews.some(r => !ids.has(r?.id))) throw new Error('invalid_review');
-      return data.reviews;
+      try {
+        const data = await structuredModel(config, 'kokkai_context_review', schema, semanticInstructions, input, fetchModel);
+        const ids = new Set(batch.map(row => row.candidate_id));
+        if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== batch.length || data.reviews.some(r => !ids.has(r?.id))) throw new Error('invalid_review');
+        return data.reviews;
+      } catch (error) {
+        if (['quota_exhausted', 'model_busy', 'invalid_review'].includes(error?.message)) throw error;
+        // A four-candidate response can occasionally be incomplete even after
+        // its one retry. Degrade only that failed batch to two smaller calls;
+        // if a smaller call still fails, retain those rows as uncertain rather
+        // than discarding successful reviews from the other batch.
+        if (allowSplit && batch.length === 4) {
+          return (await Promise.all([judgeBatch(batch.slice(0, 2), false), judgeBatch(batch.slice(2), false)])).flat();
+        }
+        if (!allowSplit) return batch.map(row => ({ id: row.candidate_id, decision: 'uncertain',
+          reason: 'AI判定を完了できなかったため保留。', question_evidence: '', answer_evidence: '' }));
+        throw error;
+      }
     };
     // Each candidate is judged independently. Broad searches can produce long
     // question/answer turns, so keep each model input small enough for the free
     // Workers AI model while evaluating two batches in parallel.
     const batches = candidates.length > 6 ? [candidates.slice(0, 4), candidates.slice(4, 8)] : [candidates];
-    const data = { reviews: (await Promise.all(batches.map(judgeBatch))).flat() };
+    const data = { reviews: (await Promise.all(batches.map(batch => judgeBatch(batch)))).flat() };
     if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== candidates.length) throw new Error('invalid_review');
     const byId = new Map(candidates.map(row => [row.candidate_id, row])), seen = new Set(), reviewed = [];
     for (const review of data.reviews) {
