@@ -28,9 +28,9 @@ const result = await retrieveFastAssignments(plan, async (path, params) => {
   if (path === 'speech') return { speechRecord: params.any === plan.queries[0] ? [q] : [a], nextRecordPosition: 101 };
   return { meetingRecord: [full] };
 });
-assert.equal(calls.length, 3, 'Two consolidated searches and one full meeting should suffice');
-assert.equal(calls.filter(c => c.path === 'speech').length, 2);
-assert.ok(calls.filter(c => c.path === 'speech').every(c => c.from.endsWith('-01-01') && Number(c.until.slice(0, 4)) - Number(c.from.slice(0, 4)) === 2));
+assert.equal(calls.length, 2, 'Reuse one speech search, then batch full meetings only for a thin sample');
+assert.equal(calls.filter(c => c.path === 'speech').length, 1);
+assert.ok(calls.filter(c => c.path === 'speech').every(c => c.from === '2001-01-01'));
 assert.equal(result.review_candidates.length, 1);
 assert.deepEqual(result.shares, [], 'Retrieval alone must not assign a ministry');
 assert.equal(result.search_limited, true);
@@ -41,4 +41,13 @@ assert.equal(excluded.requests_used, 2);
 const failed = await retrieveFastAssignments(plan, async () => { throw new Error('source unavailable'); });
 assert.equal(failed.partial, true);
 assert.equal(failed.review_candidates.length, 0);
+
+const broad = Array.from({length:18}, (_,i) => { const m='wide'+(i%3); return [speech(i*2+1,true,'教員の長時間労働の是正について伺います。',m),speech(i*2+2,false,'教員の長時間労働を改善します。',m)]; }).flat();
+const wideCalls=[]; const wide=await retrieveFastAssignments(plan,async(path,p)=>{wideCalls.push(path);return {speechRecord:broad};});
+assert.equal(wide.requests_used,1,'Enough adjacent turns in multiple meetings must not trigger full downloads');
+assert.equal(wide.retrieved_cases,18);
+assert.deepEqual(wideCalls,['speech']);
+const multi=await retrieveFastAssignments(plan,async(path,p)=>path==='speech'?{speechRecord:[q]}:{meetingRecord:[full,{...full,issueID:'m2',speechRecord:[speech(1,true,q.speech,'m2'),speech(2,false,a.speech,'m2')]}]});
+assert.equal(multi.full_meetings,2,'A single full-output request can add multiple meetings');
+assert.equal(multi.retrieved_cases,2);
 console.log('Contiguous-turn safety, consolidated retrieval, source deduplication and bounded expansion checks passed.');

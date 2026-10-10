@@ -30,17 +30,21 @@ function lawSearchTerm(primary){
  return /^[ァ-ヶー・]+$/.test(primary)?primary:(parts[0]||primary);
 }
 async function analyze(input){
+ const started=Date.now();
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261010-33"};
- const cases=await getJson(api+"cases?"+new URLSearchParams(params),180000);
+ const params={question:input,v:"20261010-34"};
+ const cases=await getJson(api+"cases?"+new URLSearchParams(params),65000);
  // Supplementary laws must not delay the actual ministry result.
- return {...cases,question:input,unit:"質疑",laws:[],lawTerm,lawTask:lawRequest,lawSkipped:!cases.shares.length};
+ return {...cases,elapsedSeconds:Math.round((Date.now()-started)/1000),question:input,unit:"質疑",laws:[],lawTerm,lawTask:lawRequest,lawSkipped:!cases.shares.length};
 }
 function evidenceCard(x){
- return '<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.date)+' · '+escape(x.meeting)+'</span></div><p><b>質問</b>'+escape(x.question)+'</p><p><b>答弁</b>'+escape(x.answer)+'</p>'+(x.review_reason?'<p><b>採否の理由</b>'+escape(x.review_reason)+'</p>':'')+'<footer><span>'+escape(x.speaker)+'（'+escape(x.position)+'）</span>'+(/^https:\/\/kokkai\.ndl\.go\.jp\//.test(x.url||'')?'<a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">会議録の発言を見る ↗</a>':'')+'</footer></article>';
+ const q=x.question_evidence||x.question,a=x.answer_evidence||x.answer;
+ const full=q!==x.question||a!==x.answer?'<details><summary>質疑の前後を読む</summary><p><b>質問</b>'+escape(x.question)+'</p><p><b>答弁</b>'+escape(x.answer)+'</p></details>':'';
+ return '<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.date)+' · '+escape(x.meeting)+'</span></div><p><b>質問</b>'+escape(q)+'</p><p><b>答弁</b>'+escape(a)+'</p>'+(x.review_reason?'<p><b>理由</b>'+escape(x.review_reason)+'</p>':'')+full+'<footer><span>'+escape(x.speaker)+'（'+escape(x.position)+'）</span>'+(/^https:\/\/kokkai\.ndl\.go\.jp\//.test(x.url||'')?'<a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">会議録の発言を見る ↗</a>':'')+'</footer></article>';
 }
+
 function lawSection(r){
  const laws=r.assessment_status==='reviewed'&&r.shares?.length?r.laws||[]:[];
  return laws.length?'<div class="examples"><h3>法令上の所掌（e-Gov法令検索）</h3><p class="caveat">政策語「'+escape(r.lawTerm)+'」を含む設置法・組織令・組織規則の条文です。個別事業の担当を確定する根拠ではありません。</p>'+laws.map(x=>'<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.title)+'</span></div><p>'+escape(x.snippet)+'</p><footer><a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">e-Govの法令を見る ↗</a></footer></article>').join('')+'</div>':'';
@@ -71,11 +75,12 @@ function render(r){
   title='今回の検索では候補を確認できませんでした';
   note='検索範囲と取得件数に上限があります。関連する会議録が存在しないことを示す結果ではありません。質問を言い換えて再検索してください。';
  }
+ const stats=reviewed?'<p class="caveat">候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(typeof r.elapsedSeconds==='number'?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
- const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,6).map(evidenceCard).join('')+'</div>':'';
+ const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,24).map(evidenceCard).join('')+'</div>':'';
  $('results').hidden=false;
- $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
 
 }
 $("question").addEventListener("input",e=>$("length").textContent=e.target.value.length+" / 1200字");

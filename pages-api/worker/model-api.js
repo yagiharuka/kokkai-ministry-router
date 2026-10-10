@@ -1,8 +1,8 @@
-import { routingVersion } from './routing-core.mjs';
+import { routingVersion, makePlan } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
-import { prepareSemanticPlan, reviewAssignments, semanticConfiguration } from './semantic-review.mjs';
+import { prepareSemanticPlan, reviewCompactAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-33';
+const publicRoutingVersion = '20261010-34';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([
@@ -55,7 +55,22 @@ async function fetchNdl(path, parameters) {
   if (cached && cached.until > Date.now()) return cached.data;
   if (cached) { ndlCache.delete(key); ndlCacheBytes -= cached.bytes; }
   if (ndlInFlight.has(key)) return ndlInFlight.get(key);
-  const pending = requestNdl(path, parameters);
+  const pending = (async () => {
+    // Cache API survives isolate restarts. Cache only public NDL source data,
+    // with the complete search conditions as its key, not a topic label.
+    const edge = typeof caches !== 'undefined' ? caches.default : null;
+    const hash = edge ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))].map(b => b.toString(16).padStart(2, '0')).join('') : '';
+    const edgeKey = hash ? `https://kokkai-ministry-router.haru620328.workers.dev/__source_cache/${hash}` : '';
+    try {
+      const hit = edge && await edge.match(edgeKey);
+      if (hit) return await hit.json();
+    } catch { /* Cache faults must not prevent source retrieval. */ }
+    const data = await requestNdl(path, parameters);
+    if (edge && JSON.stringify(data).length < 2 * 1024 * 1024) {
+      try { await edge.put(edgeKey, Response.json(data, { headers: { 'cache-control': 'public, max-age=3600' } })); } catch { /* best effort */ }
+    }
+    return data;
+  })();
   ndlInFlight.set(key, pending);
   try {
     const data = await pending, bytes = JSON.stringify(data).length * 2;
@@ -72,45 +87,39 @@ async function fetchNdl(path, parameters) {
 }
 
 async function routeCases(first, second, focus = "", question = "", env = {}) {
-  const hints = [first, second, focus].filter(Boolean);
+  const started = Date.now(), hints = [first, second, focus].filter(Boolean);
   const fullQuestion = question || hints.join("の") + "について伺います。";
-  const prepared = await prepareSemanticPlan(fullQuestion, env);
-  const plan = prepared.plan;
-  if (prepared.status === 'not_configured' || (prepared.status === 'failed' && prepared.error_code !== 'model_unavailable')) {
+  const directPlan = makePlan(fullQuestion);
+  if (!semanticConfiguration(env).ready) {
     const empty = { candidates: [], review_candidates: [], searched: [], searched_queries: [], errors: [], requests_used: 0, meetings_searched: 0, retrieved_meetings: [] };
-    return { ...await reviewAssignments(fullQuestion, empty, env, fetch, prepared.status),
-      assessment_error: prepared.error_code, retrieval_rounds: 0 };
+    return { ...await reviewCompactAssignments(fullQuestion, empty, env), retrieval_rounds: 0 };
   }
-  if (!plan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
-  const result = await retrieveFastAssignments(plan, fetchNdl);
+  if (!directPlan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
+  let result = await retrieveFastAssignments(directPlan, fetchNdl), planStatus = 'direct', rounds = 1;
   if (result.errors.length && !result.searched.length) throw new Error(result.errors[0]);
-  const assessed = { ...await reviewAssignments(fullQuestion, result, env, fetch, 'ready'), search_plan_status: prepared.status };
-  // Rejection is evidence about these candidates, not evidence that no relevant
-  // debate exists. Try unused natural-language searches and older records once.
-  if (prepared.status !== 'ready' || !['reviewed', 'no_candidates'].includes(assessed.assessment_status) || assessed.pairs) return { ...assessed, retrieval_rounds: 1 };
-  const refined = await prepareSemanticPlan(fullQuestion, env, fetch, {
-    searched_queries: result.searched_queries,
-    rejected_reasons: assessed.search_feedback || [],
-    result: assessed.assessment_status === 'no_candidates' ? '質問と答弁の候補が見つからなかった' : '候補を読んだが、質問案の対象と措置に対応する答弁を確認できなかった',
-  });
-  if (refined.status !== 'ready') return { ...assessed, retrieval_rounds: 1,
-    expansion_status: 'failed', expansion_error: refined.error_code };
-  const more = await retrieveFastAssignments(refined.plan, fetchNdl, '2020-01-01', {
-    maxRequests: 8 - result.requests_used, excludeMeetings: result.retrieved_meetings, includeOlder: true,
-  });
-  const reviewed = await reviewAssignments(fullQuestion, more, env, fetch, prepared.status);
-  return { ...reviewed, retrieval_rounds: 2, initial_reviewed_candidates: assessed.reviewed_candidates,
-    assessment_status: reviewed.assessment_status === 'no_candidates' && assessed.assessment_status === 'reviewed' ? 'reviewed' : reviewed.assessment_status,
-    reviewed_candidates: assessed.reviewed_candidates + reviewed.reviewed_candidates,
-    rejected_candidates: assessed.rejected_candidates + reviewed.rejected_candidates,
-    uncertain_candidates: assessed.uncertain_candidates + reviewed.uncertain_candidates,
-    review_candidates: [...assessed.review_candidates.map(row => ({ ...row, review_round: 1 })), ...reviewed.review_candidates.map(row => ({ ...row, review_round: 2 }))],
-    searched: [...result.searched, ...more.searched], searched_queries: [...new Set([...result.searched_queries, ...more.searched_queries])],
-    requests_used: result.requests_used + more.requests_used,
-    retrieved_meetings: [...result.retrieved_meetings, ...more.retrieved_meetings],
-    meetings_searched: result.meetings_searched + more.meetings_searched,
-    errors: [...result.errors, ...more.errors], partial: result.partial || more.partial,
-    search_limited: result.search_limited || more.search_limited };
+  // Search does not wait for an AI plan. Use a semantic rewrite only when the
+  // original wording could not produce any actual question/answer candidates.
+  if (!result.review_candidates.length) {
+    const prepared = await prepareSemanticPlan(fullQuestion, env, fetch, { searched_queries: result.searched_queries,
+      result: '質問案の語では、対応づけられる質問と政府答弁の候補が見つからなかった' });
+    planStatus = prepared.status;
+    if (prepared.status === 'ready') {
+      const more = await retrieveFastAssignments(prepared.plan, fetchNdl, '2001-01-01');
+      result = { ...more, searched: [...result.searched, ...more.searched],
+        searched_queries: [...new Set([...result.searched_queries, ...more.searched_queries])],
+        requests_used: result.requests_used + more.requests_used,
+        errors: [...result.errors, ...more.errors], partial: result.partial || more.partial };
+      rounds = 2;
+    } else if (prepared.status === 'failed') {
+      return { ...await reviewCompactAssignments(fullQuestion, result, env), assessment_status: 'failed',
+        assessment_error: prepared.error_code, search_plan_status: planStatus, retrieval_rounds: rounds,
+        timing: { total_ms: Date.now() - started } };
+    }
+  }
+  const retrieved = Date.now();
+  const assessed = await reviewCompactAssignments(fullQuestion, result, env);
+  return { ...assessed, search_plan_status: planStatus, retrieval_rounds: rounds,
+    timing: { retrieval_ms: retrieved - started, review_ms: Date.now() - retrieved, total_ms: Date.now() - started } };
 }
 
 const routeCache = new Map(), routesInFlight = new Map();

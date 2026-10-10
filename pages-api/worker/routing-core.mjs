@@ -187,6 +187,10 @@ export function rankQuestions(speeches, plan, limit = 4) {
 }
 function recallPassage(value, plan) {
   const subjects = [...plan.groups.filter(g => g.role !== 'requested_change'), ...(plan.recall_groups || [])];
+  // Avoid constructing and sorting sentence windows for the many unrelated
+  // turns in a full meeting. This is only a recall filter, not acceptance.
+  const text = normalize(value);
+  if (!subjects.some(g => groupHit(text, g).coverage > 0)) return null;
   return passages(value).map(p => {
     const matches = subjects.map(g => groupHit(p.text, g).coverage);
     const subjectMatches = matches.filter(coverage => coverage >= .5).length;
@@ -314,7 +318,36 @@ export function reviewCandidates(meetings, plan, limit = 12) {
       }
     }
   }
-  return [...rows.values()].sort((a, b) => b.retrieval_score - a.retrieval_score || b.date.localeCompare(a.date)).slice(0, limit);
+  return diversifyCandidates([...rows.values()].sort((a, b) => b.retrieval_score - a.retrieval_score || b.date.localeCompare(a.date)), limit);
+}
+
+// Round-robin actual meetings and distinct question turns before repeated
+// replies. A long debate or one speaker must not consume the entire review
+// budget; a reply from another agency in the same turn is still retained.
+// This never inserts agencies or accepts a candidate because of its label.
+export function diversifyCandidates(rows, limit = 24) {
+  const buckets = new Map();
+  for (const row of rows) {
+    const issue = row.case_id?.split(':')[0] || row.meeting || row.date || 'unknown';
+    if (!buckets.has(issue)) buckets.set(issue, []);
+    buckets.get(issue).push(row);
+  }
+  const selected = [], used = new Set(), cases = new Set();
+  const key = row => `${row.case_id}:${row.ministry}:${row.url}`;
+  const take = distinctOnly => {
+    let added = true;
+    while (selected.length < limit && added) {
+      added = false;
+      for (const bucket of buckets.values()) {
+        const row = bucket.find(r => !used.has(key(r)) && (!distinctOnly || !cases.has(`${r.case_id}:${r.ministry}`)));
+        if (!row) continue;
+        selected.push(row); used.add(key(row)); cases.add(`${row.case_id}:${row.ministry}`); added = true;
+        if (selected.length >= limit) break;
+      }
+    }
+  };
+  take(true); take(false);
+  return selected;
 }
 export function summarize(rows) {
   const byCase = new Map();
