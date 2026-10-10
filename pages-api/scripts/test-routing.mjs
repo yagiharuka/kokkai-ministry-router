@@ -51,6 +51,17 @@ check('総花的な大臣演説より実際の議員質問を先に調べる',()
   const speeches=[{...answer('スタートアップの女性起業家を支援します。','経済産業大臣'),issueID:'speech'}, {...ask('女性起業家の支援について伺います。'),issueID:'question'}];
   assert.equal(rankRecallQuestions(speeches,plan,1)[0][0],'question');
 });
+check('一度触れただけの報告より複数の質疑答弁がある会議を先に調べる',()=>{
+  const plan=makePlan('研究開発税制の推進について');
+  const report={...ask('研究開発税制を含む法案を報告します。'),issueID:'report',speechID:'report_q'};
+  const committee=[
+    {...ask('研究開発税制の活用について伺います。'),issueID:'committee',speechID:'committee_q1'},
+    {...answer('研究開発税制によって投資を後押しします。','経済産業大臣'),issueID:'committee',speechID:'committee_a1'},
+    {...ask('研究開発税制の効果検証について伺います。'),issueID:'committee',speechID:'committee_q2'},
+    {...answer('研究開発税制の効果を検証します。','経済産業省イノベーション・環境局長'),issueID:'committee',speechID:'committee_a2'},
+  ];
+  assert.equal(rankRecallQuestions([report,...committee],plan,1)[0][0],'committee');
+});
 check('後の議員質問で答弁の対応を打ち切る',()=>{ const m=record('水道の耐震化について伺います。',[['水道の耐震化を進めます。','国土交通大臣']]);m.speechRecord.splice(1,0,ask('別の質問について伺います。','q2',2));m.speechRecord[2].speechOrder=3; assert.equal(pairAnswers([m],makePlan('水道の耐震化について伺います。')).length,0);});
 check('同じ省の反復答弁を一質疑として数える',()=>assert.equal(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。','財務大臣'],['研究開発税制を検討します。','財務大臣']])).pairs,1));
 check('複数省の割合は一質疑の重みを分ける',()=>assert.deepEqual(summarize(route('研究開発税制の拡充を進めるべきではないか','研究開発税制の拡充を進めるべきではないか伺います。',[['研究開発税制を強化します。','財務大臣'],['研究開発税制を拡充します。','経済産業大臣']])).shares.map(x=>x.percent),[50,50]));
