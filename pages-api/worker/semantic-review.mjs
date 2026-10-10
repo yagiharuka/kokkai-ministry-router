@@ -273,14 +273,19 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   const batches = [];
   for (let i = 0; i < candidates.length; i += 8) batches.push(candidates.slice(i, i + 8));
   const outcomes = await Promise.all(batches.map(async batch => {
-    const properties = { id: { type: 'string', enum: batch.map(r => r.candidate_id) },
+    // Every independent generation gets the same short local ID range.
+    // Remapping locally prevents a model that starts numbering from one from
+    // referring to another batch, while source ownership remains immutable.
+    const localIds = batch.map((_, i) => `c${i + 1}`);
+    const globalIds = new Map(localIds.map((id, i) => [id, batch[i].candidate_id]));
+    const properties = { id: { type: 'string', enum: localIds },
       decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
       reason: { type: 'string' }, question_part: { type: 'string' }, answer_part: { type: 'string' } };
-    const schema = { type: 'object', properties: { reviews: { type: 'array', items: {
+    const schema = { type: 'object', properties: { reviews: { type: 'array', minItems: batch.length, maxItems: batch.length, items: {
       type: 'object', properties, required: Object.keys(properties), additionalProperties: false,
     } } }, required: ['reviews'], additionalProperties: false };
-    const input = { proposed_question: normalize(question), candidates: batch.map(row => ({
-      id: row.candidate_id, source_question: grounded.get(row.candidate_id).question,
+    const input = { proposed_question: normalize(question), candidate_ids: localIds, candidates: batch.map((row, i) => ({
+      id: localIds[i], source_question: grounded.get(row.candidate_id).question,
       source_answer: grounded.get(row.candidate_id).answer, position: row.position,
       previous_context: row.previous_context || '', question_truncated: Boolean(row.question_truncated),
       answer_truncated: Boolean(row.answer_truncated),
@@ -289,23 +294,29 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
       // Compact references need a single generation. Never grow a failed
       // batch into a retry tree while the user is waiting.
       const data = await structuredModelOnce(config, 'kokkai_compact_review', schema, compactInstructions, input, fetchModel);
-      const ids = new Set(batch.map(row => row.candidate_id)), byId = new Map(), duplicates = new Set();
+      const byId = new Map(), duplicates = new Set();
+      const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
+        returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0 };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
+      diagnostic.returned = data.reviews.length;
       for (const r of data.reviews) {
-        if (!r || !ids.has(r.id)) continue;
-        if (byId.has(r.id)) { duplicates.add(r.id); continue; }
-        if (Object.keys(r).sort().join(',') !== 'answer_part,decision,id,question_part,reason' ||
-            !['accept', 'reject', 'uncertain'].includes(r.decision) || typeof r.reason !== 'string' || !r.reason.trim() || r.reason.length > 120 ||
-            typeof r.question_part !== 'string' || typeof r.answer_part !== 'string') continue;
-        byId.set(r.id, r);
+        if (!r || !globalIds.has(r.id)) { diagnostic.unknown_id++; continue; }
+        const id = globalIds.get(r.id);
+        if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
+        if (Object.keys(r).sort().join(',') !== 'answer_part,decision,id,question_part,reason') { diagnostic.invalid_shape++; continue; }
+        if (!['accept', 'reject', 'uncertain'].includes(r.decision) || typeof r.reason !== 'string' || !r.reason.trim() || r.reason.length > 120 ||
+            typeof r.question_part !== 'string' || typeof r.answer_part !== 'string') { diagnostic.invalid_fields++; continue; }
+        byId.set(id, { ...r, id });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
       });
       const completed = batch.filter(row => byId.has(row.candidate_id) && !duplicates.has(row.candidate_id)).length;
-      return { reviews, completed, ...(completed < batch.length ? { error: 'model_unavailable' } : {}) };
+      return { reviews, completed, diagnostic: { ...diagnostic, completed }, ...(completed < batch.length ? { error: 'model_unavailable' } : {}) };
     } catch (error) {
-      return { error: publicModelError(error), completed: 0, reviews: batch.map(row => ({ id: row.candidate_id,
+      return { error: publicModelError(error), completed: 0,
+        diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','quota_exhausted','model_busy','model_request_failed'].includes(error?.message) ? error.message : 'invalid_json', completed: 0 },
+        reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };
     }
   }));
@@ -329,6 +340,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     assessment_status: completed ? 'reviewed' : 'failed', assessment_model: config.model,
     ...(errors.length ? { assessment_error: errors.includes('quota_exhausted') ? 'quota_exhausted' : errors[0], assessment_partial: true } : {}),
     reviewed_candidates: completed, accepted_candidates: accepted.length,
+    review_diagnostics: outcomes.map(outcome => outcome.diagnostic),
     rejected_candidates: reviewed.filter(row => row.screening === 'reject').length,
     uncertain_candidates: reviewed.filter(row => row.screening === 'uncertain').length,
     search_feedback: reviewed.filter(row => row.screening === 'reject').map(row => row.review_reason).slice(0, 6),

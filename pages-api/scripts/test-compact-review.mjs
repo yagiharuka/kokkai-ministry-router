@@ -23,6 +23,8 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,2048);
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=8);
+ assert.equal(input.candidates[0].id,'c1');
+ assert.equal(payload.response_format.json_schema.properties.reviews.minItems,input.candidates.length);
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});
@@ -47,8 +49,9 @@ const grounded=await reviewCompactAssignments('教員の長時間労働につい
  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].answer_part='invented';return {response:{reviews:rs}};
 }}});
 assert.equal(grounded.pairs,1);assert.equal(grounded.uncertain_candidates,1);
+let partialCalls=0;
 const partial=await reviewCompactAssignments('教員の長時間労働について',twentyfour,{...env,AI:{run:async(_,p)=>{
- const input=JSON.parse(p.messages[1].content);if(input.candidates[0].id==='c1')throw new Error('temporary transport failure');
+ const input=JSON.parse(p.messages[1].content);if(partialCalls++===0)throw new Error('temporary transport failure');
  return {response:{reviews:reviews(input)}};
 }}});
 assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,16);assert.equal(partial.assessment_partial,true);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 const nodes = new Map();
-const getNode = id => {if(!nodes.has(id))nodes.set(id,{hidden:true,innerHTML:'',listeners:{},addEventListener(name,fn){this.listeners[name]=fn}});return nodes.get(id);};
+const getNode = id => {if(!nodes.has(id))nodes.set(id,{hidden:true,innerHTML:'',attributes:{},listeners:{},setAttribute(name,value){this.attributes[name]=value},addEventListener(name,fn){this.listeners[name]=fn}});return nodes.get(id);};
 const context = vm.createContext({document:{getElementById:getNode},Intl,AbortController,setTimeout,clearTimeout,URLSearchParams});
 vm.runInContext(await readFile(new URL('../frontend/app.js',import.meta.url),'utf8'),context);
 const item={ministry:'文部科学省',question:'教員の負担を減らすにはどうしますか。',answer:'支援員を配置します。',date:'2025-06-10',meeting:'委員会',speaker:'答弁者',position:'文部科学大臣',url:'https://kokkai.ndl.go.jp/txt/fixture/a',review_reason:'<script>alert(1)</script>'};

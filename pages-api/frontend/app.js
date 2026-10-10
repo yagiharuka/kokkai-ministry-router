@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261010-35"};
+ const params={question:input,v:"20261010-36"};
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),65000);
  // Supplementary laws must not delay the actual ministry result.
  return {...cases,elapsedSeconds:Math.round((Date.now()-started)/1000),question:input,unit:"質疑",laws:[],lawTerm,lawTask:lawRequest,lawSkipped:!cases.shares.length};
@@ -80,6 +80,8 @@ function render(r){
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
  const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,24).map(evidenceCard).join('')+'</div>':'';
  $('results').hidden=false;
+ // Counts and error categories only: no prompts, generated text or secrets.
+ $('results').setAttribute('data-review-diagnostics',JSON.stringify(r.review_diagnostics||[]));
  $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
 
 }
