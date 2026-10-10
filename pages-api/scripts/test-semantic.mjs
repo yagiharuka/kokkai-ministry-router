@@ -206,6 +206,24 @@ try {
   assert.equal(modelCalls,2,'Cached requests must not spend more model calls');
   const status=await (await worker.fetch(new Request('https://example.invalid/api/status'),{})).json();
   assert.equal(status.model_ready,false);
+  let planFallbackModelCalls=0;
+  globalThis.fetch=async(url,init)=>{
+    if(String(url)===endpoint) {
+      planFallbackModelCalls++;
+      const body=JSON.parse(init.body);
+      if(body.response_format.json_schema.properties.queries)return new Response('temporary plan failure',{status:500});
+      const input=JSON.parse(body.messages[1].content);
+      return response({reviews:input.candidates.map(c=>({id:c.id,decision:'accept',reason:'勤務時間短縮への答弁。',question_evidence:c.source_question,answer_evidence:c.source_answer}))});
+    }
+    const target=new URL(url);
+    return Response.json(target.pathname.endsWith('/meeting')?{meetingRecord:[meeting]}:{speechRecord:meeting.speechRecord.map(s=>({...s,issueID:meeting.issueID}))});
+  };
+  const planFallback=await (await worker.fetch(new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'教師の勤務時間短縮を進めるべきではないか'})),env)).json();
+  assert.equal(planFallback.search_plan_status,'failed');
+  assert.equal(planFallback.assessment_status,'reviewed');
+  assert.equal(planFallback.shares[0].ministry,'文部科学省');
+  assert.ok(planFallback.requests_used>0,'Deterministic NDL search must continue after an opaque plan-model failure');
+  assert.ok(planFallbackModelCalls>=3);
   const offTopic={...meeting,issueID:'off-topic',speechRecord:[
     {...meeting.speechRecord[0],speech:'医療機器の法制度に関連して、ワクチンの評価について伺います。'},
     {...meeting.speechRecord[1],speakerPosition:'厚生労働大臣',speech:'ワクチンの品質、安全性を確認します。'},
