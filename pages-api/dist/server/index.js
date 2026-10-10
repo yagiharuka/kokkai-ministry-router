@@ -1,8 +1,10 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261010-38';
+const routingVersion = '20261010-39';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+const needsFullPlenaryContext = row => row.meeting === '本会議' && /内閣総理大臣/.test(row.position || '') &&
+  Boolean(row.question_truncated || row.answer_truncated);
 // Grammar and generic scope words are not literal parts of a policy name.
 // The complete question is still passed unchanged to the semantic reviewer.
 for (const word of ['分野','領域','業界','どの','よう','どんな','いかなる','なぜ','行って','行う','行い','いるか','いく','図る','図って','伺う','お聞き','考えて','考える','取り組む','取り組んで','されて','されています','でしょうか','なって','なります']) filler.add(word);
@@ -513,6 +515,7 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
   let output = result.response;
   if (Array.isArray(result.choices)) {
     const choices = result.choices;
+    if (choices.length === 1 && choices[0].finish_reason === 'length') throw new Error('model_output_limit');
     if (choices.length !== 1 || choices[0].finish_reason !== 'stop' ||
         choices[0].message?.role !== 'assistant' || choices[0].message.refusal) throw new Error('model_incomplete');
     output = choices[0].message.content;
@@ -696,13 +699,23 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
   // Review a question/agency group once, but let the reviewer select the
   // actual answer among repeated replies. An unrelated first reply must not
   // conceal a relevant later reply from that agency.
-  const candidates = diversifyCandidates([...variants.values()].map(rows => rows[0]), 24)
+  const available = [...variants.values()].map(rows => rows[0]);
+  // A clipped, long plenary answer by the prime minister cannot establish
+  // which ministry handled the individual topic. Keep it for manual reading,
+  // rather than letting a topical excerpt turn it into an agency assignment.
+  const contextPending = available.filter(needsFullPlenaryContext).map((row, i) => ({ ...row,
+    candidate_id: `p${i + 1}`, screening: 'uncertain',
+    review_reason: '本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。',
+  }));
+  const eligible = available.filter(row => !needsFullPlenaryContext(row));
+  const candidates = diversifyCandidates(eligible, 24)
     .map((row, i) => ({ ...row, candidate_id: `c${i + 1}` }));
   const config = semanticConfiguration(env);
-  const base = { ...result, shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: candidates,
+  const base = { ...result, shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: [...candidates, ...contextPending],
     assessment_status: 'not_configured', assessment_method: 'semantic', reviewed_candidates: 0,
     accepted_candidates: 0, rejected_candidates: 0, uncertain_candidates: 0,
-    unreviewed_candidates: Math.max(0, variants.size - candidates.length) };
+    unreviewed_candidates: Math.max(0, eligible.length - candidates.length),
+    context_pending_candidates: contextPending.length };
   if (!config.ready) return base;
   if (!candidates.length) return { ...base, assessment_status: 'no_candidates' };
   const grounded = new Map(candidates.map(row => {
@@ -715,7 +728,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     return [row.candidate_id, { question: sourceParts(row.question, 'q'), answer, owners }];
   }));
   const batches = [];
-  for (let i = 0; i < candidates.length; i += 8) batches.push(candidates.slice(i, i + 8));
+  for (let i = 0; i < candidates.length; i += 4) batches.push(candidates.slice(i, i + 4));
   const outcomes = await Promise.all(batches.map(async batch => {
     // Every independent generation gets the same short local ID range.
     // Remapping locally prevents a model that starts numbering from one from
@@ -759,7 +772,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
       return { reviews, completed, diagnostic: { ...diagnostic, completed }, ...(completed < batch.length ? { error: 'model_unavailable' } : {}) };
     } catch (error) {
       return { error: publicModelError(error), completed: 0,
-        diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','quota_exhausted','model_busy','model_request_failed'].includes(error?.message) ? error.message : 'invalid_json', completed: 0 },
+        diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed'].includes(error?.message) ? error.message : 'invalid_json', completed: 0 },
         reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };
     }
@@ -780,13 +793,13 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
   const errors = outcomes.map(outcome => outcome.error).filter(Boolean);
   const completed = outcomes.reduce((sum, outcome) => sum + outcome.completed, 0);
   return { ...base, ...summarize(unique), evidence: unique, candidates: unique,
-    review_candidates: reviewed.filter(row => row.screening === 'uncertain'),
+    review_candidates: [...reviewed.filter(row => row.screening === 'uncertain'), ...contextPending],
     assessment_status: completed ? 'reviewed' : 'failed', assessment_model: config.model,
     ...(errors.length ? { assessment_error: errors.includes('quota_exhausted') ? 'quota_exhausted' : errors[0], assessment_partial: true } : {}),
     reviewed_candidates: completed, accepted_candidates: accepted.length,
     review_diagnostics: outcomes.map(outcome => outcome.diagnostic),
     rejected_candidates: reviewed.filter(row => row.screening === 'reject').length,
-    uncertain_candidates: reviewed.filter(row => row.screening === 'uncertain').length,
+    uncertain_candidates: reviewed.filter(row => row.screening === 'uncertain').length + contextPending.length,
     search_feedback: reviewed.filter(row => row.screening === 'reject').map(row => row.review_reason).slice(0, 6),
     historical_only: unique.length > 0 && unique.every(row => row.date && row.date < result.recent_since),
   };
@@ -826,7 +839,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
   const records = () => [...contiguousMeetings([...pool.values()]).filter(m => !full.has(m.issueID)), ...full.values()];
   const sample = () => reviewCandidates(records(), plan, 96);
   const sufficient = rows => {
-    const stronger = rows.filter(row => row.retrieval_score >= .75);
+    const stronger = rows.filter(row => row.retrieval_score >= .75 && !needsFullPlenaryContext(row));
     return new Set(stronger.map(row => row.case_id)).size >= 12 &&
       new Set(stronger.map(row => row.case_id.split(':')[0])).size >= 3;
   };
@@ -878,7 +891,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 }
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-38';
+const publicRoutingVersion = '20261010-39';
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
 const lawTitles = new Map([

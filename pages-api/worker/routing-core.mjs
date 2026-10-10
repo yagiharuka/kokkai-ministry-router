@@ -1,8 +1,10 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261010-38';
+export const routingVersion = '20261010-39';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+export const needsFullPlenaryContext = row => row.meeting === '本会議' && /内閣総理大臣/.test(row.position || '') &&
+  Boolean(row.question_truncated || row.answer_truncated);
 // Grammar and generic scope words are not literal parts of a policy name.
 // The complete question is still passed unchanged to the semantic reviewer.
 for (const word of ['分野','領域','業界','どの','よう','どんな','いかなる','なぜ','行って','行う','行い','いるか','いく','図る','図って','伺う','お聞き','考えて','考える','取り組む','取り組んで','されて','されています','でしょうか','なって','なります']) filler.add(word);

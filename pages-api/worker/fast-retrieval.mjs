@@ -1,4 +1,4 @@
-import { rankRecallQuestions, reviewCandidates, routingVersion } from './routing-core.mjs';
+import { rankRecallQuestions, reviewCandidates, routingVersion, needsFullPlenaryContext } from './routing-core.mjs';
 
 // Reuse complete speeches only within uninterrupted runs. A missing speech
 // might be a new question; never attach a later reply across that gap.
@@ -33,7 +33,7 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-0
   const records = () => [...contiguousMeetings([...pool.values()]).filter(m => !full.has(m.issueID)), ...full.values()];
   const sample = () => reviewCandidates(records(), plan, 96);
   const sufficient = rows => {
-    const stronger = rows.filter(row => row.retrieval_score >= .75);
+    const stronger = rows.filter(row => row.retrieval_score >= .75 && !needsFullPlenaryContext(row));
     return new Set(stronger.map(row => row.case_id)).size >= 12 &&
       new Set(stronger.map(row => row.case_id.split(':')[0])).size >= 3;
   };

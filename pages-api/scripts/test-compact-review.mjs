@@ -26,13 +26,13 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  calls++;active++;peak=Math.max(peak,active);
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,2048);
  const input=JSON.parse(payload.messages[1].content);
- assert.ok(input.candidates.length<=8);
+ assert.ok(input.candidates.length<=4);
  assert.equal(input.candidates[0].id,'c1');
  assert.equal(payload.response_format.json_schema.properties.reviews.minItems,input.candidates.length);
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});
-assert.equal(calls,3);assert.equal(peak,3);
+assert.equal(calls,6);assert.equal(peak,6);
 assert.equal(parallel.pairs,24);assert.equal(parallel.evidence.length,24);
 assert.equal(parallel.unreviewed_candidates,8);
 assert.ok(parallel.candidates.every(r=>clustered.some(s=>r.url===s.url&&r.ministry===s.ministry)));
@@ -58,7 +58,7 @@ const partial=await reviewCompactAssignments('教員の長時間労働につい�
  const input=JSON.parse(p.messages[1].content);if(partialCalls++===0)throw new Error('temporary transport failure');
  return {response:{reviews:reviews(input)}};
 }}});
-assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,16);assert.equal(partial.assessment_partial,true);
+assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,20);assert.equal(partial.assessment_partial,true);
 const forged=await reviewCompactAssignments('教員の長時間労働について',result([row('bad:q1')]),{...env,AI:{run:async(_,p)=>{
  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].id='unknown';return {response:{reviews:rs}};
 }}});
@@ -70,6 +70,17 @@ assert.equal(incomplete.uncertain_candidates,1);assert.equal(incomplete.reviewed
 const duplicated=await reviewCompactAssignments('教員の長時間労働について',result([row('duplicate:q1'),row('duplicate:q2')]),{...env,AI:{run:async(_,p)=>{const rs=reviews(JSON.parse(p.messages[1].content));return {response:{reviews:[...rs,rs[0]]}};}}});
 assert.equal(duplicated.pairs,1,'Only the duplicate candidate must be withheld');
 assert.equal(duplicated.uncertain_candidates,1);
+const plenary = {...row('plenary:q1','内閣府・内閣官房等'),position:'内閣総理大臣',meeting:'本会議',answer_truncated:true};
+let judgedPlenary=false;
+const withoutPlenary=await reviewCompactAssignments('教員の長時間労働について',result([plenary,row('committee:q1')]),{...env,AI:{run:async(_,p)=>{
+ const input=JSON.parse(p.messages[1].content);judgedPlenary ||= input.candidates.some(c=>c.meeting==='本会議');
+ return {response:{reviews:reviews(input)}};
+}}});
+assert.equal(judgedPlenary,false);
+assert.equal(withoutPlenary.pairs,1);
+assert.equal(withoutPlenary.context_pending_candidates,1);
+assert.equal(withoutPlenary.review_candidates.some(r=>r.case_id==='plenary:q1'),true);
+assert.deepEqual(withoutPlenary.shares.map(r=>r.ministry),['文部科学省']);
 
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
