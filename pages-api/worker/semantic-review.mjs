@@ -28,7 +28,7 @@ export function semanticConfiguration(env = {}) {
     ready: Boolean(freePlanConfirmed && (binding || (apiKey && /^[a-f0-9]{32}$/i.test(accountId)))) };
 }
 
-async function structuredModel(config, name, schema, instructions, input, fetchModel) {
+async function structuredModelOnce(config, name, schema, instructions, input, fetchModel) {
   const payload = { stream: false, temperature: 0.1,
     max_tokens: name === 'kokkai_search_plan' ? 1024 : 3072,
     messages: [{ role: 'system', content: instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
@@ -76,6 +76,20 @@ async function structuredModel(config, name, schema, instructions, input, fetchM
   if (typeof output === 'string') return JSON.parse(output);
   if (output && typeof output === 'object' && !Array.isArray(output)) return output;
   throw new Error('invalid_model_output');
+}
+
+async function structuredModel(config, name, schema, instructions, input, fetchModel) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await structuredModelOnce(config, name, schema, instructions, input, fetchModel);
+    } catch (error) {
+      // Quota and congestion have explicit user-facing states; retrying them
+      // only spends time. Retry one opaque transport/incomplete-output failure
+      // because Workers AI occasionally returns a transient unusable response.
+      if (attempt || ['quota_exhausted', 'model_busy'].includes(error?.message)) throw error;
+    }
+  }
+  throw new Error('model_request_failed');
 }
 
 const publicModelError = error => ['quota_exhausted', 'model_busy'].includes(error?.message) ? error.message : 'model_unavailable';
