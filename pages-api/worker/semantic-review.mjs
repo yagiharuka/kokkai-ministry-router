@@ -221,17 +221,21 @@ const compactInstructions = `利用者の proposed_question と、会議録か�
 誰のどの活動・制度について何を求めているか、対象・範囲・政策手段を比較します。単語の一致数で決めません。言い換え、略称、同じ課題への現行制度の説明・賛成・反対・慎重な見解も accept です。
 「A分野のB」「AにおけるB」は活動領域Aを維持します。B一般や別分野のBは reject。国内外の指定がなければ日本国内の施策とし、外国だけの事例や国際協力は reject。ただし質問案が海外・輸出・外交を扱えばその範囲で判断します。
 広い推進の問いには、同じ活動を妨げる障壁の除去、参加機会、安全、資金など具体策も accept。特定の制度変更を問う場合は指定を維持します。固有の制度・事業の推進を問う案には、答弁が同じ制度の運営、選定、効果、予算、継続・改善を実質的に説明していれば、元の質問が広い政策課題でも accept できます。名前の列挙や背景の言及だけは reject。
-source_question と source_answer は原文を分割して番号を付けた辞書です。accept には、対応を示す質問側の番号を question_part、答弁側の番号を answer_part に一つずつ選びます。文字列の引用を生成しません。元の問いへの応答を確認し、複数論点の別の問いへの答弁は reject。議長・委員長の案内、法案・附帯決議の読み上げと尊重する旨の挨拶は reject。本会議で総理が多数の無関係な分野をまとめて答えたものも割り振り根拠として曖昧なので reject。
+source_question と source_answer は原文を分割して番号を付けた辞書です。accept には、対応を示す質問側の番号を question_part、答弁側の番号を answer_part に一つずつ選びます。答弁の番号は質問対象への実質的な説明・方針・措置を示す箇所を選び、挨拶や「お答えします」、感想だけの箇所を選ばないでください。文字列の引用を生成しません。元の問いへの応答を確認し、複数論点の別の問いへの答弁は reject。議長・委員長の案内、法案・附帯決議の読み上げと尊重する旨の挨拶は reject。本会議で総理が多数の無関係な分野をまとめて答えたものも割り振り根拠として曖昧なので reject。
 文脈不足は uncertain。reject / uncertain の番号は空文字で構いません。各候補IDについて一度ずつ判定し、reason は日本語25字以内の短い採否理由にします。候補IDも原文番号も別候補から持ってこないでください。`;
 
 export function sourceParts(value, prefix) {
   const text = normalize(value), parts = {};
   let number = 1;
   for (const sentence of text.match(/[^。！？?]+[。！？?]?/gu) || []) {
+    const content = sentence.replace(/^[○〇][^ ]{1,60}\s+/u, '').trim();
+    // Do not offer a bare greeting as the evidence for an accepted answer.
+    // The untouched complete context remains in the public source record.
+    if (/^(?:はい[、。 ]*)?(?:お答え(?:を)?(?:申し上げ|いたし|し)ます|御指摘ありがとうございます|ありがとうございます|御指摘のとおりでございます|よろしくお願いいたします)[。 ]*$/u.test(content)) continue;
     // These are immutable substrings, not a model-created summary. Splitting
     // long sentences also bounds the size of the evidence displayed to users.
-    for (let start = 0; start < sentence.length; start += 160) {
-      const part = sentence.slice(start, start + 160).trim();
+    for (let start = 0; start < content.length; start += 160) {
+      const part = content.slice(start, start + 160).trim();
       if (part) parts[`${prefix}${number++}`] = part;
     }
   }
@@ -267,7 +271,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     return [row.candidate_id, { question: sourceParts(row.question, 'q'), answer, owners }];
   }));
   const batches = [];
-  for (let i = 0; i < candidates.length; i += 12) batches.push(candidates.slice(i, i + 12));
+  for (let i = 0; i < candidates.length; i += 8) batches.push(candidates.slice(i, i + 8));
   const outcomes = await Promise.all(batches.map(async batch => {
     const properties = { id: { type: 'string', enum: batch.map(r => r.candidate_id) },
       decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
@@ -285,17 +289,23 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
       // Compact references need a single generation. Never grow a failed
       // batch into a retry tree while the user is waiting.
       const data = await structuredModelOnce(config, 'kokkai_compact_review', schema, compactInstructions, input, fetchModel);
-      const ids = new Set(batch.map(row => row.candidate_id)), seen = new Set();
-      if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews) || data.reviews.length !== batch.length) throw new Error('invalid_review');
+      const ids = new Set(batch.map(row => row.candidate_id)), byId = new Map(), duplicates = new Set();
+      if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       for (const r of data.reviews) {
-        if (!r || Object.keys(r).sort().join(',') !== 'answer_part,decision,id,question_part,reason' || !ids.has(r.id) || seen.has(r.id) ||
+        if (!r || !ids.has(r.id)) continue;
+        if (byId.has(r.id)) { duplicates.add(r.id); continue; }
+        if (Object.keys(r).sort().join(',') !== 'answer_part,decision,id,question_part,reason' ||
             !['accept', 'reject', 'uncertain'].includes(r.decision) || typeof r.reason !== 'string' || !r.reason.trim() || r.reason.length > 120 ||
-            typeof r.question_part !== 'string' || typeof r.answer_part !== 'string') throw new Error('invalid_review');
-        seen.add(r.id);
+            typeof r.question_part !== 'string' || typeof r.answer_part !== 'string') continue;
+        byId.set(r.id, r);
       }
-      return { reviews: data.reviews };
+      const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
+        id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
+      });
+      const completed = batch.filter(row => byId.has(row.candidate_id) && !duplicates.has(row.candidate_id)).length;
+      return { reviews, completed, ...(completed < batch.length ? { error: 'model_unavailable' } : {}) };
     } catch (error) {
-      return { error: publicModelError(error), reviews: batch.map(row => ({ id: row.candidate_id,
+      return { error: publicModelError(error), completed: 0, reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };
     }
   }));
@@ -313,7 +323,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   const accepted = reviewed.filter(row => row.screening === 'accept');
   const unique = [...new Map(accepted.map(row => [`${row.case_id}:${row.ministry}`, row])).values()];
   const errors = outcomes.map(outcome => outcome.error).filter(Boolean);
-  const completed = reviewed.length - outcomes.filter(outcome => outcome.error).reduce((sum, outcome) => sum + outcome.reviews.length, 0);
+  const completed = outcomes.reduce((sum, outcome) => sum + outcome.completed, 0);
   return { ...base, ...summarize(unique), evidence: unique, candidates: unique,
     review_candidates: reviewed.filter(row => row.screening === 'uncertain'),
     assessment_status: completed ? 'reviewed' : 'failed', assessment_model: config.model,

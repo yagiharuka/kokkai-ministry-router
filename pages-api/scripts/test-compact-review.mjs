@@ -22,11 +22,11 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  calls++;active++;peak=Math.max(peak,active);
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,2048);
  const input=JSON.parse(payload.messages[1].content);
- assert.ok(input.candidates.length<=12);
+ assert.ok(input.candidates.length<=8);
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});
-assert.equal(calls,2);assert.equal(peak,2);
+assert.equal(calls,3);assert.equal(peak,3);
 assert.equal(parallel.pairs,24);assert.equal(parallel.evidence.length,24);
 assert.equal(parallel.unreviewed_candidates,8);
 assert.ok(parallel.candidates.every(r=>clustered.some(s=>r.url===s.url&&r.ministry===s.ministry)));
@@ -51,11 +51,18 @@ const partial=await reviewCompactAssignments('教員の長時間労働につい�
  const input=JSON.parse(p.messages[1].content);if(input.candidates[0].id==='c1')throw new Error('temporary transport failure');
  return {response:{reviews:reviews(input)}};
 }}});
-assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,12);assert.equal(partial.assessment_partial,true);
+assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,16);assert.equal(partial.assessment_partial,true);
 const forged=await reviewCompactAssignments('教員の長時間労働について',result([row('bad:q1')]),{...env,AI:{run:async(_,p)=>{
  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].id='unknown';return {response:{reviews:rs}};
 }}});
 assert.equal(forged.assessment_status,'failed');assert.equal(forged.pairs,0);
+
+const incomplete=await reviewCompactAssignments('教員の長時間労働について',result([row('missing:q1'),row('missing:q2'),row('missing:q3')]),{...env,AI:{run:async(_,p)=>{const rs=reviews(JSON.parse(p.messages[1].content));return {response:{reviews:rs.slice(0,2)}};}}});
+assert.equal(incomplete.pairs,2,'An omitted candidate must not discard other grounded reviews');
+assert.equal(incomplete.uncertain_candidates,1);assert.equal(incomplete.reviewed_candidates,2);
+const duplicated=await reviewCompactAssignments('教員の長時間労働について',result([row('duplicate:q1'),row('duplicate:q2')]),{...env,AI:{run:async(_,p)=>{const rs=reviews(JSON.parse(p.messages[1].content));return {response:{reviews:[...rs,rs[0]]}};}}});
+assert.equal(duplicated.pairs,1,'Only the duplicate candidate must be withheld');
+assert.equal(duplicated.uncertain_candidates,1);
 
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
