@@ -10,6 +10,7 @@ const result = rows => ({review_candidates:rows,recent_since:'2024-01-01',search
 const parts=sourceParts('原文の文章です。'+ '長い文章'.repeat(80)+'。','q');
 assert.ok(Object.values(parts).every(p=>p.length<=160));
 assert.ok(Object.values(parts).every(p=>('原文の文章です。'+'長い文章'.repeat(80)+'。').includes(p)));
+assert.deepEqual(Object.values(sourceParts('教師の業務削減についてのお尋ねです。教員の負担軽減に取り組みます。','a')),['教員の負担軽減に取り組みます。']);
 
 const clustered=[...Array.from({length:30},(_,i)=>row(`dense:q${i}`)),row('other:q1','財務省'),row('third:q1','経済産業省')];
 const diverse=diversifyCandidates(clustered,24);
