@@ -24,8 +24,7 @@ globalThis.fetch = async url => {
 const env = { CLOUDFLARE_WORKERS_PLAN: 'free', AI: { run: async (_, payload) => {
   models++;
   const input = JSON.parse(payload.messages[1].content);
-  return { response: { reviews: input.candidates.map(row => ({ id: row.id, decision: 'accept', reason: '同じ教員の勤務負担への答弁。',
-    question_part: Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0], answer_part: Object.keys(row.source_answer)[0] })) } };
+  return { response: { reviews: input.candidates.map(row => [row.id, 'accept', Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0], Object.keys(row.source_answer)[0], 'same']) } };
 } } };
 const request = question => new Request('https://example.invalid/api/cases?' + new URLSearchParams({ question }));
 const question = '教員の長時間労働を是正すべきではないか';

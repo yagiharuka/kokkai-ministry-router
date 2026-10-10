@@ -1,0 +1,29 @@
+{
+  "recorded_at": "2026-10-10T11:30:27.937Z",
+  "release_version": "20261010-42",
+  "baseline_version": "20261010-41",
+  "mode": "fresh question; all caches disabled; local payload capture without real AI calls",
+  "question": "スタートアップ界の女性活躍推進を進めるべきではないか",
+  "before": {
+    "model_calls": 6,
+    "candidates": 24,
+    "input_characters": 45951,
+    "max_generated_tokens": 12288
+  },
+  "after": {
+    "model_calls": 2,
+    "candidates": 24,
+    "input_characters": 36375,
+    "max_generated_tokens": 5120
+  },
+  "input_character_reduction_percent": 20.8,
+  "max_output_budget_reduction_percent": 58.3,
+  "all_24_candidate_source_text_and_context_preserved": true,
+  "model": "@cf/openai/gpt-oss-20b",
+  "live_quality_and_neuron_comparison": "pending_free_quota_reset",
+  "limitations": [
+    "Input characters are not billed tokens. max_generated_tokens is a ceiling, not actual usage. These reductions are not measured Neuron savings.",
+    "The 12-candidate compact-array protocol has not been validated with the live model. Confirm output completeness, correct source parts, accepted agencies and actual input/output usage after the free quota resets.",
+    "A failed batch leaves up to 12 candidates pending. Completed candidates in the other batch remain available; no automatic retry tree."
+  ]
+}

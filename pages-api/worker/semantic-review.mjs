@@ -30,7 +30,7 @@ export function semanticConfiguration(env = {}) {
 
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
   const payload = { stream: false, temperature: 0.1,
-    max_tokens: name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? 2048 : 3072,
+    max_tokens: name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 2560 : 2048) : 3072,
     messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
       { role: 'user', content: JSON.stringify(input) }],
     response_format: { type: 'json_schema', json_schema: schema } };
@@ -39,7 +39,7 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
     let timer;
     try {
       data = await Promise.race([config.binding.run(config.model, payload), new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('model_timeout')), name === 'kokkai_compact_review' ? 25000 : 40000);
+        timer = setTimeout(() => reject(new Error('model_timeout')), name === 'kokkai_compact_review' ? 35000 : 40000);
       })]);
     } catch (error) {
       const message = String(error?.message || '').toLowerCase();
@@ -52,7 +52,7 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
       method: 'POST',
       headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(name === 'kokkai_compact_review' ? 25000 : 40000),
+      signal: AbortSignal.timeout(name === 'kokkai_compact_review' ? 35000 : 40000),
     });
     data = await response.json().catch(() => null);
     if (!response.ok || data?.success === false) {
@@ -231,7 +231,16 @@ const compactInstructions = `利用者の proposed_question と、会議録か�
 「A分野のB」「AにおけるB」は活動領域Aを維持します。B一般や別分野のBは reject。国内外の指定がなければ日本国内の施策とし、外国だけの事例や国際協力は reject。ただし質問案が海外・輸出・外交を扱えばその範囲で判断します。
 広い推進・支援・活躍・環境改善の問いには、同じ対象の活動を妨げる障壁の除去、参加機会、安全、資金など具体策も accept。「支援」は補助金や直接給付だけではありません。施策の受益者と、施策を実行する主体・規制される事業者を区別してください。受益者を支える環境整備のために他の事業者へルールや取組を求める答弁も、質問と答弁が同じ受益者・活動を扱えば accept です。広い問いなのに候補が具体的な手続、制度、規制、取組を扱っているという理由だけで reject してはいけません。対象の活動とのつながりを質問と答弁の原文で確認します。別分野の一般的な取組だけなら reject。特定の制度変更を問う場合は指定を維持します。固有の制度・事業の推進を問う案には、答弁が同じ制度の運営、選定、効果、予算、継続・改善を実質的に説明していれば、元の質問が広い政策課題でも accept できます。名前の列挙や背景の言及だけは reject。
 source_question と source_answer は原文を分割して番号を付けた辞書です。accept には、対応を示す質問側の番号を question_part、答弁側の番号を answer_part に一つずつ選びます。答弁の番号は質問対象への実質的な説明・方針・措置を示す箇所を選び、挨拶や「お答えします」、感想だけの箇所を選ばないでください。文字列の引用を生成しません。元の問いへの応答を確認し、複数論点の別の問いへの答弁は reject。議長・委員長の案内、法案・附帯決議の読み上げと尊重する旨の挨拶は reject。本会議で総理が多数の無関係な分野をまとめて答えたものも割り振り根拠として曖昧なので reject。
-文脈不足は uncertain。reject / uncertain の番号は空文字で構いません。各候補IDについて一度ずつ判定し、reason は日本語25字以内の短い採否理由にします。候補IDも原文番号も別候補から持ってこないでください。`;
+文脈不足は uncertain。reviews の各行は [候補ID,判定,質問原文番号,答弁原文番号,理由コード] の5文字列です。例: ["c1","accept","q1","v1a2","same"]。全候補を一度ずつ返します。採用は accept / same、不採用は reject と理由コード（scope=対象・活動領域・国内外の範囲が違う、measure=指定の制度・措置に答えていない、mention=背景の言及だけ、non_qa=挨拶・手続など質疑でない）、文脈不足は uncertain / context とします。reject / uncertain の原文番号は両方空文字にします。説明文や引用文を生成せず、この短い形式だけを返します。候補IDも原文番号も別候補から持ってこないでください。`;
+
+const compactReasons = {
+  same: '質問案と同じ政策課題への答弁として採用。',
+  scope: '対象・活動領域・国内外の範囲が質問案と異なる。',
+  measure: '質問案が指定する制度・措置への答弁ではない。',
+  mention: '背景での言及にとどまり、対象への実質的な答弁ではない。',
+  non_qa: '挨拶・手続などで、実質的な質疑ではない。',
+  context: '文脈が不足し、質問と答弁の対応を判断できない。',
+};
 
 export function sourceParts(value, prefix) {
   const text = normalize(value), parts = {};
@@ -329,18 +338,15 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     questionGroups.get(key).push(row);
   }
   const ordered = [...questionGroups.values()].flat(), batches = [];
-  for (let i = 0; i < ordered.length; i += 4) batches.push(ordered.slice(i, i + 4));
+  for (let i = 0; i < ordered.length; i += 12) batches.push(ordered.slice(i, i + 12));
   const outcomes = await Promise.all(batches.map(async batch => {
     // Every independent generation gets the same short local ID range.
     // Remapping locally prevents a model that starts numbering from one from
     // referring to another batch, while source ownership remains immutable.
     const localIds = batch.map((_, i) => `c${i + 1}`);
     const globalIds = new Map(localIds.map((id, i) => [id, batch[i].candidate_id]));
-    const properties = { id: { type: 'string', enum: localIds },
-      decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
-      reason: { type: 'string' }, question_part: { type: 'string' }, answer_part: { type: 'string' } };
     const schema = { type: 'object', properties: { reviews: { type: 'array', minItems: batch.length, maxItems: batch.length, items: {
-      type: 'object', properties, required: Object.keys(properties), additionalProperties: false,
+      type: 'array', items: { type: 'string' }, minItems: 5, maxItems: 5,
     } } }, required: ['reviews'], additionalProperties: false };
     const questions = new Map();
     const input = { proposed_question: normalize(question), candidates: batch.map((row, i) => {
@@ -367,17 +373,21 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
       }
       const byId = new Map(), duplicates = new Set();
       const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
+        output_token_limit: batch.length > 4 ? 2560 : 2048, output_format: 'compact_rows_v1',
         returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0 };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       diagnostic.returned = data.reviews.length;
-      for (const r of data.reviews) {
-        if (!r || !globalIds.has(r.id)) { diagnostic.unknown_id++; continue; }
-        const id = globalIds.get(r.id);
+      for (const raw of data.reviews) {
+        if (!Array.isArray(raw) || raw.length !== 5 || !raw.every(value => typeof value === 'string')) { diagnostic.invalid_shape++; continue; }
+        const [localId, decision, question_part, answer_part, reason_code] = raw;
+        if (!globalIds.has(localId)) { diagnostic.unknown_id++; continue; }
+        const id = globalIds.get(localId);
         if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
-        if (Object.keys(r).sort().join(',') !== 'answer_part,decision,id,question_part,reason') { diagnostic.invalid_shape++; continue; }
-        if (!['accept', 'reject', 'uncertain'].includes(r.decision) || typeof r.reason !== 'string' || !r.reason.trim() || r.reason.length > 120 ||
-            typeof r.question_part !== 'string' || typeof r.answer_part !== 'string') { diagnostic.invalid_fields++; continue; }
-        byId.set(id, { ...r, id });
+        const validDecision = (decision === 'accept' && reason_code === 'same') ||
+          (decision === 'reject' && ['scope','measure','mention','non_qa'].includes(reason_code)) ||
+          (decision === 'uncertain' && reason_code === 'context');
+        if (!validDecision || (decision !== 'accept' && (question_part || answer_part))) { diagnostic.invalid_fields++; continue; }
+        byId.set(id, { id, decision, question_part, answer_part, reason_code, reason: compactReasons[reason_code] });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
@@ -395,6 +405,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     } catch (error) {
       return { error: publicModelError(error), completed: 0,
         diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed'].includes(error?.message) ? error.message : 'invalid_json', completed: 0,
+          output_token_limit: batch.length > 4 ? 2560 : 2048, output_format: 'compact_rows_v1',
           cache_hit: cacheHit, model_called: modelCalled, ...(modelUsage ? { usage: modelUsage } : {}) },
         reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };

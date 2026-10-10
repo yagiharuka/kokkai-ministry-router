@@ -9,7 +9,7 @@ globalThis.caches = { default: {
   async match(key) { return stored.get(key)?.clone(); },
   async put(key, response) { stored.set(key, response.clone()); },
 } };
-const rows = Array.from({length:8},(_,i)=>({
+const rows = Array.from({length:24},(_,i)=>({
   case_id:`cost:q${i}`,ministry:'文部科学省',position:'文部科学大臣',meeting:'文教委員会',date:'2026-05-01',
   question:'教員の勤務時間を減らすにはどうしますか。'+ '学校の負担について詳しく伺います。'.repeat(15),
   answer:`教員の勤務負担を軽減するため支援員を${i+1}人配置します。`,
@@ -25,15 +25,11 @@ const env={CLOUDFLARE_WORKERS_PLAN:'free',AI:{run:async(_,payload)=>{
   calls++;
   const input=JSON.parse(payload.messages[1].content);captured.push(input);
   if(failAnswer && JSON.stringify(input).includes(failAnswer))throw new Error('temporary failure');
-  return {usage:{prompt_tokens:1000,completion_tokens:200},response:{reviews:input.candidates.map(c=>({
-    id:c.id,decision:'accept',reason:'同じ教員の負担への答弁。',
-    question_part:Object.keys(c.source_question || input.candidates.find(other=>other.id===c.source_question_ref).source_question)[0],
-    answer_part:invalid?'invented':Object.keys(c.source_answer)[0],
-  }))}};
+  return {usage:{prompt_tokens:1000,completion_tokens:200},response:{reviews:input.candidates.map(c=>[c.id,'accept',Object.keys(c.source_question || input.candidates.find(other=>other.id===c.source_question_ref).source_question)[0],invalid?'invented':Object.keys(c.source_answer)[0],'same'])}};
 }}};
 try {
   const first=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(first.pairs,8);assert.equal(calls,2);
+  assert.equal(first.pairs,24);assert.equal(calls,2);
   assert.equal(first.review_model_calls,2);assert.equal(first.review_cache_hits,0);
   assert.ok(first.review_diagnostics.every(d=>d.usage.input_tokens===1000&&d.usage.output_tokens===200));
   assert.equal(stored.size,2);
@@ -46,24 +42,24 @@ try {
   clock += 2 * 86400000;
   const repeat=await reviewCompactAssignments(question,inputResult(rows),env);
   assert.equal(calls,2);assert.equal(repeat.review_model_calls,0);assert.equal(repeat.review_cache_hits,2);
-  assert.equal(repeat.pairs,8);assert.ok(repeat.review_diagnostics.every(d=>!d.usage));
+  assert.equal(repeat.pairs,24);assert.ok(repeat.review_diagnostics.every(d=>!d.usage));
 
-  const changed=rows.map((r,i)=>i===7?{...r,answer:r.answer+'予算の見直しも行います。'}:r);
+  const changed=rows.map((r,i)=>i===23?{...r,answer:r.answer+'予算の見直しも行います。'}:r);
   const refreshed=await reviewCompactAssignments(question,inputResult(changed),env);
   assert.equal(calls,3);assert.equal(refreshed.review_cache_hits,1,'Changed source text must only rejudge its batch');
-  assert.equal(refreshed.pairs,8);
+  assert.equal(refreshed.pairs,24);
 
   const scoped=await reviewCompactAssignments('海外の教員の勤務負担を減らすべきではないか',inputResult(rows),env);
   assert.equal(calls,5);assert.equal(scoped.review_cache_hits,0,'Question scope must not reuse another judgment');
 
   // Valid batches survive a partial failure. Only the missing batch is retried
   // on the next request; neither an invalid reference nor a failure is cached.
-  stored.clear();failAnswer='支援員を5人';
+  stored.clear();failAnswer='支援員を13人';
   const partial=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(partial.assessment_partial,true);assert.equal(partial.pairs,4);assert.equal(stored.size,1);
+  assert.equal(partial.assessment_partial,true);assert.equal(partial.pairs,12);assert.equal(stored.size,1);
   failAnswer='';const before=calls;
   const recovered=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(calls,before+1);assert.equal(recovered.pairs,8);assert.equal(recovered.review_cache_hits,1);
+  assert.equal(calls,before+1);assert.equal(recovered.pairs,24);assert.equal(recovered.review_cache_hits,1);
 
   stored.clear();invalid=true;
   const bad=await reviewCompactAssignments(question,inputResult(rows),env);
