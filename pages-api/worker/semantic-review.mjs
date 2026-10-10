@@ -27,7 +27,7 @@ export function semanticConfiguration(env = {}) {
 
 async function structuredModel(config, name, schema, instructions, input, fetchModel) {
   const payload = { stream: false, temperature: 0.1,
-    max_tokens: name === 'kokkai_search_plan' ? 384 : 2048,
+    max_tokens: name === 'kokkai_search_plan' ? 1024 : 3072,
     messages: [{ role: 'system', content: instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
       { role: 'user', content: JSON.stringify(input) }],
     response_format: { type: 'json_schema', json_schema: schema } };
