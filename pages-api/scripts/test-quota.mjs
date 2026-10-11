@@ -36,6 +36,10 @@ try {
   assert.equal(status.quota_reset_at,new Date(nextReset).toISOString());
 
   clock = nextReset + 1;
+  const legacyKey = 'https://kokkai-ministry-router.haru620328.workers.dev/__quota_state/' + Math.floor(clock / 86400000);
+  stored.set(legacyKey, Response.json({until:clock + 12 * 3600000}));
+  const legacy = await (await worker.fetch(new Request('https://example.invalid/api/status'),env)).json();
+  assert.equal(legacy.can_analyze,true,'An old broad-classifier marker without verified daily-quota evidence must not disable the whole day');
   const restored = await (await worker.fetch(request('教員の長時間労働を是正すべきではないか'),env)).json();
   assert.equal(restored.assessment_status,'reviewed'); assert.equal(restored.pairs,1); assert.equal(models,1);
 

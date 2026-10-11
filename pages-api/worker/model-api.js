@@ -2,7 +2,7 @@ import { routingVersion, makePlan } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewCompactAssignments, semanticConfiguration } from './semantic-review.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-42';
+const publicRoutingVersion = '20261011-43';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
@@ -138,7 +138,7 @@ async function knownQuotaPause(env) {
     const hit = typeof caches !== 'undefined' && await caches.default.match(quotaCacheKey());
     if (hit) {
       const state = await hit.json();
-      if (typeof state.until === 'number' && state.until > now && state.until <= nextQuotaReset()) quotaBlockedUntil = state.until;
+      if (state.kind === 'daily_neuron_quota_v1' && typeof state.until === 'number' && state.until > now && state.until <= nextQuotaReset()) quotaBlockedUntil = state.until;
     }
   } catch { /* A cache fault cannot invent a quota state. */ }
   return quotaBlockedUntil;
@@ -146,7 +146,7 @@ async function knownQuotaPause(env) {
 async function recordQuotaPause(ctx) {
   quotaBlockedUntil = nextQuotaReset();
   if (typeof caches === 'undefined') return;
-  const save = caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil }, {
+  const save = caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil, kind: 'daily_neuron_quota_v1' }, {
     headers: { 'cache-control': `public, max-age=${Math.max(1, Math.ceil((quotaBlockedUntil - Date.now()) / 1000))}` },
   })).catch(() => {});
   if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;

@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261010-42';
+const routingVersion = '20261011-43';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -471,6 +471,29 @@ function semanticConfiguration(env = {}) {
     ready: Boolean(freePlanConfirmed && (binding || (apiKey && /^[a-f0-9]{32}$/i.test(accountId)))) };
 }
 
+function workersAiFailure(error, status = 0) {
+  const message = String(error?.message || '').toLowerCase();
+  const knownCodes = [3003,3006,3007,3008,3023,3036,3039,3040,3041,3042,5004,5005,5007,5016,5018,5019,5035];
+  const reported = Number(error?.code ?? error?.cause?.code);
+  const code = knownCodes.includes(reported) ? reported : knownCodes.find(n => new RegExp(`\\b${n}\\b`).test(message));
+  let kind = 'model_request_failed', basis = 'unclassified';
+  if (code === 3036 || /daily[^\n]{0,100}(?:neuron|free allocation)/.test(message)) {
+    kind = 'quota_exhausted'; basis = 'daily_neuron_quota';
+  } else if (code === 3040 || status === 429 || /\brate[ _-]*limit|capacity temporarily|\bbusy\b|overloaded/.test(message)) {
+    kind = 'model_busy'; basis = 'temporary_capacity_or_rate';
+  } else if (code === 3006 || /context.{0,30}(?:limit|length|window)|input.{0,30}token.{0,30}limit|request too large/.test(message)) {
+    kind = 'model_input_limit'; basis = 'input_size';
+  } else if ([3007,3008].includes(code) || /timeout|timed out/.test(message)) {
+    kind = 'model_timeout'; basis = 'timeout';
+  } else if ([3023,3041,5016,5018,5035].includes(code)) {
+    kind = 'model_access_denied'; basis = 'account_or_model_access';
+  }
+  const classified = new Error(kind);
+  if (code) classified.provider_code = code;
+  classified.provider_error_kind = basis;
+  return classified;
+}
+
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
   const payload = { stream: false, temperature: 0.1,
     max_tokens: name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 2560 : 2048) : 3072,
@@ -485,10 +508,7 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
         timer = setTimeout(() => reject(new Error('model_timeout')), name === 'kokkai_compact_review' ? 35000 : 40000);
       })]);
     } catch (error) {
-      const message = String(error?.message || '').toLowerCase();
-      if (message.includes('quota') || message.includes('limit') || message.includes('neuron')) throw new Error('quota_exhausted');
-      if (message.includes('busy') || message.includes('rate')) throw new Error('model_busy');
-      throw new Error('model_request_failed');
+      throw workersAiFailure(error);
     } finally { clearTimeout(timer); }
   } else {
     const response = await fetchModel(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${config.model}`, {
@@ -499,10 +519,8 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
     });
     data = await response.json().catch(() => null);
     if (!response.ok || data?.success === false) {
-      const codes = (Array.isArray(data?.errors) ? data.errors : []).map(error => Number(error?.code));
-      if (codes.includes(3036)) throw new Error('quota_exhausted');
-      if (response.status === 429 || codes.includes(3040)) throw new Error('model_busy');
-      throw new Error('model_request_failed');
+      const errors = Array.isArray(data?.errors) ? data.errors : [];
+      throw workersAiFailure(errors.find(e => Number(e.code) === 3036) || errors[0] || {}, response.status);
     }
   }
   // Provider error bodies may contain request details. Never expose them or
@@ -847,7 +865,9 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         ...(modelUsage ? { usage: modelUsage } : {}) }, ...(completed < batch.length ? { error: 'model_unavailable' } : {}) };
     } catch (error) {
       return { error: publicModelError(error), completed: 0,
-        diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed'].includes(error?.message) ? error.message : 'invalid_json', completed: 0,
+        diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied'].includes(error?.message) ? error.message : 'invalid_json', completed: 0,
+          ...(error?.provider_code ? { provider_code: error.provider_code } : {}),
+          ...(error?.provider_error_kind ? { provider_error_kind: error.provider_error_kind } : {}),
           output_token_limit: batch.length > 4 ? 2560 : 2048, output_format: 'compact_rows_v1',
           cache_hit: cacheHit, model_called: modelCalled, ...(modelUsage ? { usage: modelUsage } : {}) },
         reviews: batch.map(row => ({ id: row.candidate_id,
@@ -970,7 +990,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 }
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261010-42';
+const publicRoutingVersion = '20261011-43';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
@@ -1106,7 +1126,7 @@ async function knownQuotaPause(env) {
     const hit = typeof caches !== 'undefined' && await caches.default.match(quotaCacheKey());
     if (hit) {
       const state = await hit.json();
-      if (typeof state.until === 'number' && state.until > now && state.until <= nextQuotaReset()) quotaBlockedUntil = state.until;
+      if (state.kind === 'daily_neuron_quota_v1' && typeof state.until === 'number' && state.until > now && state.until <= nextQuotaReset()) quotaBlockedUntil = state.until;
     }
   } catch { /* A cache fault cannot invent a quota state. */ }
   return quotaBlockedUntil;
@@ -1114,7 +1134,7 @@ async function knownQuotaPause(env) {
 async function recordQuotaPause(ctx) {
   quotaBlockedUntil = nextQuotaReset();
   if (typeof caches === 'undefined') return;
-  const save = caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil }, {
+  const save = caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil, kind: 'daily_neuron_quota_v1' }, {
     headers: { 'cache-control': `public, max-age=${Math.max(1, Math.ceil((quotaBlockedUntil - Date.now()) / 1000))}` },
   })).catch(() => {});
   if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;

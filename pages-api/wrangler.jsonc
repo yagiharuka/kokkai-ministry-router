@@ -7,7 +7,6 @@
     "binding": "AI"
   },
   "vars": {
-    "CLOUDFLARE_WORKERS_PLAN": "free",
-    "CLOUDFLARE_AI_QUOTA_PAUSED_UNTIL": "2026-10-11T00:00:00.000Z"
+    "CLOUDFLARE_WORKERS_PLAN": "free"
   }
 }
