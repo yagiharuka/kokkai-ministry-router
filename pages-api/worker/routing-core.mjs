@@ -1,5 +1,5 @@
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-export const routingVersion = '20261011-44';
+export const routingVersion = '20261011-45';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 export const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -7,7 +7,7 @@ export const needsFullPlenaryContext = row => row.meeting === '本会議' && /�
   Boolean(row.question_truncated || row.answer_truncated);
 // Grammar and generic scope words are not literal parts of a policy name.
 // The complete question is still passed unchanged to the semantic reviewer.
-for (const word of ['分野','領域','業界','どの','よう','どんな','いかなる','なぜ','行って','行う','行い','いるか','いく','図る','図って','伺う','お聞き','考えて','考える','取り組む','取り組んで','されて','されています','でしょうか','なって','なります']) filler.add(word);
+for (const word of ['分野','領域','業界','あり方','在り方','どの','よう','どんな','いかなる','なぜ','行って','行う','行い','いるか','いく','図る','図って','伺う','お聞き','考えて','考える','取り組む','取り組んで','されて','されています','でしょうか','なって','なります']) filler.add(word);
 const distinctive = word => word.length >= 2 && !filler.has(word) && !/^\d+$/.test(word);
 export function concepts(value) {
   const groups = []; let run = [], prefix = '';
@@ -28,7 +28,24 @@ export function concepts(value) {
 }
 function occurrences(text, term) {
   const found = []; let at = -1;
+  const loanword = /^[\p{Script=Katakana}ー]+$/u.test(term), katakana = /[\p{Script=Katakana}ー]/u;
+  let runEnd = -1, boundaries;
   while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) {
+    // A short loanword inside a different lexical word is not the same
+    // subject (e.g. ペット in ペットボトル). Use Japanese word boundaries,
+    // not a policy dictionary, and allow terms spanning multiple segments
+    // such as スタートアップ. Segment only the touching Katakana run so
+    // the many sentence windows do not repeatedly tokenize whole speeches.
+    if (loanword && katakana.test((text[at - 1] || '') + (text[at + term.length] || ''))) {
+      if (at >= runEnd) {
+        let start = at; runEnd = at + term.length;
+        while (start > 0 && katakana.test(text[start - 1])) start--;
+        while (runEnd < text.length && katakana.test(text[runEnd])) runEnd++;
+        boundaries = new Set([start]);
+        for (const part of words.segment(text.slice(start, runEnd))) boundaries.add(start + part.index + part.segment.length);
+      }
+      if (!boundaries.has(at) || !boundaries.has(at + term.length)) continue;
+    }
     const prefix = text.slice(Math.max(0, at - 30), at).match(/[\p{Script=Han}]+$/u)?.[0] || '';
     const suffix = text.slice(at + term.length, at + term.length + 30);
     // A product mentioned only inside another entity's name is not its own topic.
@@ -70,7 +87,10 @@ export function makePlan(question, hints = []) {
   // Start with two concrete concepts. Reserve a concise subject search next,
   // rather than spending both requests on nearly identical long AND strings.
   add(subjects.slice(0, 2).map(g => g.text));
-  add([anchors[0]]);
+  // When the second subject is a compound policy target, retain that phrase
+  // in the bounded fallback instead of widening to only the first actor.
+  // Single nouns, Katakana names and supplied-hint precedence stay unchanged.
+  add([subjects[1]?.parts.length > 1 ? subjects[1].text : anchors[0]]);
   add(subjects.slice(0, 3).map(g => g.text));
   add(anchors.filter((_, i) => groups[i].role !== 'requested_change').slice(0, 3));
   // Widen the API request without dropping context from subsequent scoring.
@@ -401,7 +421,9 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01', 
     const searchBudget = Math.min(ranges.some(([from]) => from >= recentSince) ? 8 : 10, Math.max(0, requestLimit - 1));
     // Search recent years before spending the budget on full meetings. Include
     // one concise subject search, so exact proposal wording cannot block recall.
-    const initial = [...new Set([plan.queries[0], plan.recall_groups ? plan.queries[1] : plan.queries.at(-1)].filter(Boolean))];
+    // Preserve this legacy path's second-subject search independently of
+    // the fast path's query ordering and duplicate removal.
+    const initial = [...new Set([plan.queries[0], plan.recall_groups ? plan.queries[1] : (plan.groups[1]?.text || plan.queries.at(-1))].filter(Boolean))];
     for (const query of initial) for (const item of pools) {
       if (requests >= searchBudget) { searchLimited = true; break; }
       await search(item.range, query, item.pool);

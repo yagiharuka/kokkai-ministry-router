@@ -120,7 +120,7 @@ assert.equal(getNode('submit').disabled,false);
 assert.ok(getNode('results').innerHTML.includes('100%'));
 await submit('半導体産業の国内生産を支援すべきではないか');
 assert.equal(caseRequests.length,2);
-assert.ok(caseRequests.every(url=>url.searchParams.get('v')==='20261011-44'));
+assert.ok(caseRequests.every(url=>url.searchParams.get('v')==='20261011-45'));
 assert.equal(caseRequests[1].searchParams.get('question'),'半導体産業の国内生産を支援すべきではないか');
 const latestHtml=getNode('results').innerHTML;
 assert.ok(latestHtml.includes('合計 37.8秒'));
