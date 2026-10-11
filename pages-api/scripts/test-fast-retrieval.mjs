@@ -47,6 +47,9 @@ const broad = Array.from({length:18}, (_,i) => { const m='wide'+(i%3); return [s
 const wideCalls=[]; const wide=await retrieveFastAssignments(plan,async(path,p)=>{wideCalls.push(path);return {speechRecord:broad};});
 assert.equal(wide.requests_used,1,'Enough adjacent turns in multiple meetings must not trigger full downloads');
 assert.equal(wide.retrieved_cases,18);
+assert.equal(wide.selection_runs,1,'A sufficient unchanged source pool must be scored once, including the final return');
+assert.ok(Number.isFinite(wide.selection_ms) && wide.selection_ms >= 0);
+assert.deepEqual(wide.review_candidates,reviewCandidates(contiguousMeetings(broad),plan,96),'Reusing a sample must preserve every selected candidate and its order');
 assert.deepEqual(wideCalls,['speech']);
 const multi=await retrieveFastAssignments(plan,async(path,p)=>path==='speech'?{speechRecord:[q]}:{meetingRecord:[full,{...full,issueID:'m2',speechRecord:[speech(1,true,q.speech,'m2'),speech(2,false,a.speech,'m2')]}]});
 assert.equal(multi.full_meetings,2,'A single full-output request can add multiple meetings');
@@ -61,4 +64,6 @@ const progressive=await retrieveFastAssignments(plan,async(path,p)=>{
 assert.equal(progressive.retrieved_cases,2,'The second expression can add actual turns even when the first already returned a valid pair');
 assert.equal(progressive.requests_used,3);
 assert.equal(progressive.review_candidates.some(r=>r.case_id.startsWith('additional:')),true);
+assert.equal(progressive.selection_runs,3,'Each newly retrieved pool must be rescored, without repeating the final sample');
 console.log('Contiguous-turn safety, consolidated retrieval, source deduplication and bounded expansion checks passed.');
+

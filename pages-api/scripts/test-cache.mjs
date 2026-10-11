@@ -39,6 +39,9 @@ try {
   const analysisEntry = [...stored.entries()].find(([key]) => key.includes('__analysis_cache/'))[1];
   assert.equal(analysisEntry.headers.get('cache-control'), 'public, max-age=86400');
   assert.ok(results[0].analyzed_at);
+  assert.deepEqual(results[0].original_timing,results[0].timing);
+  assert.equal(results[0].source_diagnostics.length,3);
+  assert.ok(results[0].source_diagnostics.every(d=>d.cache==='miss'&&Number.isFinite(d.fetch_ms)));
 
   clock += 12 * 3600000;
   const restarted = (await import('../worker/model-api.js?cache-restarted')).default;
@@ -49,6 +52,12 @@ try {
   assert.equal(ndl, 3);
   assert.equal(hit.review_model_calls, 0);
   assert.ok(hit.review_diagnostics.every(d => !d.model_called && !d.usage));
+  assert.deepEqual(hit.original_timing,results[0].timing,'A cache hit must preserve the original analysis durations');
+  assert.equal(hit.timing.cached,true);
+  assert.equal(hit.timing.retrieval_ms,undefined,'Original retrieval duration must not masquerade as current cache wait');
+  assert.deepEqual(hit.source_diagnostics,[]);
+  assert.equal(hit.selection_runs,0); assert.equal(hit.selection_ms,0);
+  assert.ok(hit.review_diagnostics.every(d=>d.model_ms===0));
 
   const different = await (await restarted.fetch(request('教員の長時間労働を減らすための支援員配置について伺います。'), env)).json();
   assert.equal(different.pairs, 1);
@@ -76,3 +85,4 @@ try {
   if (previousCaches === undefined) delete globalThis.caches; else globalThis.caches = previousCaches;
 }
 console.log('Exact-question edge cache, isolate restart, concurrent deduplication and question/configuration isolation checks passed.');
+

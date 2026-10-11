@@ -31,7 +31,17 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-0
   let requests = 0, searchLimited = false, hitCount = 0;
   const queryTerms = [...new Set(plan.queries)].slice(0, 2);
   const records = () => [...contiguousMeetings([...pool.values()]).filter(m => !full.has(m.issueID)), ...full.values()];
-  const sample = () => reviewCandidates(records(), plan, 96);
+  let sourceRevision = 0, sampledRevision = -1, sampledRows;
+  let selectionRuns = 0, selectionMs = 0;
+  const sample = () => {
+    if (sampledRevision !== sourceRevision) {
+      const started = Date.now();
+      sampledRows = reviewCandidates(records(), plan, 96);
+      sampledRevision = sourceRevision; selectionRuns++;
+      selectionMs += Math.max(0, Date.now() - started);
+    }
+    return sampledRows;
+  };
   const sufficient = rows => {
     const stronger = rows.filter(row => row.retrieval_score >= .75 && !needsFullPlenaryContext(row));
     return new Set(stronger.map(row => row.case_id)).size >= 12 &&
@@ -49,6 +59,7 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-0
       searchLimited ||= Boolean(data.nextRecordPosition);
       const sourceRows = (data.speechRecord || []).filter(speech => !excluded.has(speech.issueID));
       for (const speech of sourceRows) pool.set(speech.speechID, speech);
+      if (sourceRows.length) sourceRevision++;
       if (sufficient(sample())) break;
       // A few non-empty hits do not establish an adequate sample. Restore
       // missing turns first, then try the concise alternative if still thin.
@@ -63,7 +74,9 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-0
           const expanded = await fetchNdl('meeting', { any: query, from, until: `${year}-12-31`, maximumRecords: '10',
             ...(committees.length ? { nameOfMeeting: committees.join(' ') } : {}) });
           searchLimited ||= Boolean(expanded.nextRecordPosition);
-          for (const meeting of expanded.meetingRecord || []) if (!excluded.has(meeting.issueID)) full.set(meeting.issueID, meeting);
+          for (const meeting of expanded.meetingRecord || []) if (!excluded.has(meeting.issueID)) {
+            full.set(meeting.issueID, meeting); sourceRevision++;
+          }
         } catch (error) { errors.push(error instanceof Error ? error.message : '会議録APIを取得できませんでした。'); }
         if (sufficient(sample())) break;
       }
@@ -74,6 +87,7 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-0
   const meetingIds = [...new Set(records().map(m => m.issueID))];
   return { shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: review,
     searched, searched_queries: searchedQueries, requests_used: requests,
+    selection_runs: selectionRuns, selection_ms: selectionMs,
     retrieved_meetings: [...full.keys()], meetings_searched: meetingIds.length,
     full_meetings: full.size, speech_hits: hitCount, retrieved_candidates: review.length,
     retrieved_cases: new Set(review.map(row => row.case_id)).size,
@@ -83,3 +97,4 @@ export async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-0
     routing_version: routingVersion, retrieval_strategy: 'progressive_speech_and_context',
     query_concepts: plan.groups.map(g => g.text) };
 }
+

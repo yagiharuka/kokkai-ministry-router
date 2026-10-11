@@ -20,9 +20,9 @@ function policyPhrases(input){
 }
 function escape(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 const api="https://kokkai-ministry-router.haru620328.workers.dev/api/";
-async function getJson(url,timeout=70000){
+async function getJson(url,timeout=70000,options={}){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
- try{const response=await fetch(url,{signal:controller.signal});if(!response.ok){const detail=await response.json().catch(()=>({}));throw new Error(detail.error||"検索APIが応答しませんでした。")}return await response.json()}
+ try{const response=await fetch(url,{...options,signal:controller.signal});if(!response.ok){const detail=await response.json().catch(()=>({}));throw new Error(detail.error||"検索APIが応答しませんでした。")}return await response.json()}
  finally{clearTimeout(timer)}
 }
 function lawSearchTerm(primary){
@@ -34,8 +34,9 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261011-43"};
- const cases=await getJson(api+"cases?"+new URLSearchParams(params),65000);
+ const params={question:input,v:"20261011-44"};
+ // Let the server's analysis cache report current wait and original timings.
+ const cases=await getJson(api+"cases?"+new URLSearchParams(params),65000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
  return {...cases,elapsedSeconds:Math.round((Date.now()-started)/1000),question:input,unit:"質疑",laws:[],lawTerm,lawTask:lawRequest,lawSkipped:!cases.shares.length};
 }
@@ -48,6 +49,26 @@ function evidenceCard(x){
 function lawSection(r){
  const laws=r.assessment_status==='reviewed'&&r.shares?.length?r.laws||[]:[];
  return laws.length?'<div class="examples"><h3>法令上の所掌（e-Gov法令検索）</h3><p class="caveat">政策語「'+escape(r.lawTerm)+'」を含む設置法・組織令・組織規則の条文です。個別事業の担当を確定する根拠ではありません。</p>'+laws.map(x=>'<article><div class="meta"><strong>'+escape(x.ministry)+'</strong><span>'+escape(x.title)+'</span></div><p>'+escape(x.snippet)+'</p><footer><a href="'+escape(x.url)+'" target="_blank" rel="noopener noreferrer">e-Govの法令を見る ↗</a></footer></article>').join('')+'</div>':'';
+}
+function validDuration(value){return typeof value==='number'&&Number.isFinite(value)&&value>=0}
+function timingObject(value){return value&&typeof value==='object'&&!Array.isArray(value)?value:null}
+function cachedResult(r){return r.analysis_cache_hit===true||timingObject(r.timing)?.cached===true}
+function timingDetails(value){
+ const timing=timingObject(value);
+ if(!timing||timing.cached===true)return '';
+ return [['retrieval_ms','会議録検索'],['review_ms','AI判定'],['total_ms','合計']].filter(([key])=>validDuration(timing[key])).map(([key,label])=>label+' '+formatMilliseconds(timing[key])).join(' · ');
+}
+function formatMilliseconds(value){return value>0&&value<100?'0.1秒未満':(value/1000).toFixed(1)+'秒'}
+function timingSection(r){
+ const row=(kind,text)=>'<p class="caveat" data-stage-timing="'+kind+'">'+escape(text)+'</p>';
+ if(!cachedResult(r)){
+  const details=timingDetails(r.timing);
+  return details?row('current','処理時間：'+details):'';
+ }
+ const timing=timingObject(r.timing);
+ const current=validDuration(r.elapsedSeconds)?'今回の表示待ち：'+r.elapsedSeconds+'秒':validDuration(timing?.total_ms)?'今回の処理時間：'+formatMilliseconds(timing.total_ms):'';
+ const original=timingDetails(r.original_timing);
+ return (current?row('current',current+'（保存済みの結果）'):'')+(original?row('original','元の分析時間：'+original):'');
 }
 function render(r){
  const reviewed=r.assessment_status==='reviewed';
@@ -75,16 +96,16 @@ function render(r){
   title='今回の検索では候補を確認できませんでした';
   note='検索範囲と取得件数に上限があります。関連する会議録が存在しないことを示す結果ではありません。質問を言い換えて再検索してください。';
  }
- const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(typeof r.elapsedSeconds==='number'?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
+ const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(validDuration(r.elapsedSeconds)&&!cachedResult(r)?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const analyzedAt=Date.parse(r.analyzed_at||'');
- const saved=reviewed&&r.analysis_cache_hit&&Number.isFinite(analyzedAt)?'<p class="caveat">保存済みの結果を表示しています（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）。同じ質問の結果は最大24時間再利用します。</p>':'';
+ const saved=reviewed&&cachedResult(r)?'<p class="caveat">保存済みの結果を表示しています'+(Number.isFinite(analyzedAt)?'（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）':'')+'。同じ質問の結果は最大24時間再利用します。</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
  const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,24).map(evidenceCard).join('')+'</div>':'';
  $('results').hidden=false;
  // Counts and error categories only: no prompts, generated text or secrets.
  $('results').setAttribute('data-review-diagnostics',JSON.stringify(r.review_diagnostics||[]));
- $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
 
 }
 $("question").addEventListener("input",e=>$("length").textContent=e.target.value.length+" / 1200字");
@@ -104,3 +125,4 @@ $("form").addEventListener("submit",async e=>{
  }catch(err){$("message").className="error";$("message").textContent="会議録を取得できませんでした。中継APIまたは通信状況を確認して再試行してください。詳細："+(err?.message||"不明なエラー")}
  finally{$("submit").disabled=false;$("submit").textContent="担当候補を調べる"}
 });
+

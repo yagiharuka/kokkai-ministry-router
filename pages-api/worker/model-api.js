@@ -1,8 +1,9 @@
 import { routingVersion, makePlan } from './routing-core.mjs';
 import { retrieveFastAssignments } from './fast-retrieval.mjs';
 import { prepareSemanticPlan, reviewCompactAssignments, semanticConfiguration } from './semantic-review.mjs';
+import { runCacheWrite } from './background-cache.mjs';
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261011-43';
+const publicRoutingVersion = '20261011-44';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
@@ -23,23 +24,30 @@ function withCors(response) {
 let requestQueue = Promise.resolve();
 let lastNdlRequest = 0;
 
-async function requestNdl(path, parameters) {
+async function requestNdl(path, parameters, diagnostic = {}) {
   let release;
   const next = new Promise(resolve => { release = resolve; });
   const prior = requestQueue;
   requestQueue = next;
+  const queued = Date.now();
   await prior;
+  diagnostic.queue_wait_ms = Math.max(0, Date.now() - queued);
   try {
     const pause = Math.max(0, 3000 - (Date.now() - lastNdlRequest));
+    const waiting = Date.now();
     if (pause) await new Promise(resolve => setTimeout(resolve, pause));
+    diagnostic.throttle_wait_ms = Math.max(0, Date.now() - waiting);
     const source = new URL(`https://kokkai.ndl.go.jp/api/${path}`);
     for (const [key, value] of Object.entries(parameters)) source.searchParams.set(key, value);
     source.searchParams.set("recordPacking", "json");
-    const response = await fetch(source, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(25000) });
-    if (!response.ok) throw new Error(`国会会議録API HTTP ${response.status}`);
-    const data = await response.json();
-    if (data.error) throw new Error(`国会会議録API: ${data.error}`);
-    return data;
+    const fetching = Date.now();
+    try {
+      const response = await fetch(source, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(25000) });
+      if (!response.ok) throw new Error(`国会会議録API HTTP ${response.status}`);
+      const data = await response.json();
+      if (data.error) throw new Error(`国会会議録API: ${data.error}`);
+      return data;
+    } finally { diagnostic.fetch_ms = Math.max(0, Date.now() - fetching); }
   } finally {
     lastNdlRequest = Date.now();
     release();
@@ -50,25 +58,29 @@ async function requestNdl(path, parameters) {
 // question, interpretation, or ministry judgment into this request.
 const ndlCache = new Map(), ndlInFlight = new Map();
 let ndlCacheBytes = 0;
-async function fetchNdl(path, parameters) {
+async function fetchNdl(path, parameters, ctx = {}, diagnostic = {}) {
   const key = JSON.stringify([path, Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b))]);
   const cached = ndlCache.get(key);
-  if (cached && cached.until > Date.now()) return cached.data;
+  if (cached && cached.until > Date.now()) { diagnostic.cache = 'memory'; return cached.data; }
   if (cached) { ndlCache.delete(key); ndlCacheBytes -= cached.bytes; }
-  if (ndlInFlight.has(key)) return ndlInFlight.get(key);
+  if (ndlInFlight.has(key)) { diagnostic.cache = 'in_flight'; return ndlInFlight.get(key); }
   const pending = (async () => {
     // Cache API survives isolate restarts. Cache only public NDL source data,
     // with the complete search conditions as its key, not a topic label.
     const edge = typeof caches !== 'undefined' ? caches.default : null;
     const hash = edge ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))].map(b => b.toString(16).padStart(2, '0')).join('') : '';
     const edgeKey = hash ? `https://kokkai-ministry-router.haru620328.workers.dev/__source_cache/${hash}` : '';
+    const cacheStarted = Date.now();
     try {
       const hit = edge && await edge.match(edgeKey);
-      if (hit) return await hit.json();
+      if (hit) { const data = await hit.json(); diagnostic.cache = 'edge'; return data; }
     } catch { /* Cache faults must not prevent source retrieval. */ }
-    const data = await requestNdl(path, parameters);
+    finally { diagnostic.cache_read_ms = Math.max(0, Date.now() - cacheStarted); }
+    diagnostic.cache = 'miss';
+    const data = await requestNdl(path, parameters, diagnostic);
     if (edge && JSON.stringify(data).length < 2 * 1024 * 1024) {
-      try { await edge.put(edgeKey, Response.json(data, { headers: { 'cache-control': 'public, max-age=3600' } })); } catch { /* best effort */ }
+      diagnostic.cache_write_deferred = await runCacheWrite(() => edge.put(edgeKey,
+        Response.json(data, { headers: { 'cache-control': 'public, max-age=3600' } })), ctx);
     }
     return data;
   })();
@@ -87,41 +99,56 @@ async function fetchNdl(path, parameters) {
   } finally { ndlInFlight.delete(key); }
 }
 
-async function routeCases(first, second, focus = "", question = "", env = {}) {
+async function routeCases(first, second, focus = "", question = "", env = {}, ctx = {}) {
   const started = Date.now(), hints = [first, second, focus].filter(Boolean);
+  const sourceDiagnostics = [];
+  const fetchSource = async (path, parameters) => {
+    const sourceStarted = Date.now(), diagnostic = { resource: path };
+    sourceDiagnostics.push(diagnostic);
+    try { return await fetchNdl(path, parameters, ctx, diagnostic); }
+    finally { diagnostic.total_ms = Math.max(0, Date.now() - sourceStarted); }
+  };
   const fullQuestion = question || hints.join("の") + "について伺います。";
   const directPlan = makePlan(fullQuestion);
   if (!semanticConfiguration(env).ready) {
     const empty = { candidates: [], review_candidates: [], searched: [], searched_queries: [], errors: [], requests_used: 0, meetings_searched: 0, retrieved_meetings: [] };
-    return { ...await reviewCompactAssignments(fullQuestion, empty, env), retrieval_rounds: 0 };
+    return { ...await reviewCompactAssignments(fullQuestion, empty, env, fetch, ctx), retrieval_rounds: 0 };
   }
   if (!directPlan.groups.length) throw new Error("質問案に具体的な対象や制度を含めてください。");
-  let result = await retrieveFastAssignments(directPlan, fetchNdl), planStatus = 'direct', rounds = 1;
+  let result = await retrieveFastAssignments(directPlan, fetchSource), planStatus = 'direct', rounds = 1, planningMs = 0;
   if (result.errors.length && !result.searched.length) throw new Error(result.errors[0]);
   // Search does not wait for an AI plan. Use a semantic rewrite only when the
   // original wording could not produce any actual question/answer candidates.
   if (!result.review_candidates.length) {
+    const planningStarted = Date.now();
     const prepared = await prepareSemanticPlan(fullQuestion, env, fetch, { searched_queries: result.searched_queries,
       result: '質問案の語では、対応づけられる質問と政府答弁の候補が見つからなかった' });
+    planningMs = Math.max(0, Date.now() - planningStarted);
     planStatus = prepared.status;
     if (prepared.status === 'ready') {
-      const more = await retrieveFastAssignments(prepared.plan, fetchNdl, '2001-01-01');
+      const more = await retrieveFastAssignments(prepared.plan, fetchSource, '2001-01-01');
       result = { ...more, searched: [...result.searched, ...more.searched],
         searched_queries: [...new Set([...result.searched_queries, ...more.searched_queries])],
         requests_used: result.requests_used + more.requests_used,
+        selection_runs: result.selection_runs + more.selection_runs, selection_ms: result.selection_ms + more.selection_ms,
         errors: [...result.errors, ...more.errors], partial: result.partial || more.partial };
       rounds = 2;
     } else if (prepared.status === 'failed') {
-      return { ...await reviewCompactAssignments(fullQuestion, result, env), assessment_status: 'failed',
+      const timing = { retrieval_ms: Math.max(0, Date.now() - started), review_ms: 0,
+        planning_ms: planningMs, total_ms: Math.max(0, Date.now() - started) };
+      return { ...await reviewCompactAssignments(fullQuestion, result, env, fetch, ctx), assessment_status: 'failed',
         assessment_error: prepared.error_code, search_plan_status: planStatus, retrieval_rounds: rounds,
-        timing: { total_ms: Date.now() - started } };
+        source_diagnostics: sourceDiagnostics, timing, original_timing: { ...timing } };
     }
   }
   const retrieved = Date.now();
-  const assessed = await reviewCompactAssignments(fullQuestion, result, env);
+  const assessed = await reviewCompactAssignments(fullQuestion, result, env, fetch, ctx);
+  const finished = Date.now();
+  const timing = { retrieval_ms: Math.max(0, retrieved - started), review_ms: Math.max(0, finished - retrieved),
+    planning_ms: planningMs, total_ms: Math.max(0, finished - started) };
   return { ...assessed, search_plan_status: planStatus, retrieval_rounds: rounds,
     analyzed_at: new Date(Date.now()).toISOString(),
-    timing: { retrieval_ms: retrieved - started, review_ms: Date.now() - retrieved, total_ms: Date.now() - started } };
+    source_diagnostics: sourceDiagnostics, timing, original_timing: { ...timing } };
 }
 
 const routeCache = new Map(), routesInFlight = new Map();
@@ -146,19 +173,21 @@ async function knownQuotaPause(env) {
 async function recordQuotaPause(ctx) {
   quotaBlockedUntil = nextQuotaReset();
   if (typeof caches === 'undefined') return;
-  const save = caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil, kind: 'daily_neuron_quota_v1' }, {
+  await runCacheWrite(() => caches.default.put(quotaCacheKey(), Response.json({ until: quotaBlockedUntil, kind: 'daily_neuron_quota_v1' }, {
     headers: { 'cache-control': `public, max-age=${Math.max(1, Math.ceil((quotaBlockedUntil - Date.now()) / 1000))}` },
-  })).catch(() => {});
-  if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;
+  })), ctx);
 }
 async function cachedRoute(first, second, focus, question, env, ctx = {}) {
   const started = Date.now();
   const config = semanticConfiguration(env);
   const key = JSON.stringify([publicRoutingVersion, first, second, focus, question, config.ready, config.model]);
   const cacheHit = result => ({ ...result, analysis_cache_hit: true, review_model_calls: 0,
+    original_timing: result.original_timing || (result.timing?.cached ? undefined : result.timing),
+    source_diagnostics: [], selection_runs: 0, selection_ms: 0,
     review_cache_hits: (result.review_diagnostics || []).filter(d => d.completed === d.expected && !d.error).length,
     review_diagnostics: (result.review_diagnostics || []).map(({ usage, ...diagnostic }) => ({ ...diagnostic,
-      cache_hit: diagnostic.completed === diagnostic.expected && !diagnostic.error, model_called: false })),
+      cache_hit: diagnostic.completed === diagnostic.expected && !diagnostic.error, model_called: false,
+      model_ms: 0, cache_read_ms: 0, total_ms: 0, cache_write_deferred: false })),
     timing: { total_ms: Date.now() - started, cached: true } });
   const cached = routeCache.get(key);
   if (cached && cached.until > Date.now()) return cacheHit(cached.result);
@@ -192,7 +221,7 @@ async function cachedRoute(first, second, focus, question, env, ctx = {}) {
   const afterQuotaCheck = routeCache.get(key);
   if (afterQuotaCheck && afterQuotaCheck.until > Date.now()) return cacheHit(afterQuotaCheck.result);
   if (routesInFlight.size >= 2) return null;
-  const pending = routeCases(first, second, focus, question, env).then(result => ({ ...result, routing_version: publicRoutingVersion }));
+  const pending = routeCases(first, second, focus, question, env, ctx).then(result => ({ ...result, routing_version: publicRoutingVersion }));
   routesInFlight.set(key, pending);
   try {
     const result = await pending;
@@ -208,8 +237,8 @@ async function cachedRoute(first, second, focus, question, env, ctx = {}) {
       now + (complete ? analysisCacheSeconds * 1000 : 30000);
     routeCache.set(key, { result, until });
     if (edgeKey && complete) {
-      const save = edge.put(edgeKey, Response.json(result, { headers: { 'cache-control': `public, max-age=${analysisCacheSeconds}` } })).catch(() => {});
-      if (typeof ctx.waitUntil === 'function') ctx.waitUntil(save); else await save;
+      await runCacheWrite(() => edge.put(edgeKey, Response.json(result,
+        { headers: { 'cache-control': `public, max-age=${analysisCacheSeconds}` } })), ctx);
     }
     return result;
   } finally { routesInFlight.delete(key); }
@@ -304,3 +333,4 @@ export default {
     }
   },
 };
+
