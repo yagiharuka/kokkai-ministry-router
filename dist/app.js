@@ -70,6 +70,64 @@ function timingSection(r){
  const original=timingDetails(r.original_timing);
  return (current?row('current',current+'（保存済みの結果）'):'')+(original?row('original','元の分析時間：'+original):'');
 }
+function diagnosticRows(value){
+ // Explicitly allow only numeric metrics, boolean states and known error codes.
+ // Never copy source text, questions, provider responses or arbitrary properties.
+ const errors=new Set(['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied','invalid_json']);
+ return (Array.isArray(value)?value:[]).slice(0,2).map(item=>{
+  const source=timingObject(item)||{},row={};
+  for(const key of ['expected','completed','input_chars','output_token_limit','model_ms','cache_read_ms','total_ms']){
+   if(Number.isSafeInteger(source[key])&&source[key]>=0)row[key]=source[key];
+  }
+  for(const key of ['cache_hit','model_called'])if(typeof source[key]==='boolean')row[key]=source[key];
+  const usage=timingObject(source.usage);
+  for(const key of ['input_tokens','output_tokens'])if(Number.isSafeInteger(usage?.[key])&&usage[key]>=0)row[key]=usage[key];
+  if(errors.has(source.error))row.error=source.error;
+  return row;
+ });
+}
+function diagnosticText(r,rows){
+ if(!rows.length)return '';
+ const metric=(value,unit='')=>Number.isSafeInteger(value)&&value>=0?value+unit:'未提供';
+ const cached=cachedResult(r),lines=['処理時間の診断', '結果：'+(cached?'保存済みの結果を表示':'今回の分析')];
+ if(/^\d{8}-\d{1,3}$/.test(r.routing_version||''))lines.push('公開版：'+r.routing_version);
+ if(typeof r.analyzed_at==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(r.analyzed_at)&&Number.isFinite(Date.parse(r.analyzed_at)))lines.push('元の分析日時：'+r.analyzed_at);
+ lines.push('※各バッチは並列です。時間を足した値は全体の待ち時間ではありません。');
+ rows.forEach((row,i)=>{
+  const reused=cached||row.cache_hit===true;
+  const state=cached?'保存した診断を表示（今回はAI未実行）':row.cache_hit===true?'保存した判定を再利用':row.model_called===true?'今回AIを実行':row.model_called===false?'AIは未実行':'実行状態は未提供';
+  lines.push('', 'バッチ '+(i+1)+'：'+state,
+   '候補：'+metric(row.expected,'件')+' / 完了：'+metric(row.completed,'件'),
+   '入力サイズ：'+metric(row.input_chars,'文字'),
+   '入力トークン：'+(reused?'今回はAI未実行のため未提供':metric(row.input_tokens)),
+   '出力トークン：'+(reused?'今回はAI未実行のため未提供':metric(row.output_tokens)),
+   '生成上限：'+metric(row.output_token_limit,'トークン')+'（実消費量ではありません）',
+   'AI待ち時間：'+(reused?'今回は未実行。元の時間は取得できません。':metric(row.model_ms,'ms')));
+  if(!cached)lines.push('キャッシュ読出：'+metric(row.cache_read_ms,'ms')+' / バッチ全体：'+metric(row.total_ms,'ms'));
+  if(row.error)lines.push('エラー分類：'+row.error);
+ });
+ return lines.join('\n');
+}
+function diagnosticSection(text){
+ return text?'<details class="diagnostics"><summary>詳しい処理時間</summary><p class="caveat">質問・答弁本文を含まない診断です。表示やコピーで追加のAI判定は行いません。</p><label for="diagnostic-text">診断データ</label><textarea id="diagnostic-text" readonly rows="12" spellcheck="false">'+escape(text)+'</textarea><div class="actions"><button type="button" id="diagnostic-copy">診断をコピー</button><span id="diagnostic-copy-status" role="status" aria-live="polite"></span></div></details>':'';
+}
+function bindDiagnosticCopy(text){
+ if(!text)return;
+ const button=$('diagnostic-copy'),field=$('diagnostic-text'),status=$('diagnostic-copy-status');
+ button.addEventListener('click',async()=>{
+  if(button.disabled)return;
+  button.disabled=true;status.textContent='';
+  try{
+   if(typeof globalThis.navigator?.clipboard?.writeText!=='function')throw new Error('clipboard_unavailable');
+   await globalThis.navigator.clipboard.writeText(text);
+   if($('diagnostic-copy')===button)status.textContent='コピーしました';
+  }catch{
+   if($('diagnostic-copy')!==button)return;
+   status.textContent='上の診断データを長押ししてコピーしてください。';
+   field.focus();field.select();field.setSelectionRange(0,field.value.length);
+  }finally{if($('diagnostic-copy')===button)button.disabled=false;}
+ });
+}
 function render(r){
  const reviewed=r.assessment_status==='reviewed';
  const shares=reviewed?r.shares||[]:[];
@@ -104,8 +162,10 @@ function render(r){
  const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,24).map(evidenceCard).join('')+'</div>':'';
  $('results').hidden=false;
  // Counts and error categories only: no prompts, generated text or secrets.
- $('results').setAttribute('data-review-diagnostics',JSON.stringify(r.review_diagnostics||[]));
- $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ const rows=diagnosticRows(r.review_diagnostics),diagnostic=diagnosticText(r,rows);
+ $('results').setAttribute('data-review-diagnostics',JSON.stringify(rows));
+ $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+diagnosticSection(diagnostic)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ bindDiagnosticCopy(diagnostic);
 
 }
 $("question").addEventListener("input",e=>$("length").textContent=e.target.value.length+" / 1200字");

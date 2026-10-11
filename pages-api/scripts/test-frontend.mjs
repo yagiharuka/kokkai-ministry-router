@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 const nodes = new Map();
-const getNode = id => {if(!nodes.has(id))nodes.set(id,{hidden:true,innerHTML:'',attributes:{},listeners:{},setAttribute(name,value){this.attributes[name]=value},addEventListener(name,fn){this.listeners[name]=fn}});return nodes.get(id);};
+const getNode = id => {if(!nodes.has(id))nodes.set(id,{hidden:true,innerHTML:'',value:'',attributes:{},listeners:{},setAttribute(name,value){this.attributes[name]=value},addEventListener(name,fn){this.listeners[name]=fn},focus(){this.focused=true},select(){this.selected=true},setSelectionRange(start,end){this.selection=[start,end]}});return nodes.get(id);};
 const context = vm.createContext({document:{getElementById:getNode},Intl,AbortController,setTimeout,clearTimeout,URLSearchParams});
 vm.runInContext(await readFile(new URL('../frontend/app.js',import.meta.url),'utf8'),context);
 const item={ministry:'文部科学省',question:'教員の負担を減らすにはどうしますか。',answer:'支援員を配置します。',date:'2025-06-10',meeting:'委員会',speaker:'答弁者',position:'文部科学大臣',url:'https://kokkai.ndl.go.jp/txt/fixture/a',review_reason:'<script>alert(1)</script>'};
@@ -170,5 +170,108 @@ context.fetch=(_url,options)=>new Promise((_resolve,reject)=>{
   options.signal.addEventListener('abort',()=>reject(new Error('fixture timeout')),{once:true});
 });
 await assert.rejects(vm.runInContext('getJson("fixture",1,{cache:"no-store",signal:suppliedSignal})',context),/fixture timeout/);
-console.log('Frontend assessment states, fresh/cached/legacy timing, malformed timing validation, escaping, browser-cache bypass, request timeout, nonblocking law lookup and stale-result isolation checks passed.');
+// Diagnostics use only the already received response. No new network, source
+// selection, inference or clipboard reads are allowed for this display.
+context.fetch=()=>{throw new Error('Diagnostics must not make network requests');};
+const diagnostics=[
+ {expected:12,completed:12,input_chars:18123,output_token_limit:2560,model_ms:17900,cache_read_ms:8,total_ms:17930,cache_hit:false,model_called:true,usage:{input_tokens:12345,output_tokens:600}},
+ {expected:12,completed:12,input_chars:17901,output_token_limit:2560,model_ms:14500,cache_read_ms:5,total_ms:14520,cache_hit:false,model_called:true},
+];
+const diagnosticBase={...timedBase,routing_version:'20261011-45',analyzed_at:'2026-10-11T13:30:00.000Z',review_diagnostics:diagnostics};
+const textFor=result=>{context.result=result;return vm.runInContext('diagnosticText(result,diagnosticRows(result.review_diagnostics))',context)};
+const text=textFor(diagnosticBase),html=render(diagnosticBase);
+assert.ok(html.includes('<details class="diagnostics"><summary>詳しい処理時間</summary>'));
+assert.ok(html.includes('readonly rows="12"'));
+assert.ok(html.includes('type="button" id="diagnostic-copy"'));
+assert.ok(text.includes('入力サイズ：18123文字'));
+assert.ok(text.includes('入力トークン：12345'));
+assert.ok(text.includes('出力トークン：600'));
+assert.ok(text.includes('入力トークン：未提供'));
+assert.ok(text.includes('AI待ち時間：17900ms'));
+assert.ok(text.includes('各バッチは並列'));
+assert.ok(text.includes('公開版：20261011-45'));
+assert.ok(text.includes('元の分析日時：2026-10-11T13:30:00.000Z'));
+assert.ok(html.includes('100%')&&html.includes(item.answer),'Diagnostics must not replace the existing judgment or evidence');
+assert.equal(render(diagnosticBase),html,'Repeated render must not duplicate the disclosure');
+const poisoned={...diagnosticBase,question:'PRIVATE QUESTION',answer:'PRIVATE ANSWER',api_key:'PRIVATE KEY',routing_version:'PRIVATE VERSION',analyzed_at:'PRIVATE DATE',review_diagnostics:diagnostics.map(row=>({...row,question:'PRIVATE QUESTION',answer:'PRIVATE ANSWER',reason:'PRIVATE REASON',model_output:'PRIVATE OUTPUT',api_key:'PRIVATE KEY',error:'PRIVATE ERROR',usage:{...row.usage,secret:'PRIVATE USAGE'}}))};
+const safeText=textFor(poisoned);render(poisoned);
+assert.ok(!safeText.includes('PRIVATE'));
+assert.ok(!getNode('results').attributes['data-review-diagnostics'].includes('PRIVATE'),'The diagnostic DOM attribute is also allowlisted');
+for(const invalid of [-1,NaN,Infinity,-Infinity,1.5,Number.MAX_SAFE_INTEGER+1,'12','</textarea><script>alert(1)</script>',null,undefined,{},[]]){
+ const result={...diagnosticBase,review_diagnostics:[{expected:invalid,completed:invalid,input_chars:invalid,model_ms:invalid,total_ms:invalid,output_token_limit:invalid,cache_read_ms:invalid,cache_hit:invalid,model_called:invalid,usage:{input_tokens:invalid,output_tokens:invalid}}]};
+ const text=textFor(result),html=render(result);
+ assert.ok(text.includes('候補：未提供 / 完了：未提供'));
+ assert.ok(text.includes('AI待ち時間：未提供'));
+ assert.ok(!text.includes('NaN')&&!text.includes('Infinity'));
+ assert.ok(!html.includes('<script>')&&!text.includes('<script>'));
+}
+const cachedDiagnostics={...diagnosticBase,analysis_cache_hit:true,timing:{total_ms:5,cached:true},review_diagnostics:diagnostics.map(row=>({...row,model_ms:0,total_ms:0,cache_hit:true,model_called:false}))};
+const cachedText=textFor(cachedDiagnostics);
+assert.ok(cachedText.includes('保存済みの結果を表示'));
+assert.ok(cachedText.includes('元の時間は取得できません'));
+assert.ok(!cachedText.includes('AI待ち時間：0ms'));
+assert.ok(!cachedText.includes('入力トークン：12345'),'Do not present past usage as current usage on cache hits');
+assert.ok(!cachedText.includes('キャッシュ読出：0ms'),'Whole-result cache diagnostics do not retain original batch timing');
+for(const status of ['failed','reviewed']){
+ const cachedFailure={...cachedDiagnostics,assessment_status:status,assessment_partial:true,review_diagnostics:[{expected:12,completed:0,cache_hit:false,model_called:false,model_ms:0,error:'model_timeout'}]};
+ const text=textFor(cachedFailure);
+ assert.ok(text.includes('保存した診断を表示（今回はAI未実行）'));
+ assert.ok(text.includes('完了：0件')&&text.includes('エラー分類：model_timeout'));
+ assert.ok(!text.includes('保存した判定を再利用'),'Cached failure diagnostics are not successful reusable judgments');
+}
+const mixed={...diagnosticBase,review_diagnostics:[{...diagnostics[0],cache_hit:true,model_called:false,model_ms:0},{...diagnostics[1],error:'model_timeout',completed:0}]};
+const mixedText=textFor(mixed);
+assert.ok(mixedText.includes('バッチ 1：保存した判定を再利用'));
+assert.ok(mixedText.includes('バッチ 2：今回AIを実行'));
+assert.ok(mixedText.includes('エラー分類：model_timeout'));
+assert.ok(!mixedText.includes('入力トークン：12345'));
+assert.ok(textFor({...diagnosticBase,review_diagnostics:[{...diagnostics[0],model_ms:0,usage:{input_tokens:0,output_tokens:0}}]}).includes('出力トークン：0'),'A measured zero is not missing data');
+assert.ok(textFor({...diagnosticBase,review_diagnostics:[{},{}]}).includes('実行状態は未提供'));
+for(const invalid of [null,undefined,{},true,'PRIVATE'])assert.ok(!render({...diagnosticBase,review_diagnostics:invalid}).includes('diagnostic-copy'));
+assert.equal(textFor({...diagnosticBase,review_diagnostics:[]}), '');
+
+// Model a newly rendered DOM for each copy test, as innerHTML does in a browser.
+const mountDiagnostics=result=>{
+ for(const id of ['diagnostic-copy','diagnostic-text','diagnostic-copy-status'])nodes.delete(id);
+ render(result);getNode('diagnostic-text').value=textFor(result);
+ return getNode('diagnostic-copy');
+};
+let copied=[];
+context.navigator={clipboard:{writeText:async value=>{copied.push(value)}}};
+let button=mountDiagnostics(poisoned);
+await button.listeners.click();
+assert.deepEqual(copied,[safeText]);
+assert.equal(getNode('diagnostic-copy-status').textContent,'コピーしました');
+assert.equal(button.disabled,false);
+for(const navigator of [undefined,{}, {clipboard:{writeText:async()=>{throw new Error('permission denied')}}}]){
+ context.navigator=navigator;button=mountDiagnostics(diagnosticBase);
+ await button.listeners.click();
+ assert.ok(getNode('diagnostic-copy-status').textContent.includes('長押し'));
+ assert.equal(getNode('diagnostic-text').value,text);
+ assert.equal(getNode('diagnostic-text').focused,true);
+ assert.equal(getNode('diagnostic-text').selected,true);
+ assert.deepEqual(getNode('diagnostic-text').selection,[0,text.length]);
+ assert.equal(button.disabled,false);
+}
+let settle,copyCalls=0;
+context.navigator={clipboard:{writeText:()=>{copyCalls++;return new Promise(resolve=>{settle=resolve})}}};
+button=mountDiagnostics(diagnosticBase);
+const firstCopy=button.listeners.click();
+await button.listeners.click();
+assert.equal(copyCalls,1,'Repeated taps while copying must not create duplicate clipboard operations');
+const newer=mountDiagnostics(cachedDiagnostics);
+settle();await firstCopy;
+assert.notEqual(button,newer);
+assert.notEqual(getNode('diagnostic-copy-status').textContent,'コピーしました','Late copy completion must not update the next search result');
+let rejectOld;
+context.navigator={clipboard:{writeText:()=>new Promise((_,reject)=>{rejectOld=reject})}};
+button=mountDiagnostics(diagnosticBase);const oldCopy=button.listeners.click();
+mountDiagnostics(cachedDiagnostics);rejectOld(new Error('late denial'));await oldCopy;
+assert.notEqual(getNode('diagnostic-text').selected,true,'Late copy failure must not focus or select a different result');
+const source=await readFile(new URL('../frontend/app.js',import.meta.url),'utf8');
+assert.equal(await readFile(new URL('../../dist/app.js',import.meta.url),'utf8'),source,'Published and source frontend files must match');
+const page=await readFile(new URL('../../dist/index.html',import.meta.url),'utf8');
+assert.ok(page.includes('app.js?v=20261011-45-diag1'),'Only the frontend asset cache key changes');
+assert.ok(source.includes('question:input,v:"20261011-45"'),'The analysis/cache version remains unchanged');
+console.log('Frontend states, timings, safe numeric diagnostics, cache labels, absent usage, clipboard success/fallback/repeated taps, stale-copy isolation, escaping, unchanged source requests and nonblocking law lookup passed. No network or model calls.');
 
