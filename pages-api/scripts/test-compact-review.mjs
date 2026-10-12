@@ -137,6 +137,15 @@ const failedScope=await reviewCompactAssignments('教員の長時間労働を是
 }}});
 assert.equal(failedScopeCalls,2);assert.equal(failedScope.pairs,0);assert.equal(failedScope.uncertain_candidates,1);assert.equal(failedScope.assessment_partial,true);
 
+let boundaryCalls=0;
+const boundary=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('boundary:q1')]),{...env,AI:{run:async(_,p)=>{
+ boundaryCalls++;const rs=reviews(JSON.parse(p.messages[1].content));
+ if(!p.messages[0].content.includes('この判定は'))Object.assign(rs[0],{comparison:'最初の判定では措置の対象が異なると判断',decision:'reject',q:'',a:''});
+ return {response:{reviews:rs}};
+}}});
+assert.equal(boundaryCalls,2);assert.equal(boundary.pairs,1,'Strong retrieval plus rejection is checked semantically, not forced into or out of evidence');
+assert.equal(boundary.reviewed_candidates,1);assert.equal(boundary.evidence[0].ministry,'文部科学省');
+
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
 const previousFetch=globalThis.fetch,previousNow=Date.now;let clock=previousNow();Date.now=()=>clock+=3001;
