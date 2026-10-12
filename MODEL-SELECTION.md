@@ -1,5 +1,7 @@
 # 判定モデルの選定（2026-10-09）
 
+これは選定時点の記録です。現在の接続・検証状況は [README](README.md) と `pages-api/evaluation/` を参照してください。
+
 ## 決定と現在の状態
 
 Qwenは採用せず、Cloudflare上のOpenAI公開モデル `@cf/openai/gpt-oss-20b` を選定した。AI bindingを使うアダプターと `wrangler.jsonc` を実装し、模擬応答による全テストは通過した。CloudflareへのGit接続と実モデルによる精度・速度・消費量の検証は未完了。

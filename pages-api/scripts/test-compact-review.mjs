@@ -7,6 +7,7 @@ const row = (id, ministry='文部科学省', suffix='') => ({case_id:id,ministry
 const env = {CLOUDFLARE_WORKERS_PLAN:'free', AI:{run: async () => { throw new Error('override per case'); }}};
 const reviews = input => input.candidates.map(c=>[c.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(c.source_question || input.candidates.find(other => other.id === c.source_question_ref).source_question)[0],Object.keys(c.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a}));
 const result = rows => ({review_candidates:rows,recent_since:'2024-01-01',searched:[],requests_used:1,errors:[]});
+assert.deepEqual(Object.values(sourceParts('委員にお答えします。教員の負担軽減に取り組みます。','a')),['教員の負担軽減に取り組みます。']);
 const parts=sourceParts('原文の文章です。'+ '長い文章'.repeat(80)+'。','q');
 assert.equal(Object.values(parts).length,2,'Keep whole sentences rather than splitting words at a fixed character count');
 assert.ok(Object.values(parts).every(p=>('原文の文章です。'+'長い文章'.repeat(80)+'。').includes(p)));
@@ -26,13 +27,13 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  calls++;active++;peak=Math.max(peak,active);
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,3072);
  const input=JSON.parse(payload.messages[1].content);
- assert.ok(input.candidates.length<=12);
+ assert.ok(input.candidates.length<=8);
  assert.equal(input.candidates[0].id,'c1');
  assert.equal(payload.response_format.type,'json_schema');
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});
-assert.equal(calls,2);assert.equal(peak,2);
+assert.equal(calls,3);assert.equal(peak,3);
 assert.equal(parallel.pairs,24);assert.equal(parallel.evidence.length,24);
 assert.equal(parallel.unreviewed_candidates,8);
 assert.ok(parallel.candidates.every(r=>clustered.some(s=>r.url===s.url&&r.ministry===s.ministry)));
@@ -58,16 +59,16 @@ const partial=await reviewCompactAssignments('教員の長時間労働につい�
  const input=JSON.parse(p.messages[1].content);if(partialCalls++===0)throw new Error('temporary transport failure');
  return {response:{reviews:reviews(input)}};
 }}});
-assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,12);assert.equal(partial.assessment_partial,true);
+assert.equal(partial.assessment_status,'reviewed');assert.equal(partial.pairs,16);assert.equal(partial.assessment_partial,true);
 let limitedCalls=0;
 const limited=await reviewCompactAssignments('教員の長時間労働について',twentyfour,{...env,AI:{run:async(_,p)=>{
  if(limitedCalls++===0)return {choices:[{finish_reason:'length',message:{role:'assistant',content:'{"reviews":['}}]};
  return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};
 }}});
-assert.equal(limitedCalls,2,'Truncation must not create a retry tree');
-assert.equal(limited.pairs,12);assert.equal(limited.assessment_partial,true);
+assert.equal(limitedCalls,3,'Truncation must not create a retry tree');
+assert.equal(limited.pairs,16);assert.equal(limited.assessment_partial,true);
 assert.equal(limited.review_diagnostics[0].error,'model_output_limit');
-assert.equal(limited.review_diagnostics.reduce((n,d)=>n+d.output_token_limit,0),6144);
+assert.equal(limited.review_diagnostics.reduce((n,d)=>n+d.output_token_limit,0),9216);
 
 for(const bad of [
  {id:'c1',comparison:'',decision:'accept',q:'q1',a:'v1a1'},

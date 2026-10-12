@@ -29,10 +29,10 @@ const env={CLOUDFLARE_WORKERS_PLAN:'free',AI:{run:async(_,payload)=>{
 }}};
 try {
   const first=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(first.pairs,24);assert.equal(calls,2);
-  assert.equal(first.review_model_calls,2);assert.equal(first.review_cache_hits,0);
+  assert.equal(first.pairs,24);assert.equal(calls,3);
+  assert.equal(first.review_model_calls,3);assert.equal(first.review_cache_hits,0);
   assert.ok(first.review_diagnostics.every(d=>d.usage.input_tokens===1000&&d.usage.output_tokens===200));
-  assert.equal(stored.size,2);
+  assert.equal(stored.size,3);
   assert.ok(captured.every(input=>input.candidates.filter(c=>c.source_question).length===1));
   assert.equal(captured[0].candidates[1].previous_context,rows[1].previous_context);
   assert.equal(captured[0].candidates[2].question_truncated,true);
@@ -41,25 +41,25 @@ try {
 
   clock += 2 * 86400000;
   const repeat=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(calls,2);assert.equal(repeat.review_model_calls,0);assert.equal(repeat.review_cache_hits,2);
+  assert.equal(calls,3);assert.equal(repeat.review_model_calls,0);assert.equal(repeat.review_cache_hits,3);
   assert.equal(repeat.pairs,24);assert.ok(repeat.review_diagnostics.every(d=>!d.usage));
 
   const changed=rows.map((r,i)=>i===23?{...r,answer:r.answer+'予算の見直しも行います。'}:r);
   const refreshed=await reviewCompactAssignments(question,inputResult(changed),env);
-  assert.equal(calls,3);assert.equal(refreshed.review_cache_hits,1,'Changed source text must only rejudge its batch');
+  assert.equal(calls,4);assert.equal(refreshed.review_cache_hits,2,'Changed source text must only rejudge its batch');
   assert.equal(refreshed.pairs,24);
 
   const scoped=await reviewCompactAssignments('海外の教員の勤務負担を減らすべきではないか',inputResult(rows),env);
-  assert.equal(calls,5);assert.equal(scoped.review_cache_hits,0,'Question scope must not reuse another judgment');
+  assert.equal(calls,7);assert.equal(scoped.review_cache_hits,0,'Question scope must not reuse another judgment');
 
   // Valid batches survive a partial failure. Only the missing batch is retried
   // on the next request; neither an invalid reference nor a failure is cached.
   stored.clear();failAnswer='支援員を13人';
   const partial=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(partial.assessment_partial,true);assert.equal(partial.pairs,12);assert.equal(stored.size,1);
+  assert.equal(partial.assessment_partial,true);assert.equal(partial.pairs,16);assert.equal(stored.size,2);
   failAnswer='';const before=calls;
   const recovered=await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(calls,before+1);assert.equal(recovered.pairs,24);assert.equal(recovered.review_cache_hits,1);
+  assert.equal(calls,before+1);assert.equal(recovered.pairs,24);assert.equal(recovered.review_cache_hits,2);
 
   stored.clear();invalid=true;
   const bad=await reviewCompactAssignments(question,inputResult(rows),env);
@@ -69,7 +69,7 @@ try {
   clock += 8 * 86400000;
   const beforeExpiry=calls;
   await reviewCompactAssignments(question,inputResult(rows),env);
-  assert.equal(calls,beforeExpiry+2,'Expired judgments must be recomputed');
+  assert.equal(calls,beforeExpiry+3,'Expired judgments must be recomputed');
 } finally {
   Date.now=previousNow;
   if(previousCaches===undefined)delete globalThis.caches;else globalThis.caches=previousCaches;

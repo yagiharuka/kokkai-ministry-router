@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261012-51';
+const routingVersion = '20261012-52';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -707,7 +707,7 @@ async function reviewAssignments(question, result, env = {}, fetchModel = fetch,
         reviewed.push({ ...row, screening: 'uncertain', review_reason: '引用を原文と照合できないため、判断を保留しました。', question_evidence: '', answer_evidence: '' });
         continue;
       }
-      reviewed.push({ ...row, screening: review.decision, review_reason: normalize(review.reason), question_evidence: q, answer_evidence: a });
+      reviewed.push({ ...row, screening: review.decision, review_reason: normalize(review.reason), question_evidence: questionQuoteWithContext(row.question, q), answer_evidence: a });
     }
     const accepted = reviewed.filter(row => row.screening === 'accept');
     const unique = [...new Map(accepted.map(row => [`${row.case_id}:${row.ministry}`, row])).values()];
@@ -731,7 +731,7 @@ const compactInstructions = `国会会議録の質疑が、利用者の proposed
 2. 対象が一致したら取組を比較します。「どのような支援」「活躍を推進」「環境改善」は広い政策目的です。その対象の活動を妨げる障壁の除去、資金、参加機会、安全確保など具体策・政府方針も accept。支援は給付や補助金だけではありません。例：「教員の働く環境改善」に対する「長時間労働を減らす支援員配置」の答弁は accept。元の問いが具体的だから、質問案と同じ言い回しでないからという理由で落としません。特定制度・変更内容を明示した案の場合だけ、その指定を満たす応答が必要です。制度の運営・予算・効果・改善・慎重な見解も実質的な応答です。
 3. 対象・課題は source_question と source_answer を合わせて読みます。答弁が質問の対象者を繰り返さず「御指摘の問題」などと答えても、質問への応答なら対象を引き継ぎます。受益者を守るため提供者や規制対象者に取組を求める施策も accept。対象者専用の施策でなくても、質問でその活動上の障壁を扱い答弁が解消への取組を示せば accept。無関係な論点同士を結び付けたり、対象の名前が背景に出るだけの候補を採用してはいけません。挨拶・手続・附帯決議尊重の挨拶、本会議で総理が多数の無関係な分野をまとめて答えた曖昧なものは reject。文脈不足なら uncertain。
 source_question / source_answer は原文を文単位に分けた番号付き辞書です。source_question_ref があればその候補の質問原文と同一です。省略された previous_context は空、truncated は false です。
-出力全体は {"reviews":[判定オブジェクト,...]} の形です。reviews の各要素は id, comparison, decision, q, a を持つオブジェクトです。comparison に「誰のどの活動への施策か、受益者と提供者の役割、質問案との対応または相違」を日本語20〜80字で先に書き、その比較に従い decision を accept / reject / uncertain から選びます。「same」などのコードや「一致する」だけの説明は不可。例: {"id":"c1","comparison":"教員の長時間労働に対し支援員配置で業務負担を軽減する答弁","decision":"accept","q":"q1","a":"v1a2"}。全候補を一度ずつ返します。accept の q と a には対象・課題と取組が分かる質問・答弁の原文番号をそれぞれ一つ選びます。単なる同意・挨拶・問い掛けを選びません。reject / uncertain の q と a は両方空文字。原文番号を別候補から持ってこないでください。引用文は生成しません。`;
+出力全体は {"reviews":[判定オブジェクト,...]} の形です。reviews の各要素は id, comparison, decision, q, a を持つオブジェクトです。comparison に「誰のどの活動への施策か、受益者と提供者の役割、質問案との対応または相違」を候補ごとに日本語20〜60字で先に書き、その比較に従い decision を accept / reject / uncertain から選びます。前の候補の理由を流用せず、各候補の実際の対象と取組を比較します。「same」などのコードや「一致する」だけの説明は不可。例: {"id":"c1","comparison":"教員の長時間労働に対し支援員配置で業務負担を軽減する答弁","decision":"accept","q":"q1","a":"v1a2"}。全候補を一度ずつ返します。accept の q と a には対象・課題と取組が分かる質問・答弁の原文番号をそれぞれ一つ選びます。単なる同意・挨拶・問い掛けを選びません。reject / uncertain の q と a は両方空文字。原文番号を別候補から持ってこないでください。引用文は生成しません。`;
 
 
 function sourceParts(value, prefix) {
@@ -742,6 +742,7 @@ function sourceParts(value, prefix) {
     // Do not offer a bare greeting as the evidence for an accepted answer.
     // The untouched complete context remains in the public source record.
     if (/^(?:はい[、。 ]*)?(?:お答え(?:を)?(?:申し上げ|いたし|し)ます|御指摘ありがとうございます|ありがとうございます|御指摘のとおりでございます|よろしくお願いいたします)[。 ]*$/u.test(content)) continue;
+    if (/^(?:委員|先生)(?:に|の御質問に|のご質問に)お答え(?:を)?(?:申し上げ|いたし|し)ます[。 ]*$/u.test(content)) continue;
     if (/について(?:の)?(?:お尋ね|御質問|ご質問)(?:です|でございます|がありました)[。 ]*$/u.test(content)) continue;
     // Preserve complete source sentences. Fixed-width slices can separate a
     // beneficiary from the measure, or offer a meaningless sentence ending.
@@ -749,6 +750,15 @@ function sourceParts(value, prefix) {
     if (content) parts[`${prefix}${number++}`] = content;
   }
   return parts;
+}
+
+function questionQuoteWithContext(text, quote) {
+  if (!quote || quote.length >= 40) return quote;
+  const start = text.indexOf(quote);
+  if (start < 0) return quote;
+  const tail = text.slice(start + quote.length);
+  const next = (tail.match(/[^。！？?]+[。！？?]?/gu) || []).slice(0, 2).join('');
+  return text.slice(start, start + quote.length + next.length);
 }
 
 // Reuse only a fully validated decision for an identical question AND identical
@@ -826,7 +836,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     questionGroups.get(key).push(row);
   }
   const ordered = [...questionGroups.values()].flat(), batches = [];
-  for (let i = 0; i < ordered.length; i += 12) batches.push(ordered.slice(i, i + 12));
+  for (let i = 0; i < ordered.length; i += 8) batches.push(ordered.slice(i, i + 8));
   const outcomes = await Promise.all(batches.map(async batch => {
     const batchStarted = Date.now();
     // Every independent generation gets the same short local ID range.
@@ -923,7 +933,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     const original = parts.owners.get(r.answer_part) || row;
     return { ...original, candidate_id: row.candidate_id, question: row.question, screening: valid ? r.decision : 'uncertain',
       review_reason: valid ? normalize(r.reason) : '原文番号を確認できないため保留。',
-      question_evidence: q, answer_evidence: a };
+      question_evidence: questionQuoteWithContext(row.question, q), answer_evidence: a };
   });
   const accepted = reviewed.filter(row => row.screening === 'accept');
   const unique = [...new Map(accepted.map(row => [`${row.case_id}:${row.ministry}`, row])).values()];
@@ -1046,7 +1056,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261012-51';
+const publicRoutingVersion = '20261012-52';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

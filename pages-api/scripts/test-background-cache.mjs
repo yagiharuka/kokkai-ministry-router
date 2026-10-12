@@ -69,22 +69,22 @@ try {
   const worker = (await import('../worker/model-api.js?background-cache')).default;
   const result = await soon(worker.fetch(request(), env, { waitUntil(p) { lifetimes.push(p); } }).then(r => r.json()));
   assert.equal(result.reviewed_candidates, 24); assert.equal(result.pairs, 24);
-  assert.equal(calls, 2); assert.equal(peakSources, 1);
-  assert.ok(payloads.every(p => p.max_tokens === 3072 && JSON.parse(p.messages[1].content).candidates.length === 12));
+  assert.equal(calls, 3); assert.equal(peakSources, 1);
+  assert.ok(payloads.every(p => p.max_tokens === 3072 && JSON.parse(p.messages[1].content).candidates.length === 8));
   assert.equal(result.selection_runs, 1);
   assert.deepEqual(result.original_timing, result.timing);
   assert.ok(result.review_diagnostics.every(d => d.cache_write_deferred && Number.isFinite(d.model_ms)));
   assert.ok(result.source_diagnostics.every(d => d.cache_write_deferred && d.cache === 'miss'));
   assert.equal(stored.size, 0, 'The result must be available while every cache write is still blocked');
-  assert.equal(writes.length, 4, 'One source, two reviews and one result cache write');
+  assert.equal(writes.length, 5, 'One source, three reviews and one result cache write');
   assert.equal(lifetimes.length, writes.length, 'Every background write must be registered');
   assert.ok(!JSON.stringify(result.source_diagnostics).includes(question));
   for (const { gate } of writes) gate.resolve();
   await Promise.all(lifetimes);
-  assert.equal(stored.size, 4);
+  assert.equal(stored.size, 5);
   const restarted = (await import('../worker/model-api.js?background-restarted')).default;
   const hit = await (await restarted.fetch(request(), env)).json();
-  assert.equal(calls, 2); assert.equal(hit.analysis_cache_hit, true);
+  assert.equal(calls, 3); assert.equal(hit.analysis_cache_hit, true);
   assert.deepEqual(hit.original_timing, result.timing);
   assert.equal(hit.timing.cached, true); assert.equal(hit.review_model_calls, 0);
 } finally {
