@@ -57,7 +57,10 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
     max_tokens: name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 3072 : 2048) : 3072,
     messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
       { role: 'user', content: JSON.stringify(input) }],
-    response_format: { type: 'json_schema', json_schema: schema } };
+    // Complex constrained decoding stalled both compact batches in live
+    // Workers AI checks. Request JSON, then enforce the full object contract,
+    // IDs, decisions and source ownership locally below. Never repair output.
+    response_format: name === 'kokkai_compact_review' ? { type: 'json_object' } : { type: 'json_schema', json_schema: schema } };
   let data;
   if (config.binding) {
     let timer;

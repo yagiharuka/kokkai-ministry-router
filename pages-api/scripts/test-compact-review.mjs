@@ -28,7 +28,7 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=12);
  assert.equal(input.candidates[0].id,'c1');
- assert.equal(payload.response_format.json_schema.properties.reviews.minItems,input.candidates.length);
+ assert.equal(payload.response_format.type,'json_object');
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});
@@ -128,7 +128,7 @@ try {
  let planning=0;
  globalThis.fetch=async url=>{const u=new URL(url);const any=u.searchParams.get('any');return Response.json(any==='教師 勤務時間'? (u.pathname.endsWith('meeting')?{meetingRecord:[meeting]}:{speechRecord:meeting.speechRecord.map(s=>({...s,issueID:meeting.issueID}))}):{speechRecord:[]});};
  const fallbackEnv={...env,AI:{run:async(_,p)=>{
-  if(p.response_format.json_schema.properties.queries){planning++;return {response:{queries:['教師 勤務時間','教員 負担']}};}
+  if(p.response_format.json_schema?.properties.queries){planning++;return {response:{queries:['教師 勤務時間','教員 負担']}};}
   return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};
  }}};
  const fallback=await (await worker.fetch(new Request('https://example.invalid/api/cases?'+new URLSearchParams({question:'教師の勤務改善を頑張るべきではないか'})),fallbackEnv)).json();
