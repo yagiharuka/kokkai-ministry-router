@@ -30,6 +30,8 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  assert.ok(input.candidates.length<=8);
  assert.equal(input.candidates[0].id,'c1');
  assert.equal(payload.response_format.type,'json_schema');
+ assert.equal(payload.response_format.json_schema.properties.reviews.minItems,input.candidates.length);
+ assert.equal(payload.response_format.json_schema.properties.reviews.maxItems,input.candidates.length);
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});

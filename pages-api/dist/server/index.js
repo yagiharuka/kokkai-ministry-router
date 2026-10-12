@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261012-55';
+const routingVersion = '20261012-56';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -849,7 +849,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     // referring to another batch, while source ownership remains immutable.
     const localIds = batch.map((_, i) => `c${i + 1}`);
     const globalIds = new Map(localIds.map((id, i) => [id, batch[i].candidate_id]));
-    const schema = { type: 'object', properties: { reviews: { type: 'array', items: {
+    const schema = { type: 'object', properties: { reviews: { type: 'array', minItems: batch.length, maxItems: batch.length, items: {
       type: 'object', properties: {
         id: { type: 'string', enum: localIds },
         beneficiary: { type: 'string' }, activity: { type: 'string' },
@@ -1099,7 +1099,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261012-55';
+const publicRoutingVersion = '20261012-56';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

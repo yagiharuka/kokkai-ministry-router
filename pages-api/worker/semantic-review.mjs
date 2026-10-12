@@ -369,7 +369,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     // referring to another batch, while source ownership remains immutable.
     const localIds = batch.map((_, i) => `c${i + 1}`);
     const globalIds = new Map(localIds.map((id, i) => [id, batch[i].candidate_id]));
-    const schema = { type: 'object', properties: { reviews: { type: 'array', items: {
+    const schema = { type: 'object', properties: { reviews: { type: 'array', minItems: batch.length, maxItems: batch.length, items: {
       type: 'object', properties: {
         id: { type: 'string', enum: localIds },
         beneficiary: { type: 'string' }, activity: { type: 'string' },
