@@ -22,7 +22,7 @@ const env = { CLOUDFLARE_WORKERS_PLAN:'free', CLOUDFLARE_AI_QUOTA_PAUSED_UNTIL:n
   models++;
   if (exhaust) throw new Error('daily neuron quota exceeded');
   const input = JSON.parse(payload.messages[1].content);
-  return {response:{reviews:input.candidates.map(row=>[row.id,'対象と取組の比較を記録', 'accept',Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0],Object.keys(row.source_answer)[0],'same'])}};
+  return {response:{reviews:input.candidates.map(row=>[row.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0],Object.keys(row.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a}))}};
 }}};
 const request = question => new Request('https://example.invalid/api/cases?' + new URLSearchParams({question}));
 try {

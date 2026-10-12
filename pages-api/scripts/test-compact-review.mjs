@@ -5,7 +5,7 @@ import worker from '../worker/model-api.js';
 
 const row = (id, ministry='文部科学省', suffix='') => ({case_id:id,ministry,question:'教員の長時間労働を是正するにはどうしますか。',answer:'教員の長時間労働を減らすため支援員を配置します。',date:'2026-05-01',position:'文部科学大臣',url:`https://kokkai.ndl.go.jp/txt/fixture/${id}${suffix}`,retrieval_score:1});
 const env = {CLOUDFLARE_WORKERS_PLAN:'free', AI:{run: async () => { throw new Error('override per case'); }}};
-const reviews = input => input.candidates.map(c=>[c.id,'対象と取組の比較を記録', 'accept',Object.keys(c.source_question || input.candidates.find(other => other.id === c.source_question_ref).source_question)[0],Object.keys(c.source_answer)[0],'same']);
+const reviews = input => input.candidates.map(c=>[c.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(c.source_question || input.candidates.find(other => other.id === c.source_question_ref).source_question)[0],Object.keys(c.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a}));
 const result = rows => ({review_candidates:rows,recent_since:'2024-01-01',searched:[],requests_used:1,errors:[]});
 const parts=sourceParts('原文の文章です。'+ '長い文章'.repeat(80)+'。','q');
 assert.equal(Object.values(parts).length,2,'Keep whole sentences rather than splitting words at a fixed character count');
@@ -24,7 +24,7 @@ const twentyfour=result(clustered);
 let active=0,peak=0,calls=0;
 const parallel=await reviewCompactAssignments('教員の長時間労働の是正について',twentyfour,{...env,AI:{run:async(model,payload)=>{
  calls++;active++;peak=Math.max(peak,active);
- assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,2560);
+ assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,3072);
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=12);
  assert.equal(input.candidates[0].id,'c1');
@@ -41,7 +41,7 @@ const repeated=[row('same:q1','文部科学省','a'),{...row('same:q1','文部�
 let repeatedInput;
 const selected=await reviewCompactAssignments('教員の負担を減らすべきではないか',result(repeated),{...env,AI:{run:async(_,p)=>{
  const input=JSON.parse(p.messages[1].content);repeatedInput=input;
- const rs=reviews(input);rs[0][4]=Object.keys(input.candidates[0].source_answer).find(k=>k.startsWith('v2'));
+ const rs=reviews(input);rs[0].a=Object.keys(input.candidates[0].source_answer).find(k=>k.startsWith('v2'));
  return {response:{reviews:rs}};
 }}});
 assert.equal(repeatedInput.candidates.length,1,'Repeated replies share one review, without dropping the later answer');
@@ -50,7 +50,7 @@ assert.equal(selected.evidence[0].answer,repeated[1].answer);
 assert.ok(repeated[1].answer.includes(selected.evidence[0].answer_evidence));
 
 const grounded=await reviewCompactAssignments('教員の長時間労働について',result([row('ground:q1'),row('ground:q2')]),{...env,AI:{run:async(_,p)=>{
- const rs=reviews(JSON.parse(p.messages[1].content));rs[0][4]='invented';return {response:{reviews:rs}};
+ const rs=reviews(JSON.parse(p.messages[1].content));rs[0].a='invented';return {response:{reviews:rs}};
 }}});
 assert.equal(grounded.pairs,1);assert.equal(grounded.uncertain_candidates,1);
 let partialCalls=0;
@@ -67,28 +67,27 @@ const limited=await reviewCompactAssignments('教員の長時間労働につい�
 assert.equal(limitedCalls,2,'Truncation must not create a retry tree');
 assert.equal(limited.pairs,12);assert.equal(limited.assessment_partial,true);
 assert.equal(limited.review_diagnostics[0].error,'model_output_limit');
-assert.equal(limited.review_diagnostics.reduce((n,d)=>n+d.output_token_limit,0),5120);
+assert.equal(limited.review_diagnostics.reduce((n,d)=>n+d.output_token_limit,0),6144);
 
 for(const bad of [
- ['c1','','accept','q1','v1a1','same'],
- ['c1','長'.repeat(101),'accept','q1','v1a1','same'],
- ['c1','対象と取組の比較を記録', 'accept','q1','v1a1','unknown'],
- ['c1','対象と取組の比較を記録', 'reject','q1','v1a1','scope'],
- ['c1','対象と取組の比較を記録', 'accept','q1','v1a1','context'],
- ['c1','対象と取組の比較を記録', 'accept','q1','v1a1'],
- ['c1','対象と取組の比較を記録', 'accept','q1','v1a1','same', 'extra'],
- ['c1','対象と取組の比較を記録', 'accept','q1',42,'same'],
+ {id:'c1',comparison:'',decision:'accept',q:'q1',a:'v1a1'},
+ {id:'c1',comparison:'長'.repeat(121),decision:'accept',q:'q1',a:'v1a1'},
+ {id:'c1',comparison:'対象が異なるため採用しない',decision:'reject',q:'q1',a:'v1a1'},
+ {id:'c1',comparison:'教員の長時間労働に対して支援員を配置する答弁',decision:'bogus',q:'q1',a:'v1a1'},
+ {id:'c1',comparison:'教員の長時間労働に対して支援員を配置する答弁',decision:'accept',q:'q1',a:42},
+ {id:'c1',comparison:'教員の長時間労働に対して支援員を配置する答弁',decision:'accept',q:'q1',a:'v1a1',extra:'x'},
+ ['c1','accept','q1','v1a1','same'],
  {id:'c1',decision:'accept',question_part:'q1',answer_part:'v1a1',reason:'old format'},
 ]) {
  const malformed=await reviewCompactAssignments('教員の長時間労働について',result([row('shape:q1')]),{...env,AI:{run:async()=>({response:{reviews:[bad]}})}});
  assert.equal(malformed.pairs,0,'Invalid compact output cannot create accepted evidence');
  assert.equal(malformed.uncertain_candidates,1);
 }
-const coded=await reviewCompactAssignments('教員の長時間労働について',result([row('code:q1'),row('code:q2')]),{...env,AI:{run:async()=>({response:{reviews:[['c1','対象と取組の比較を記録', 'reject','','','scope'],['c2','対象と取組の比較を記録', 'uncertain','','','context']]}})}});
+const coded=await reviewCompactAssignments('教員の長時間労働について',result([row('code:q1'),row('code:q2')]),{...env,AI:{run:async()=>({response:{reviews:[{id:'c1',comparison:'対象とする政策活動の範囲が異なる',decision:'reject',q:'',a:''},{id:'c2',comparison:'原文の文脈が不足し対応を判断できない',decision:'uncertain',q:'',a:''}]}})}});
 assert.equal(coded.rejected_candidates,1);assert.equal(coded.uncertain_candidates,1);assert.equal(coded.pairs,0);
-assert.equal(coded.review_candidates[0].review_reason,'対象と取組の比較を記録');
+assert.equal(coded.review_candidates[0].review_reason,'原文の文脈が不足し対応を判断できない');
 const forged=await reviewCompactAssignments('教員の長時間労働について',result([row('bad:q1')]),{...env,AI:{run:async(_,p)=>{
- const rs=reviews(JSON.parse(p.messages[1].content));rs[0][0]='unknown';return {response:{reviews:rs}};
+ const rs=reviews(JSON.parse(p.messages[1].content));rs[0].id='unknown';return {response:{reviews:rs}};
 }}});
 assert.equal(forged.assessment_status,'failed');assert.equal(forged.pairs,0);
 

@@ -59,9 +59,9 @@ const payloads = [];
 const env = { CLOUDFLARE_WORKERS_PLAN: 'free', AI: { run: async (_, payload) => {
   calls++; payloads.push(payload);
   const input = JSON.parse(payload.messages[1].content);
-  return { response: { reviews: input.candidates.map(row => [row.id,'対象と取組の比較を記録', 'accept',
+  return { response: { reviews: input.candidates.map(row => [row.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',
     Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0],
-    Object.keys(row.source_answer)[0], 'same']) } };
+    Object.keys(row.source_answer)[0], 'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a})) } };
 } } };
 const question = '教員の長時間労働を是正すべきではないか';
 const request = () => new Request('https://example.invalid/api/cases?' + new URLSearchParams({ question }));
@@ -70,7 +70,7 @@ try {
   const result = await soon(worker.fetch(request(), env, { waitUntil(p) { lifetimes.push(p); } }).then(r => r.json()));
   assert.equal(result.reviewed_candidates, 24); assert.equal(result.pairs, 24);
   assert.equal(calls, 2); assert.equal(peakSources, 1);
-  assert.ok(payloads.every(p => p.max_tokens === 2560 && JSON.parse(p.messages[1].content).candidates.length === 12));
+  assert.ok(payloads.every(p => p.max_tokens === 3072 && JSON.parse(p.messages[1].content).candidates.length === 12));
   assert.equal(result.selection_runs, 1);
   assert.deepEqual(result.original_timing, result.timing);
   assert.ok(result.review_diagnostics.every(d => d.cache_write_deferred && Number.isFinite(d.model_ms)));
