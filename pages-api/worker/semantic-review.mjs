@@ -423,9 +423,16 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         const id = globalIds.get(localId);
         if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
         const validDecision = ['accept', 'reject', 'uncertain'].includes(decision);
-        if (!beneficiary.trim() || !activity.trim() || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation) || comparison.trim().length < 12 || comparison.length > 120 || !validDecision || (decision !== 'accept' && (question_part || answer_part))) { diagnostic.invalid_fields++; continue; }
+        if (!validDecision || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) { diagnostic.invalid_fields++; continue; }
         const finalDecision = relation === 'unclear' ? 'uncertain' : relation !== 'same' ? 'reject' : decision;
-        byId.set(id, { id, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim() });
+        // A rejected/uncertain item does not contribute evidence or a share.
+        // Empty ancillary labels or unnecessary refs must not turn a clear
+        // rejection into a failed batch. Accepted items still need full roles,
+        // a reason and two references, checked against their own source below.
+        if (finalDecision === 'accept' && (!beneficiary.trim() || !activity.trim() ||
+            !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; continue; }
+        const fallbackReason = finalDecision === 'uncertain' ? '対象と答弁の対応を確認できないため保留。' : '質問案の対象・活動に対応する答弁ではないと判定。';
+        byId.set(id, { id, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim().slice(0,300) || fallbackReason });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',

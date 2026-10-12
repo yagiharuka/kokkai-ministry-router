@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261012-56';
+const routingVersion = '20261012-57';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -903,9 +903,16 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         const id = globalIds.get(localId);
         if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
         const validDecision = ['accept', 'reject', 'uncertain'].includes(decision);
-        if (!beneficiary.trim() || !activity.trim() || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation) || comparison.trim().length < 12 || comparison.length > 120 || !validDecision || (decision !== 'accept' && (question_part || answer_part))) { diagnostic.invalid_fields++; continue; }
+        if (!validDecision || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) { diagnostic.invalid_fields++; continue; }
         const finalDecision = relation === 'unclear' ? 'uncertain' : relation !== 'same' ? 'reject' : decision;
-        byId.set(id, { id, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim() });
+        // A rejected/uncertain item does not contribute evidence or a share.
+        // Empty ancillary labels or unnecessary refs must not turn a clear
+        // rejection into a failed batch. Accepted items still need full roles,
+        // a reason and two references, checked against their own source below.
+        if (finalDecision === 'accept' && (!beneficiary.trim() || !activity.trim() ||
+            !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; continue; }
+        const fallbackReason = finalDecision === 'uncertain' ? '対象と答弁の対応を確認できないため保留。' : '質問案の対象・活動に対応する答弁ではないと判定。';
+        byId.set(id, { id, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim().slice(0,300) || fallbackReason });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
@@ -1099,7 +1106,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261012-56';
+const publicRoutingVersion = '20261012-57';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

@@ -158,6 +158,18 @@ for(const relation of ['broader','provider_only','different','unclear']) {
  assert.equal(relation==='unclear'?guarded.uncertain_candidates:guarded.rejected_candidates,1);
 }
 
+const shortReject=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('short:reject')]),{...env,AI:{run:async(_,p)=>{
+ const rs=reviews(JSON.parse(p.messages[1].content));Object.assign(rs[0],{beneficiary:'',activity:'',comparison:'対象外',relation:'different',decision:'reject'});
+ return {response:{reviews:rs}};
+}}});
+assert.equal(shortReject.pairs,0);assert.equal(shortReject.rejected_candidates,1);assert.equal(shortReject.uncertain_candidates,0,'Unused metadata and refs do not invalidate rejection');
+for(const field of ['beneficiary','activity','comparison','q','a']) {
+ const missingAccept=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('missing:'+field)]),{...env,AI:{run:async(_,p)=>{
+  const rs=reviews(JSON.parse(p.messages[1].content));rs[0][field]='';return {response:{reviews:rs}};
+ }}});
+ assert.equal(missingAccept.pairs,0);assert.equal(missingAccept.uncertain_candidates,1,'Accepted evidence still requires '+field);
+}
+
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
 const previousFetch=globalThis.fetch,previousNow=Date.now;let clock=previousNow();Date.now=()=>clock+=3001;
