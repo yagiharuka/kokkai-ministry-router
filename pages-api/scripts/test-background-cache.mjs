@@ -59,7 +59,7 @@ const payloads = [];
 const env = { CLOUDFLARE_WORKERS_PLAN: 'free', AI: { run: async (_, payload) => {
   calls++; payloads.push(payload);
   const input = JSON.parse(payload.messages[1].content);
-  return { response: { reviews: input.candidates.map(row => [row.id, 'accept',
+  return { response: { reviews: input.candidates.map(row => [row.id,'対象と取組の比較を記録', 'accept',
     Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0],
     Object.keys(row.source_answer)[0], 'same']) } };
 } } };

@@ -25,7 +25,7 @@ const env={CLOUDFLARE_WORKERS_PLAN:'free',AI:{run:async(_,payload)=>{
   calls++;
   const input=JSON.parse(payload.messages[1].content);captured.push(input);
   if(failAnswer && JSON.stringify(input).includes(failAnswer))throw new Error('temporary failure');
-  return {usage:{prompt_tokens:1000,completion_tokens:200},response:{reviews:input.candidates.map(c=>[c.id,'accept',Object.keys(c.source_question || input.candidates.find(other=>other.id===c.source_question_ref).source_question)[0],invalid?'invented':Object.keys(c.source_answer)[0],'same'])}};
+  return {usage:{prompt_tokens:1000,completion_tokens:200},response:{reviews:input.candidates.map(c=>[c.id,'対象と取組の比較を記録', 'accept',Object.keys(c.source_question || input.candidates.find(other=>other.id===c.source_question_ref).source_question)[0],invalid?'invented':Object.keys(c.source_answer)[0],'same'])}};
 }}};
 try {
   const first=await reviewCompactAssignments(question,inputResult(rows),env);
