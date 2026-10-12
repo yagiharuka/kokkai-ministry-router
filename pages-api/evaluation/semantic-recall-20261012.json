@@ -1,0 +1,1218 @@
+{
+  "date": "2026-10-12",
+  "published_version": "20261012-57",
+  "model": "@cf/openai/gpt-oss-20b",
+  "paid_fallback": false,
+  "latest_validation": "offline_passed_live_blocked_daily_quota",
+  "known_cases": {
+    "positive": [
+      "121704080X01120250418:121704080X01120250418_184",
+      "121704376X00220250212:121704376X00220250212_072"
+    ],
+    "negative_provider_role": "121114080X00220230309:121114080X00220230309_070",
+    "negative_general_worker_for_teacher_query": "121704260X02420250604:121704260X02420250604_173"
+  },
+  "limitations": [
+    "Small hand-inspected examples, not an accuracy benchmark.",
+    "Current v57 acceptance behavior has not been live-verified because the daily free quota was exhausted.",
+    "Earlier complete runs varied; three accepted examples do not prove recall or precision across questions.",
+    "Base review uses up to three calls, plus at most one bounded scope check; zero-candidate planning is separate. Fewer calls alone do not prove lower Neuron consumption.",
+    "Previously estimated approximately 20 new queries/day applied to an earlier simpler version; current capacity is not established. Account-level remaining quota is not available."
+  ],
+  "runs": [
+    {
+      "version": "20261011-45",
+      "analyzed_at": "2026-10-12T07:07:07.625Z",
+      "status": "reviewed",
+      "partial": false,
+      "reviewed": 24,
+      "accepted": 0,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17373,
+          "output_token_limit": 2560,
+          "output_format": "compact_rows_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 17143,
+          "cache_read_ms": 10,
+          "total_ms": 17153,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 13249,
+            "output_tokens": 1072
+          }
+        },
+        {
+          "expected": 12,
+          "input_chars": 15282,
+          "output_token_limit": 2560,
+          "output_format": "compact_rows_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 10703,
+          "cache_read_ms": 10,
+          "total_ms": 10713,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 11790,
+            "output_tokens": 569
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 11673,
+        "review_ms": 17153,
+        "planning_ms": 0,
+        "total_ms": 28826
+      },
+      "observation": "All 24 rejected, including a source-grounded harassment-prevention response."
+    },
+    {
+      "version": "20261012-46",
+      "analyzed_at": "2026-10-12T07:11:04.059Z",
+      "status": "reviewed",
+      "partial": false,
+      "reviewed": 24,
+      "accepted": 5,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17373,
+          "output_token_limit": 2560,
+          "output_format": "compact_rows_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 10880,
+          "cache_read_ms": 38,
+          "total_ms": 10918,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 13547,
+            "output_tokens": 1012
+          }
+        },
+        {
+          "expected": 12,
+          "input_chars": 15282,
+          "output_token_limit": 2560,
+          "output_format": "compact_rows_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 7904,
+          "cache_read_ms": 13,
+          "total_ms": 7917,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 12088,
+            "output_tokens": 533
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 279,
+        "review_ms": 10918,
+        "planning_ms": 0,
+        "total_ms": 11197
+      },
+      "observation": "Recovered relevant replies but incorrectly accepted general SME female employment support."
+    },
+    {
+      "version": "20261012-47",
+      "analyzed_at": "2026-10-12T07:13:44.304Z",
+      "status": "reviewed",
+      "partial": true,
+      "reviewed": 12,
+      "accepted": 6,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17192,
+          "output_token_limit": 2560,
+          "output_format": "compact_rows_v2",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 11171,
+          "cache_read_ms": 11,
+          "total_ms": 11182,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 13676,
+            "output_tokens": 900
+          }
+        },
+        {
+          "expected": 12,
+          "input_chars": 15150,
+          "output_token_limit": 2560,
+          "output_format": "compact_rows_v2",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 12,
+          "duplicate_id": 0,
+          "completed": 0,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 22727,
+          "cache_read_ms": 15,
+          "total_ms": 22742,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 12240,
+            "output_tokens": 1814
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 84,
+        "review_ms": 22742,
+        "planning_ms": 0,
+        "total_ms": 22826
+      },
+      "observation": "Six-string rows were not reliable: 12 invalid-field rows; SME false positive persisted."
+    },
+    {
+      "version": "20261012-48",
+      "analyzed_at": "2026-10-12T07:17:02.808Z",
+      "status": "failed",
+      "partial": true,
+      "reviewed": 0,
+      "accepted": 0,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17192,
+          "error": "model_timeout",
+          "completed": 0,
+          "provider_error_kind": "timeout",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 35000,
+          "cache_read_ms": 19,
+          "total_ms": 35019,
+          "cache_write_deferred": false
+        },
+        {
+          "expected": 12,
+          "input_chars": 15150,
+          "error": "model_timeout",
+          "completed": 0,
+          "provider_error_kind": "timeout",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 35000,
+          "cache_read_ms": 12,
+          "total_ms": 35012,
+          "cache_write_deferred": false
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 82,
+        "review_ms": 35019,
+        "planning_ms": 0,
+        "total_ms": 35101
+      },
+      "observation": "Named schema: both batches exceeded the 35-second local timeout."
+    },
+    {
+      "version": "20261012-49",
+      "analyzed_at": "2026-10-12T07:20:03.820Z",
+      "status": "failed",
+      "partial": true,
+      "reviewed": 0,
+      "accepted": 0,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17192,
+          "error": "model_timeout",
+          "completed": 0,
+          "provider_error_kind": "timeout",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 60000,
+          "cache_read_ms": 11,
+          "total_ms": 60011,
+          "cache_write_deferred": false
+        },
+        {
+          "expected": 12,
+          "input_chars": 15150,
+          "error": "model_timeout",
+          "completed": 0,
+          "provider_error_kind": "timeout",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 60000,
+          "cache_read_ms": 11,
+          "total_ms": 60011,
+          "cache_write_deferred": false
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 278,
+        "review_ms": 60011,
+        "planning_ms": 0,
+        "total_ms": 60289
+      },
+      "observation": "Named schema: both batches exceeded the 60-second local timeout."
+    },
+    {
+      "version": "20261012-50",
+      "scenario": "startup",
+      "analyzed_at": "2026-10-12T07:22:13.431Z",
+      "status": "failed",
+      "partial": true,
+      "reviewed": 0,
+      "accepted": 0,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17192,
+          "error": "invalid_review",
+          "completed": 0,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 14842,
+          "cache_read_ms": 15,
+          "total_ms": 14857,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 13190,
+            "output_tokens": 1282
+          }
+        },
+        {
+          "expected": 12,
+          "input_chars": 15150,
+          "error": "invalid_json",
+          "completed": 0,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 9449,
+          "cache_read_ms": 12,
+          "total_ms": 9461,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 11754,
+            "output_tokens": 1302
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 76,
+        "review_ms": 14857,
+        "planning_ms": 0,
+        "total_ms": 14933
+      },
+      "observation": "JSON-object-only requests returned in about 15 seconds of AI time but failed strict parsing/shape validation."
+    },
+    {
+      "version": "20261012-51",
+      "scenario": "startup",
+      "analyzed_at": "2026-10-12T07:24:47.444Z",
+      "status": "reviewed",
+      "partial": false,
+      "reviewed": 24,
+      "accepted": 5,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 17192,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 19341,
+          "cache_read_ms": 13,
+          "total_ms": 19354,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 13210,
+            "output_tokens": 1886
+          }
+        },
+        {
+          "expected": 12,
+          "input_chars": 15150,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 17636,
+          "cache_read_ms": 14,
+          "total_ms": 17650,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 11774,
+            "output_tokens": 1545
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 70,
+        "review_ms": 19354,
+        "planning_ms": 0,
+        "total_ms": 19424
+      },
+      "observation": "Simple named schema completed all 24; recovered relevant METI/FSA evidence and excluded the general SME false positive."
+    },
+    {
+      "version": "20261012-51",
+      "scenario": "teacher",
+      "analyzed_at": "2026-10-12T07:26:12.207Z",
+      "status": "reviewed",
+      "partial": true,
+      "reviewed": 12,
+      "accepted": 8,
+      "diagnostics": [
+        {
+          "expected": 12,
+          "input_chars": 12549,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 12,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 12,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 25472,
+          "cache_read_ms": 12,
+          "total_ms": 25484,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 10145,
+            "output_tokens": 2292
+          }
+        },
+        {
+          "expected": 12,
+          "input_chars": 16904,
+          "error": "model_output_limit",
+          "completed": 0,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 41727,
+          "cache_read_ms": 16,
+          "total_ms": 41743,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 13471,
+            "output_tokens": 3072
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 9985,
+        "review_ms": 41743,
+        "planning_ms": 0,
+        "total_ms": 51728
+      },
+      "observation": "Twelve-item batch exhausted the output ceiling; one general-worker case was wrongly included. Triggered eight-item batches and explicit per-candidate comparison."
+    },
+    {
+      "version": "20261012-52",
+      "scenario": "startup",
+      "analyzed_at": "2026-10-12T07:29:32.648Z",
+      "status": "reviewed",
+      "partial": true,
+      "reviewed": 23,
+      "accepted": 3,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 11215,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 1,
+          "duplicate_id": 0,
+          "completed": 7,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 20166,
+          "cache_read_ms": 13,
+          "total_ms": 20179,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 9055,
+            "output_tokens": 1453
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11290,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 14624,
+          "cache_read_ms": 14,
+          "total_ms": 14638,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9054,
+            "output_tokens": 1386
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 9913,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 14733,
+          "cache_read_ms": 12,
+          "total_ms": 14745,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 8188,
+            "output_tokens": 1029
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 72,
+        "review_ms": 20179,
+        "planning_ms": 0,
+        "total_ms": 20251
+      },
+      "observation": "Eight-item batches: METI and FSA recovered; one row failed field validation and remained pending; the known SME false positive excluded."
+    },
+    {
+      "version": "20261012-52",
+      "scenario": "teacher",
+      "analyzed_at": "2026-10-12T07:29:55.820Z",
+      "status": "reviewed",
+      "partial": false,
+      "reviewed": 24,
+      "accepted": 14,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 7931,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 16414,
+          "cache_read_ms": 13,
+          "total_ms": 16427,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 6932,
+            "output_tokens": 1257
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 9792,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 22978,
+          "cache_read_ms": 12,
+          "total_ms": 22990,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 8219,
+            "output_tokens": 2249
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11755,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 16696,
+          "cache_read_ms": 13,
+          "total_ms": 16709,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9745,
+            "output_tokens": 1295
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 70,
+        "review_ms": 22990,
+        "planning_ms": 0,
+        "total_ms": 23060
+      },
+      "observation": "Eight-item batches completed all 24 but retained one general-worker case; added a bounded semantic scope check for missing target wording."
+    },
+    {
+      "version": "20261012-53",
+      "scenario": "startup",
+      "analyzed_at": "2026-10-12T07:35:31.318Z",
+      "status": "reviewed",
+      "partial": false,
+      "reviewed": 24,
+      "accepted": 1,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 11215,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 6751,
+          "cache_read_ms": 10,
+          "total_ms": 6761,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9055,
+            "output_tokens": 695
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11290,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 23894,
+          "cache_read_ms": 10,
+          "total_ms": 23904,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9054,
+            "output_tokens": 1980
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 9913,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 15750,
+          "cache_read_ms": 9,
+          "total_ms": 15759,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 8188,
+            "output_tokens": 1249
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 518,
+        "review_ms": 23904,
+        "planning_ms": 0,
+        "total_ms": 24422
+      },
+      "observation": "Same eight-item prompt still varied on live rerun: only one METI answer accepted, missing known FSA evidence. Triggered bounded recall-boundary verification and temperature zero."
+    },
+    {
+      "version": "20261012-53",
+      "scenario": "teacher",
+      "analyzed_at": "2026-10-12T07:36:34.982Z",
+      "status": "reviewed",
+      "partial": true,
+      "reviewed": 16,
+      "accepted": 7,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 7931,
+          "error": "model_timeout",
+          "completed": 0,
+          "provider_error_kind": "timeout",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 60000,
+          "cache_read_ms": 13,
+          "total_ms": 60013,
+          "cache_write_deferred": false
+        },
+        {
+          "expected": 8,
+          "input_chars": 9792,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 18102,
+          "cache_read_ms": 14,
+          "total_ms": 18116,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 8219,
+            "output_tokens": 1940
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11755,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 20608,
+          "cache_read_ms": 14,
+          "total_ms": 20622,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9745,
+            "output_tokens": 1858
+          }
+        },
+        {
+          "expected": 2,
+          "input_chars": 1722,
+          "output_token_limit": 2048,
+          "output_format": "scope_check_v1",
+          "returned": 2,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 2,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 3228,
+          "cache_read_ms": 7,
+          "total_ms": 3235,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 1793,
+            "output_tokens": 334
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 302,
+        "review_ms": 63248,
+        "planning_ms": 0,
+        "total_ms": 63550
+      },
+      "observation": "Scope pass rejected the known general-worker false positive; one initial batch timed out and remained pending."
+    },
+    {
+      "version": "20261012-54",
+      "scenario": "startup",
+      "analyzed_at": "2026-10-12T07:39:59.948Z",
+      "status": "reviewed",
+      "partial": false,
+      "reviewed": 24,
+      "accepted": 4,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 11215,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 25264,
+          "cache_read_ms": 12,
+          "total_ms": 25276,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9055,
+            "output_tokens": 1773
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11290,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 14111,
+          "cache_read_ms": 15,
+          "total_ms": 14126,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9054,
+            "output_tokens": 1280
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 9913,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 9149,
+          "cache_read_ms": 16,
+          "total_ms": 9165,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 8188,
+            "output_tokens": 811
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 10565,
+          "output_token_limit": 2048,
+          "output_format": "scope_check_v1",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 21357,
+          "cache_read_ms": 6,
+          "total_ms": 21363,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 7982,
+            "output_tokens": 1903
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 83,
+        "review_ms": 46639,
+        "planning_ms": 0,
+        "total_ms": 46722
+      },
+      "observation": "Boundary verification restored FSA but reintroduced the known SME/provider-role false positive. Added explicit beneficiary, activity and relation fields with a conservative acceptance gate."
+    },
+    {
+      "version": "20261012-55",
+      "scenario": "startup",
+      "analyzed_at": "2026-10-12T07:45:00.968Z",
+      "status": "reviewed",
+      "partial": true,
+      "reviewed": 18,
+      "accepted": 3,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 11215,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 16193,
+          "cache_read_ms": 11,
+          "total_ms": 16204,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9223,
+            "output_tokens": 1665
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11290,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 14719,
+          "cache_read_ms": 11,
+          "total_ms": 14730,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9222,
+            "output_tokens": 1609
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 9913,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 8464,
+          "cache_read_ms": 10,
+          "total_ms": 8474,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 8356,
+            "output_tokens": 841
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11095,
+          "output_token_limit": 3072,
+          "output_format": "scope_check_v2",
+          "returned": 2,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 2,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 14904,
+          "cache_read_ms": 7,
+          "total_ms": 14911,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 8511,
+            "output_tokens": 1287
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 312,
+        "review_ms": 31115,
+        "planning_ms": 0,
+        "total_ms": 31427
+      },
+      "observation": "Explicit roles retained two METI cases and one FSA case; known SME/provider-role false positive absent, but scope response returned only two of eight requested rows. Added bounded array item count to the provider schema."
+    },
+    {
+      "version": "20261012-56",
+      "analyzed_at": "2026-10-12T07:47:25.411Z",
+      "status": "reviewed",
+      "partial": true,
+      "reviewed": 8,
+      "accepted": 3,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 11215,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 6,
+          "duplicate_id": 0,
+          "completed": 2,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 16134,
+          "cache_read_ms": 15,
+          "total_ms": 16149,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 9223,
+            "output_tokens": 1164
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 11290,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 0,
+          "duplicate_id": 0,
+          "completed": 8,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 16317,
+          "cache_read_ms": 15,
+          "total_ms": 16332,
+          "cache_write_deferred": true,
+          "usage": {
+            "input_tokens": 9222,
+            "output_tokens": 1185
+          }
+        },
+        {
+          "expected": 8,
+          "input_chars": 9913,
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "returned": 8,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 8,
+          "duplicate_id": 0,
+          "completed": 0,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 13276,
+          "cache_read_ms": 15,
+          "total_ms": 13291,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 8356,
+            "output_tokens": 846
+          }
+        },
+        {
+          "expected": 2,
+          "input_chars": 2408,
+          "output_token_limit": 3072,
+          "output_format": "scope_check_v2",
+          "returned": 2,
+          "unknown_id": 0,
+          "invalid_shape": 0,
+          "invalid_fields": 2,
+          "duplicate_id": 0,
+          "completed": 0,
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 3574,
+          "cache_read_ms": 7,
+          "total_ms": 3581,
+          "cache_write_deferred": false,
+          "usage": {
+            "input_tokens": 2393,
+            "output_tokens": 488
+          }
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 316,
+        "review_ms": 19913,
+        "planning_ms": 0,
+        "total_ms": 20229
+      },
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 67,
+          "count": 2
+        },
+        {
+          "ministry": "金融庁",
+          "percent": 33,
+          "count": 1
+        }
+      ],
+      "observation": "Count-constrained output returned all rows, but strict ancillary-field validation left only 8 of 24 completed; two METI cases and one FSA case accepted. Latest validator relaxes only unused rejection metadata."
+    },
+    {
+      "version": "20261012-57",
+      "analyzed_at": "2026-10-12T07:53:07.119Z",
+      "status": "failed",
+      "partial": true,
+      "reviewed": 0,
+      "accepted": 0,
+      "diagnostics": [
+        {
+          "expected": 8,
+          "input_chars": 11215,
+          "error": "quota_exhausted",
+          "completed": 0,
+          "provider_error_kind": "daily_neuron_quota",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 368,
+          "cache_read_ms": 14,
+          "total_ms": 382,
+          "cache_write_deferred": false
+        },
+        {
+          "expected": 8,
+          "input_chars": 11290,
+          "error": "quota_exhausted",
+          "completed": 0,
+          "provider_error_kind": "daily_neuron_quota",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 365,
+          "cache_read_ms": 16,
+          "total_ms": 381,
+          "cache_write_deferred": false
+        },
+        {
+          "expected": 8,
+          "input_chars": 9913,
+          "error": "quota_exhausted",
+          "completed": 0,
+          "provider_error_kind": "daily_neuron_quota",
+          "output_token_limit": 3072,
+          "output_format": "compact_objects_v2",
+          "cache_hit": false,
+          "model_called": true,
+          "model_ms": 367,
+          "cache_read_ms": 16,
+          "total_ms": 383,
+          "cache_write_deferred": false
+        }
+      ],
+      "timing": {
+        "retrieval_ms": 78,
+        "review_ms": 383,
+        "planning_ms": 0,
+        "total_ms": 461
+      },
+      "shares": [],
+      "observation": "Deployment and full offline tests passed. Final live request received verified daily_neuron_quota on all initial batches; stopped further model requests. Latest semantic behavior remains unverified."
+    }
+  ]
+}
