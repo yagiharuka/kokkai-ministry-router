@@ -61,7 +61,7 @@ const env = { CLOUDFLARE_WORKERS_PLAN: 'free', AI: { run: async (_, payload) => 
   const input = JSON.parse(payload.messages[1].content);
   return { response: { reviews: input.candidates.map(row => [row.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',
     Object.keys(row.source_question || input.candidates.find(other => other.id === row.source_question_ref).source_question)[0],
-    Object.keys(row.source_answer)[0], 'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a})) } };
+    Object.keys(row.source_answer)[0], 'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,beneficiary:'学校の教員',activity:'学校での教育業務',relation:'same',comparison,decision,q,a})) } };
 } } };
 const question = '教員の長時間労働を是正すべきではないか';
 const request = () => new Request('https://example.invalid/api/cases?' + new URLSearchParams({ question }));

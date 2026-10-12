@@ -25,7 +25,7 @@ const env={CLOUDFLARE_WORKERS_PLAN:'free',AI:{run:async(_,payload)=>{
   calls++;
   const input=JSON.parse(payload.messages[1].content);captured.push(input);
   if(failAnswer && JSON.stringify(input).includes(failAnswer))throw new Error('temporary failure');
-  return {usage:{prompt_tokens:1000,completion_tokens:200},response:{reviews:input.candidates.map(c=>[c.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(c.source_question || input.candidates.find(other=>other.id===c.source_question_ref).source_question)[0],invalid?'invented':Object.keys(c.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a}))}};
+  return {usage:{prompt_tokens:1000,completion_tokens:200},response:{reviews:input.candidates.map(c=>[c.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(c.source_question || input.candidates.find(other=>other.id===c.source_question_ref).source_question)[0],invalid?'invented':Object.keys(c.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,beneficiary:'学校の教員',activity:'学校での教育業務',relation:'same',comparison,decision,q,a}))}};
 }}};
 try {
   const first=await reviewCompactAssignments(question,inputResult(rows),env);

@@ -34,9 +34,9 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261012-54"};
+ const params={question:input,v:"20261012-55"};
  // Let the server's analysis cache report current wait and original timings.
- const cases=await getJson(api+"cases?"+new URLSearchParams(params),105000,{cache:'no-store'});
+ const cases=await getJson(api+"cases?"+new URLSearchParams(params),115000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
  return {...cases,elapsedSeconds:Math.round((Date.now()-started)/1000),question:input,unit:"質疑",laws:[],lawTerm,lawTask:lawRequest,lawSkipped:!cases.shares.length};
 }

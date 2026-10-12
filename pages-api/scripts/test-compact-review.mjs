@@ -5,7 +5,7 @@ import worker from '../worker/model-api.js';
 
 const row = (id, ministry='文部科学省', suffix='') => ({case_id:id,ministry,question:'教員の長時間労働を是正するにはどうしますか。',answer:'教員の長時間労働を減らすため支援員を配置します。',date:'2026-05-01',position:'文部科学大臣',url:`https://kokkai.ndl.go.jp/txt/fixture/${id}${suffix}`,retrieval_score:1});
 const env = {CLOUDFLARE_WORKERS_PLAN:'free', AI:{run: async () => { throw new Error('override per case'); }}};
-const reviews = input => input.candidates.map(c=>[c.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(c.source_question || input.candidates.find(other => other.id === c.source_question_ref).source_question)[0],Object.keys(c.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,comparison,decision,q,a}));
+const reviews = input => input.candidates.map(c=>[c.id,'教員の長時間労働に対して支援員を配置する答弁', 'accept',Object.keys(c.source_question || input.candidates.find(other => other.id === c.source_question_ref).source_question)[0],Object.keys(c.source_answer)[0],'same'].slice(0,5)).map(([id,comparison,decision,q,a])=>({id,beneficiary:'学校の教員',activity:'学校での教育業務',relation:'same',comparison,decision,q,a}));
 const result = rows => ({review_candidates:rows,recent_since:'2024-01-01',searched:[],requests_used:1,errors:[]});
 assert.deepEqual(Object.values(sourceParts('委員にお答えします。教員の負担軽減に取り組みます。','a')),['教員の負担軽減に取り組みます。']);
 const parts=sourceParts('原文の文章です。'+ '長い文章'.repeat(80)+'。','q');
@@ -84,7 +84,7 @@ for(const bad of [
  assert.equal(malformed.pairs,0,'Invalid compact output cannot create accepted evidence');
  assert.equal(malformed.uncertain_candidates,1);
 }
-const coded=await reviewCompactAssignments('教員の長時間労働について',result([row('code:q1'),row('code:q2')]),{...env,AI:{run:async()=>({response:{reviews:[{id:'c1',comparison:'対象とする政策活動の範囲が異なる',decision:'reject',q:'',a:''},{id:'c2',comparison:'原文の文脈が不足し対応を判断できない',decision:'uncertain',q:'',a:''}]}})}});
+const coded=await reviewCompactAssignments('教員の長時間労働について',result([row('code:q1'),row('code:q2')]),{...env,AI:{run:async()=>({response:{reviews:[{id:'c1',beneficiary:'一般労働者',activity:'一般就労',relation:'different',comparison:'対象とする政策活動の範囲が異なる',decision:'reject',q:'',a:''},{id:'c2',beneficiary:'不明',activity:'不明',relation:'unclear',comparison:'原文の文脈が不足し対応を判断できない',decision:'uncertain',q:'',a:''}]}})}});
 assert.equal(coded.rejected_candidates,1);assert.equal(coded.uncertain_candidates,1);assert.equal(coded.pairs,0);
 assert.equal(coded.review_candidates[0].review_reason,'原文の文脈が不足し対応を判断できない');
 const forged=await reviewCompactAssignments('教員の長時間労働について',result([row('bad:q1')]),{...env,AI:{run:async(_,p)=>{
@@ -126,7 +126,7 @@ const scoped=await reviewCompactAssignments('教員の長時間労働を是正�
 assert.equal(scopeCalls,2);assert.equal(scoped.pairs,1);assert.equal(scoped.rejected_candidates,1);
 assert.equal(scoped.evidence[0].case_id,synonym.case_id,'Synonyms remain eligible despite missing literal wording');
 assert.equal(scoped.reviewed_candidates,2,'Scope verification does not double-count candidates');
-assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics.at(-1).output_format,'scope_check_v1');
+assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics.at(-1).output_format,'scope_check_v2');
 let boundedCalls=0;
 const bounded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result(Array.from({length:24},(_,i)=>({...synonym,case_id:'scope:'+i}))),{...env,AI:{run:async(_,p)=>{boundedCalls++;return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};}}});
 assert.equal(boundedCalls,4);assert.equal(bounded.pairs,8);assert.equal(bounded.uncertain_candidates,16,'Beyond one extra scope batch stays pending');
@@ -145,6 +145,16 @@ const boundary=await reviewCompactAssignments('教員の長時間労働を是正
 }}});
 assert.equal(boundaryCalls,2);assert.equal(boundary.pairs,1,'Strong retrieval plus rejection is checked semantically, not forced into or out of evidence');
 assert.equal(boundary.reviewed_candidates,1);assert.equal(boundary.evidence[0].ministry,'文部科学省');
+
+// A permissive decision cannot override an explicit mismatch in source roles.
+for(const relation of ['broader','provider_only','different','unclear']) {
+ const guarded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('role:'+relation)]),{...env,AI:{run:async(_,p)=>{
+  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].relation=relation;
+  return {response:{reviews:rs}};
+ }}});
+ assert.equal(guarded.pairs,0,'Only the same beneficiary/activity relation may enter the shares');
+ assert.equal(relation==='unclear'?guarded.uncertain_candidates:guarded.rejected_candidates,1);
+}
 
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
