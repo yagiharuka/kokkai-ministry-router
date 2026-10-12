@@ -50,7 +50,7 @@ try {
   assert.equal(refreshed.pairs,24);
 
   const scoped=await reviewCompactAssignments('海外の教員の勤務負担を減らすべきではないか',inputResult(rows),env);
-  assert.equal(calls,7);assert.equal(scoped.review_cache_hits,0,'Question scope must not reuse another judgment');
+  assert.equal(calls,8);assert.equal(scoped.review_cache_hits,0,'Question scope must not reuse another judgment');
 
   // Valid batches survive a partial failure. Only the missing batch is retried
   // on the next request; neither an invalid reference nor a failure is cached.

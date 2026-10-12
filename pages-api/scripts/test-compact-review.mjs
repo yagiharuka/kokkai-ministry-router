@@ -110,6 +110,33 @@ assert.equal(withoutPlenary.context_pending_candidates,1);
 assert.equal(withoutPlenary.review_candidates.some(r=>r.case_id==='plenary:q1'),true);
 assert.deepEqual(withoutPlenary.shares.map(r=>r.ministry),['文部科学省']);
 
+// Missing literal wording triggers a bounded semantic check, not rejection.
+const synonym={...row('scope:synonym'),question:'教師の勤務負担を減らすには。',answer:'学校の先生の業務負担を軽減するため支援員を配置します。'};
+const general={...row('scope:general','厚生労働省'),question:'働く人全般の長時間労働をどう減らすか。',answer:'労働者全般への監督指導を徹底します。'};
+let scopeCalls=0;
+const scopeEnv={...env,AI:{run:async(_,p)=>{
+ scopeCalls++;const input=JSON.parse(p.messages[1].content),rs=reviews(input);
+ if(p.messages[0].content.includes('この判定は')) {
+  assert.ok(input.candidates.length<=8);
+  for(const r of rs) if(JSON.stringify(input.candidates.find(c=>c.id===r.id)).includes('労働者全般')) Object.assign(r,{comparison:'労働者一般の施策で学校の勤務との対応が原文にない',decision:'reject',q:'',a:''});
+ }
+ return {response:{reviews:rs}};
+}}};
+const scoped=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([synonym,general]),scopeEnv);
+assert.equal(scopeCalls,2);assert.equal(scoped.pairs,1);assert.equal(scoped.rejected_candidates,1);
+assert.equal(scoped.evidence[0].case_id,synonym.case_id,'Synonyms remain eligible despite missing literal wording');
+assert.equal(scoped.reviewed_candidates,2,'Scope verification does not double-count candidates');
+assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics.at(-1).output_format,'scope_check_v1');
+let boundedCalls=0;
+const bounded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result(Array.from({length:24},(_,i)=>({...synonym,case_id:'scope:'+i}))),{...env,AI:{run:async(_,p)=>{boundedCalls++;return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};}}});
+assert.equal(boundedCalls,4);assert.equal(bounded.pairs,8);assert.equal(bounded.uncertain_candidates,16,'Beyond one extra scope batch stays pending');
+let failedScopeCalls=0;
+const failedScope=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([synonym]),{...env,AI:{run:async(_,p)=>{
+ failedScopeCalls++;if(p.messages[0].content.includes('この判定は'))throw new Error('timeout');
+ return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};
+}}});
+assert.equal(failedScopeCalls,2);assert.equal(failedScope.pairs,0);assert.equal(failedScope.uncertain_candidates,1);assert.equal(failedScope.assessment_partial,true);
+
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
 const previousFetch=globalThis.fetch,previousNow=Date.now;let clock=previousNow();Date.now=()=>clock+=3001;

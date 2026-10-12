@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261012-52"};
+ const params={question:input,v:"20261012-53"};
  // Let the server's analysis cache report current wait and original timings.
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),105000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
@@ -74,7 +74,7 @@ function diagnosticRows(value){
  // Explicitly allow only numeric metrics, boolean states and known error codes.
  // Never copy source text, questions, provider responses or arbitrary properties.
  const errors=new Set(['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied','invalid_json']);
- return (Array.isArray(value)?value:[]).slice(0,3).map(item=>{
+ return (Array.isArray(value)?value:[]).slice(0,4).map(item=>{
   const source=timingObject(item)||{},row={};
   for(const key of ['expected','completed','input_chars','output_token_limit','model_ms','cache_read_ms','total_ms']){
    if(Number.isSafeInteger(source[key])&&source[key]>=0)row[key]=source[key];
@@ -92,7 +92,7 @@ function diagnosticText(r,rows){
  const cached=cachedResult(r),lines=['処理時間の診断', '結果：'+(cached?'保存済みの結果を表示':'今回の分析')];
  if(/^\d{8}-\d{1,3}$/.test(r.routing_version||''))lines.push('公開版：'+r.routing_version);
  if(typeof r.analyzed_at==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(r.analyzed_at)&&Number.isFinite(Date.parse(r.analyzed_at)))lines.push('元の分析日時：'+r.analyzed_at);
- lines.push('※各バッチは並列です。時間を足した値は全体の待ち時間ではありません。');
+ lines.push('※候補判定は並列です。対象の追加確認はその後に行います。時間の合計と全体の待ち時間は異なります。');
  rows.forEach((row,i)=>{
   const reused=cached||row.cache_hit===true;
   const state=cached?'保存した診断を表示（今回はAI未実行）':row.cache_hit===true?'保存した判定を再利用':row.model_called===true?'今回AIを実行':row.model_called===false?'AIは未実行':'実行状態は未提供';
