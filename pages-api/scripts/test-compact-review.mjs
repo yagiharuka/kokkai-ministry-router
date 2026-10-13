@@ -161,6 +161,18 @@ const providerChecked=await reviewCompactAssignments('研究者の育児と研�
 }}});
 assert.equal(providerCalls,2);assert.equal(providerChecked.pairs,0);assert.equal(providerChecked.rejected_candidates,1);
 
+// Even an incorrect generated role label cannot suppress verification when
+// the selected original evidence does not establish the requested target.
+let quoteCalls=0;
+const quoteOnly={...row('quote:q1'),question:'一般住民への支援は。研究者のサービスも紹介してください。',answer:'一般住民の育児相談を支援します。研究者が提供するサービスです。'};
+const quoteChecked=await reviewCompactAssignments('研究者の育児と研究の両立支援について',result([quoteOnly]),{...env,AI:{run:async(_,p)=>{
+ quoteCalls++;const rs=reviews(JSON.parse(p.messages[1].content));
+ Object.assign(rs[0],{beneficiary:'研究者',activity:'研究活動'});
+ if(p.messages[0].content.includes('この判定は')) Object.assign(rs[0],{relation:'provider_only',decision:'reject',q:'',a:''});
+ return {response:{reviews:rs}};
+}}});
+assert.equal(quoteCalls,2);assert.equal(quoteChecked.pairs,0,'Generated roles never replace original target evidence');
+
 // A permissive decision cannot override an explicit mismatch in source roles.
 for(const relation of ['broader','provider_only','different','unclear']) {
  const guarded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('role:'+relation)]),{...env,AI:{run:async(_,p)=>{

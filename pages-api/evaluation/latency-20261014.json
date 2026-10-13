@@ -213,11 +213,101 @@
     ],
     "finding": "24 candidates completed in 24.246 seconds, but the known SME/provider-role false positive returned. Counts alone concealed a changed accepted case. Added verification triggered by extracted beneficiary/activity as well as source target absence."
   },
-  "latest_version": "20261014-59",
-  "latest_status": "offline_passed_awaiting_cloudflare_build",
+  "latest_version": "20261014-60",
+  "latest_status": "offline_validation_and_deployment_pending",
   "validation_notes": [
     "All offline tests passed, including a source that mentions the target only as service provider. Mock tests do not establish live model accuracy.",
     "Before and intermediate runs used uncached AI judgments but reused source retrieval; these are not end-to-end cold-source latency benchmarks.",
     "The earlier v57 40-second scope timeout has no reported usage, so a complete Neuron cost reduction cannot be calculated."
-  ]
+  ],
+  "intermediate_v59": {
+    "routing_version": "20261014-59",
+    "analyzed_at": "2026-10-13T15:37:19.350Z",
+    "test_wire_ms": 60353,
+    "timing": {
+      "retrieval_ms": 165,
+      "review_ms": 60023,
+      "planning_ms": 0,
+      "total_ms": 60188
+    },
+    "reviewed_candidates": 16,
+    "uncertain_candidates": 9,
+    "pairs": 2,
+    "shares": [
+      {
+        "ministry": "経済産業省",
+        "percent": 50,
+        "count": 1
+      },
+      {
+        "ministry": "金融庁",
+        "percent": 50,
+        "count": 1
+      }
+    ],
+    "review_model_calls": 3,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 26058,
+        "cache_read_ms": 20,
+        "total_ms": 26078,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9223,
+          "output_tokens": 1653
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 60000,
+        "cache_read_ms": 23,
+        "total_ms": 60023,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 17029,
+        "cache_read_ms": 25,
+        "total_ms": 17054,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8356,
+          "output_tokens": 917
+        }
+      }
+    ],
+    "finding": "One initial batch timed out at 60 seconds; known SME false positive remained because generated role labels could contain the proposed target. Added trigger using actual selected source sentences, and bounded initial/scope waits to 30/20 seconds. Model-generated labels alone are not a sufficient gate."
+  }
 }

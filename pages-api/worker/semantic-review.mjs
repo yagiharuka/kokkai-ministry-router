@@ -53,6 +53,7 @@ export function workersAiFailure(error, status = 0) {
 }
 
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
+  const timeoutMs = name === 'kokkai_scope_check' ? 20000 : name === 'kokkai_compact_review' ? 30000 : 40000;
   const payload = { stream: false, temperature: 0,
     max_tokens: name === 'kokkai_scope_check' ? 3072 : name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 3072 : 2048) : 3072,
     messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
@@ -63,7 +64,7 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
     let timer;
     try {
       data = await Promise.race([config.binding.run(config.model, payload), new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('model_timeout')), name === 'kokkai_scope_check' ? 40000 : name === 'kokkai_compact_review' ? 60000 : 40000);
+        timer = setTimeout(() => reject(new Error('model_timeout')), timeoutMs);
       })]);
     } catch (error) {
       throw workersAiFailure(error);
@@ -73,7 +74,7 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
       method: 'POST',
       headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(name === 'kokkai_scope_check' ? 40000 : name === 'kokkai_compact_review' ? 60000 : 40000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     data = await response.json().catch(() => null);
     if (!response.ok || data?.success === false) {
@@ -462,10 +463,12 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   const byId = new Map(candidates.map(row => [row.candidate_id, row]));
   const reviewedRoles = new Map(outcomes.flatMap(outcome => outcome.reviews)
     .map(r => [r.id, normalize(`${r.beneficiary || ''} ${r.activity || ''}`)]));
+  const selectedEvidence = new Map();
   const reviewed = outcomes.flatMap(outcome => outcome.reviews).map(r => {
     const row = byId.get(r.id), parts = grounded.get(r.id);
     const q = Object.hasOwn(parts.question, r.question_part) ? parts.question[r.question_part] : '';
     const a = Object.hasOwn(parts.answer, r.answer_part) ? parts.answer[r.answer_part] : '';
+    selectedEvidence.set(r.id, normalize(`${q} ${a}`));
     const valid = r.decision !== 'accept' || (q && a);
     const original = parts.owners.get(r.answer_part) || row;
     return { ...original, candidate_id: row.candidate_id, question: row.question, screening: valid ? r.decision : 'uncertain',
@@ -480,6 +483,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     const anchor = makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
     const ambiguous = anchor ? reviewed.filter(row => row.screening === 'accept' && (
       !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor) ||
+      !selectedEvidence.get(row.candidate_id)?.includes(anchor) ||
       !reviewedRoles.get(row.candidate_id)?.includes(anchor))) : [];
     // The first pass already compares beneficiary, activity and source roles.
     // A high lexical retrieval score alone does not justify redoing a valid
