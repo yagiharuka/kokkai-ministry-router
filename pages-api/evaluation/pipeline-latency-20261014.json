@@ -1,0 +1,244 @@
+{
+  "question": "基礎の研究開発支援をさらに強化するべきではないか。",
+  "baseline": {
+    "routing_version": "20261014-60",
+    "timing": {
+      "retrieval_ms": 5421,
+      "review_ms": 30515,
+      "planning_ms": 0,
+      "total_ms": 35936
+    },
+    "test_wire_ms": null,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 2,
+    "context_pending_candidates": 2,
+    "pairs": 4,
+    "shares": [
+      {
+        "ministry": "内閣府・内閣官房等",
+        "percent": 50,
+        "count": 2
+      },
+      {
+        "ministry": "文部科学省",
+        "percent": 50,
+        "count": 2
+      }
+    ],
+    "assessment_error": null,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 17481,
+        "cache_read_ms": 56,
+        "total_ms": 17537,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8812,
+          "output_tokens": 1229
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 16442,
+        "cache_read_ms": 61,
+        "total_ms": 16503,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8533,
+          "output_tokens": 1305
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 23294,
+        "cache_read_ms": 57,
+        "total_ms": 23351,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9917,
+          "output_tokens": 1630
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2906,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 7143,
+        "cache_read_ms": 21,
+        "total_ms": 7164,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2818,
+          "output_tokens": 574
+        }
+      }
+    ],
+    "accepted_case_ids": [
+      "122115385X00920260710:122115385X00920260710_203",
+      "122104889X02120260619:122104889X02120260619_153",
+      "122104080X00920260527:122104080X00920260527_183",
+      "122104080X00920260527:122104080X00920260527_095"
+    ]
+  },
+  "pipeline_v65": {
+    "routing_version": "20261014-65",
+    "timing": {
+      "retrieval_ms": 104,
+      "review_ms": 37091,
+      "planning_ms": 0,
+      "total_ms": 37195
+    },
+    "test_wire_ms": 37325,
+    "reviewed_candidates": 16,
+    "uncertain_candidates": 17,
+    "context_pending_candidates": 2,
+    "pairs": 1,
+    "shares": [
+      {
+        "ministry": "厚生労働省",
+        "percent": 100,
+        "count": 1
+      }
+    ],
+    "assessment_error": "model_unavailable",
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 74,
+        "total_ms": 30074,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 9857,
+        "cache_read_ms": 77,
+        "total_ms": 9934,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8533,
+          "output_tokens": 776
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 11813,
+        "cache_read_ms": 72,
+        "total_ms": 11885,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9917,
+          "output_tokens": 1000
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1452,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 30074,
+        "model_ms": 6996,
+        "cache_read_ms": 21,
+        "total_ms": 7017,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 1762,
+          "output_tokens": 586
+        }
+      }
+    ],
+    "accepted_case_ids": [
+      "122104260X01920260715:122104260X01920260715_110"
+    ]
+  },
+  "finding_v65": "Initial batch 1 timed out at 30 seconds despite unchanged model input. Remaining batches completed earlier; waiting for the first ordered prefix meant the scope call began at 30074 ms. No speed improvement observed. One timed-out call did not report usage, so total cost cannot be estimated. This trial does not isolate a causal quality regression from scheduling.",
+  "v66_change": "Retain bounded pipelining, consolidate repeated initial-review instructions while preserving criteria, full source input, 24 candidates, role extraction, output fields, scope verification and default inference configuration. Live validation pending."
+}
