@@ -776,5 +776,296 @@
     ],
     "finding": "Invalid-reference holds resolved, but the known SME/provider-role false positive _070 returned and FSA _072 was not retained. The one-row early scope input has 906 characters, matching the _070 source. Its final reason treats startup product/service support as startup-sector female participation. This version fails the semantic regression gate."
   },
-  "v68_change": "Strengthen generic compound-domain scope checking: distinguish B within A from A providing services to B; require actual beneficiary/activity relationship in scope comparison. No ministry or case-ID rule, no source loss, and no reduction in candidates or inference effort."
+  "v68_change": "Strengthen generic compound-domain scope checking: distinguish B within A from A providing services to B; require actual beneficiary/activity relationship in scope comparison. No ministry or case-ID rule, no source loss, and no reduction in candidates or inference effort.",
+  "startup_v68": {
+    "routing_version": "20261014-68",
+    "timing": {
+      "retrieval_ms": 322,
+      "review_ms": 34120,
+      "planning_ms": 0,
+      "total_ms": 34442
+    },
+    "test_wire_ms": 34594,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 1,
+    "context_pending_candidates": 1,
+    "pairs": 5,
+    "shares": [
+      {
+        "ministry": "経済産業省",
+        "percent": 80,
+        "count": 4
+      },
+      {
+        "ministry": "金融庁",
+        "percent": 20,
+        "count": 1
+      }
+    ],
+    "assessment_error": null,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 23015,
+        "cache_read_ms": 19,
+        "total_ms": 23034,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8840,
+          "output_tokens": 2258
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 14013,
+        "cache_read_ms": 20,
+        "total_ms": 14033,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8839,
+          "output_tokens": 1329
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 14466,
+        "cache_read_ms": 20,
+        "total_ms": 14486,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 7973,
+          "output_tokens": 1629
+        }
+      },
+      {
+        "expected": 3,
+        "input_chars": 3724,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 3,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 3,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 23034,
+        "model_ms": 11075,
+        "cache_read_ms": 11,
+        "total_ms": 11086,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 3557,
+          "output_tokens": 1579
+        }
+      }
+    ],
+    "accepted_case_ids": [
+      "121704080X01120250418:121704080X01120250418_184",
+      "121704376X00220250212:121704376X00220250212_072",
+      "121704080X01120250418:121704080X01120250418_182",
+      "121704080X01120250418:121704080X01120250418_186",
+      "121704080X01120250418:121704080X01120250418_192"
+    ],
+    "finding": "All four v60 positive IDs retained, plus valid METI _182. Known provider-role negative _070 absent. One clipped plenary case remains held. Four calls; AI 34.120 s; retrieval cached."
+  },
+  "research_v68": {
+    "routing_version": "20261014-68",
+    "timing": {
+      "retrieval_ms": 71,
+      "review_ms": 28204,
+      "planning_ms": 0,
+      "total_ms": 28275
+    },
+    "test_wire_ms": 28433,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 2,
+    "context_pending_candidates": 2,
+    "pairs": 5,
+    "shares": [
+      {
+        "ministry": "内閣府・内閣官房等",
+        "percent": 60,
+        "count": 3
+      },
+      {
+        "ministry": "厚生労働省",
+        "percent": 20,
+        "count": 1
+      },
+      {
+        "ministry": "文部科学省",
+        "percent": 20,
+        "count": 1
+      }
+    ],
+    "assessment_error": null,
+    "review_model_calls": 5,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 16702,
+        "cache_read_ms": 40,
+        "total_ms": 16742,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8429,
+          "output_tokens": 1442
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 16915,
+        "cache_read_ms": 41,
+        "total_ms": 16956,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8150,
+          "output_tokens": 1125
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 23383,
+        "cache_read_ms": 38,
+        "total_ms": 23421,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9534,
+          "output_tokens": 1957
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1518,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 16742,
+        "model_ms": 7343,
+        "cache_read_ms": 11,
+        "total_ms": 7354,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2078,
+          "output_tokens": 609
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1452,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 23421,
+        "model_ms": 4774,
+        "cache_read_ms": 9,
+        "total_ms": 4783,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2013,
+          "output_tokens": 478
+        }
+      }
+    ],
+    "accepted_case_ids": [
+      "122115385X00920260710:122115385X00920260710_203",
+      "122104889X02120260619:122104889X02120260619_153",
+      "122104080X00920260527:122104080X00920260527_183",
+      "122104260X01920260715:122104260X01920260715_110",
+      "122115385X00920260710:122115385X00920260710_178"
+    ],
+    "finding": "Screenshot three positive cases retained, but newly accepted Cabinet _178 is an identified cross-topic false positive: its question speech first discusses basic research, then asks about dual-use; the actual answer addresses dual-use. Shortened initial instructions fail this regression. AI 28.204 s; retrieval cached; five calls. MEXT _095 and METI _104 remain omitted."
+  },
+  "v69_change": "Restore original full initial instructions and examples; explicitly compare the question actually answered within multi-topic source turns. Retain pipelining, candidate-owned source enums, and generic compound-target scope verification. Validate two existing questions; no further prompt trials planned in this task."
 }
