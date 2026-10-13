@@ -114,9 +114,209 @@
     "context_pending_candidates": 1,
     "wire_ms": 73316
   },
-  "change": "Completed rejections are not reconsidered only for high retrieval score. Accepted evidence is independently checked if the target is absent in source text OR in the extracted beneficiary/activity. Only acceptance with verified original source references contributes shares.",
+  "change": "Completed rejections are not reconsidered only for high retrieval score. Accepted evidence is checked when the target is absent in the exact source sentences selected by the model, source context, OR generated beneficiary/activity. Literal absence triggers semantic review, never hard rejection. Initial model waits are bounded to 30 seconds and optional scope review to 20 seconds; delayed evidence remains pending.",
   "tradeoff": "Removing automatic reconsideration of rejected matches can retain false negatives. This is a latency and request reduction, not a demonstrated improvement in overall recall.",
-  "after": null,
+  "after": {
+    "routing_version": "20261014-60",
+    "analyzed_at": "2026-10-13T15:42:47.553Z",
+    "test_wire_ms": 36184,
+    "timing": {
+      "retrieval_ms": 367,
+      "review_ms": 35669,
+      "planning_ms": 0,
+      "total_ms": 36036
+    },
+    "reviewed_candidates": 24,
+    "accepted_candidates": 4,
+    "rejected_candidates": 14,
+    "uncertain_candidates": 7,
+    "context_pending_candidates": 1,
+    "pairs": 4,
+    "shares": [
+      {
+        "ministry": "経済産業省",
+        "percent": 75,
+        "count": 3
+      },
+      {
+        "ministry": "金融庁",
+        "percent": 25,
+        "count": 1
+      }
+    ],
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 19505,
+        "cache_read_ms": 21,
+        "total_ms": 19526,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 9223,
+          "output_tokens": 1019
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 28412,
+        "cache_read_ms": 19,
+        "total_ms": 28431,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9222,
+          "output_tokens": 1890
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 15912,
+        "cache_read_ms": 23,
+        "total_ms": 15935,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8356,
+          "output_tokens": 1214
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2938,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 7223,
+        "cache_read_ms": 15,
+        "total_ms": 7238,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2775,
+          "output_tokens": 607
+        }
+      }
+    ],
+    "assessment_status": "reviewed",
+    "assessment_error": null,
+    "assessment_partial": null,
+    "evidence": [
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_184",
+        "ministry": "経済産業省",
+        "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+        "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/185",
+        "question_evidence": "女性起業家では、過去一年間に五二・四%もの方がセクハラ被害を受けているんです。半分以上の方が受けているんですね。加害者は、投資家やベンチャーキャピタルの関係者、これが四割で最も多かったということであります。",
+        "answer_evidence": "ハラスメント防止を含めたコンプライアンスの確保、これは責任ある企業であるための前提でありますので、スタートアップエコシステムの健全な発展に向けては、官民で連携をしながらハラスメント防止に取り組んでまいりたいというふうに思います。",
+        "review_reason": "ハラスメント防止を含めたコンプライアンスの確保で女性起業家を支援する答弁"
+      },
+      {
+        "case_id": "121704376X00220250212:121704376X00220250212_072",
+        "ministry": "金融庁",
+        "position": "財務大臣・内閣府特命担当大臣（金融）",
+        "url": "https://kokkai.ndl.go.jp/txt/121704376X00220250212/74",
+        "question_evidence": "大臣、どうして、パブコメにも明確に女性起業家の悲痛な声、また各種報道でもあります、ここまで上がっているにもかかわらず、ハラスメント対応というのを新指針において明文化しないのでしょうか。",
+        "answer_evidence": "昨年十月、金融庁において、ベンチャーキャピタルのガバナンスの向上等を図るために、ベンチャーキャピタルにおける推奨、期待される事項を策定し、その中には、ハラスメント防止も含めたコンプライアンス管理の体制確保を推奨する事項を盛り込んだ。",
+        "review_reason": "女性起業家へのハラスメント問題を指摘し、VCのコンプライアンス強化を提案している"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_186",
+        "ministry": "経済産業省",
+        "position": "経済産業省大臣官房審議官",
+        "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/187",
+        "question_evidence": "一方で、私が注目をしたのは、経済産業省所管の官民ファンド、産業革新投資機構、JICですね、二〇二四年十二月四日に、このベンチャーキャピタルに出資する際の要件にハラスメント防止規程というものを盛り込みました、追加したんですね。",
+        "answer_evidence": "そういった中、産業革新投資機構、JICとしても、DEアンドIを推進する取組の検討を開始していた中、国内ファンドの成長支援を行う官民ファンドとして、率先してこのような取組を進めることはスタートアップ業界の健全な発展において重要であるとの考えの下、出資要件の見直しに至ったというふうに認識してございます。",
+        "review_reason": "質問で女性起業家へのハラスメント防止を求め、答弁では産業革新投資機構(JIC)が投資要件にハラスメント防止規程を追加したことを説明し、政府が具体的に支援策を講じている点を示す。"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_192",
+        "ministry": "経済産業省",
+        "position": "経済産業大臣・内閣府特命担当大臣（原子力損害賠償・廃炉等支援機構）",
+        "url": "https://kokkai.ndl.go.jp/txt/121704080X01120250418/193",
+        "question_evidence": "投資家によるスタートアップ、特に女性起業家へのハラスメントが大きな問題となっている、最近公開された調査では、半数以上の女性起業家が被害に遭っているということが明らかになった、こうしたハラスメント発生を防止することが不可欠である、投資先のハラスメントを禁ずる規定を必須とすべきではないか。",
+        "answer_evidence": "経済産業省で昨年十月に、ベンチャーキャピタルにおいて推奨・期待される事項、これは金融庁とともにまとめてきているところだと思いますが、この中で、ハラスメント防止を含めてコンプライアンス管理という観点での体制確保を推奨し、その遵守を働きかけているところでもあると思っています。",
+        "review_reason": "女性起業家へのハラスメント問題を指摘し、VCのコンプライアンス強化を提案している"
+      }
+    ],
+    "pending": [
+      {
+        "case_id": "121303968X00620240405:121303968X00620240405_008",
+        "ministry": "外務省",
+        "review_reason": "質問はアフリカの女性起業家支援に関するもので、国内スタートアップ女性活躍とは異なる"
+      },
+      {
+        "case_id": "121105206X00920230414:121105206X00920230414_052",
+        "ministry": "内閣府・内閣官房等",
+        "review_reason": "質問は商業登記住所公開の問題で、女性起業家支援とは直接関係がない"
+      },
+      {
+        "case_id": "121704080X01220250423:121704080X01220250423_183",
+        "ministry": "文部科学省",
+        "review_reason": "質問は女性健康教育に関するもので、スタートアップ女性活躍とは無関係"
+      },
+      {
+        "case_id": "121704080X01220250423:121704080X01220250423_183",
+        "ministry": "厚生労働省",
+        "review_reason": "質問は企業内女性健康理解促進で、スタートアップ女性活躍とは関係が薄い"
+      },
+      {
+        "case_id": "121214080X00320231207:121214080X00320231207_113",
+        "ministry": "経済産業省",
+        "review_reason": "質問は健康経営に関するもので、スタートアップ女性活躍とは直接関係がない"
+      },
+      {
+        "case_id": "121114080X00220230309:121114080X00220230309_070",
+        "ministry": "経済産業省",
+        "review_reason": "質問は中小企業の女性経営者支援で、スタートアップ女性活躍とは異なる"
+      },
+      {
+        "case_id": "121615254X00420241204:121615254X00420241204_020",
+        "ministry": "内閣府・内閣官房等",
+        "review_reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ],
+    "known_sme_false_positive_absent": true,
+    "quotes_are_exact_substrings": true
+  },
   "intermediate_v58": {
     "routing_version": "20261014-58",
     "analyzed_at": "2026-10-13T15:29:54.693Z",
@@ -214,11 +414,14 @@
     "finding": "24 candidates completed in 24.246 seconds, but the known SME/provider-role false positive returned. Counts alone concealed a changed accepted case. Added verification triggered by extracted beneficiary/activity as well as source target absence."
   },
   "latest_version": "20261014-60",
-  "latest_status": "offline_validation_and_deployment_pending",
+  "latest_status": "deployed_offline_passed_single_live_run_completed",
   "validation_notes": [
     "All offline tests passed, including a source that mentions the target only as service provider. Mock tests do not establish live model accuracy.",
     "Before and intermediate runs used uncached AI judgments but reused source retrieval; these are not end-to-end cold-source latency benchmarks.",
-    "The earlier v57 40-second scope timeout has no reported usage, so a complete Neuron cost reduction cannot be calculated."
+    "The earlier v57 40-second scope timeout has no reported usage, so a complete Neuron cost reduction cannot be calculated.",
+    "v60 completed 24 model decisions with 4 accepted, 14 rejected and 6 uncertain; one further clipped plenary case was held outside model review. Completion is not synonymous with all cases resolved.",
+    "v60 used four uncached model calls: three initial batches and one two-candidate scope check. Observed end-to-end 36.184 seconds; one sample does not establish a latency percentile or overall semantic accuracy.",
+    "Initial role-label verification in v59 was insufficient; selected original evidence is now checked as another trigger."
   ],
   "intermediate_v59": {
     "routing_version": "20261014-59",
