@@ -60,6 +60,17 @@ const grounded=await reviewCompactAssignments('教員の長時間労働につい
  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].a='invented';return {response:{reviews:rs}};
 }}});
 assert.equal(grounded.pairs,1);assert.equal(grounded.uncertain_candidates,1);
+// A batch-wide enum is not authority to borrow another candidate's source.
+const ownership=await reviewCompactAssignments('教員の長時間労働について',result([
+ {...row('owner:one'),answer:'教員の業務を減らします。'},
+ {...row('owner:two'),answer:'教員の業務を減らします。教員向けに支援員を配置します。'}
+]),{...env,AI:{run:async(_,p)=>{
+ assert.ok(p.response_format.json_schema.properties.reviews.items.properties.a.enum.includes('v1a2'));
+ const rs=reviews(JSON.parse(p.messages[1].content));rs[0].a='v1a2';rs[1].a='v1a2';
+ return {response:{reviews:rs}};
+}}});
+assert.equal(ownership.pairs,1);assert.equal(ownership.uncertain_candidates,1);
+assert.equal(ownership.evidence[0].case_id,'owner:two');
 let partialCalls=0;
 const partial=await reviewCompactAssignments('教員の長時間労働について',twentyfour,{...env,AI:{run:async(_,p)=>{
  const input=JSON.parse(p.messages[1].content);if(partialCalls++===0)throw new Error('temporary transport failure');

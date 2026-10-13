@@ -603,5 +603,178 @@
     ],
     "finding": "Known general-SME/provider-role false positive absent, but only FSA case accepted. Two known METI cases (_186, _192) held because model-selected reference strings failed exact source validation; _184 was not retained either. Accuracy/recall preservation not established."
   },
-  "v67_change": "Keep full sources and candidate-local reference verification. Add JSON-schema enums of existing source reference IDs (plus empty string for nonacceptance) and explicit q/a format example. Provider selection is still checked against the owning candidate locally; no invented or wrong-owner reference is repaired."
+  "v67_change": "Keep full sources and candidate-local reference verification. Add JSON-schema enums of existing source reference IDs (plus empty string for nonacceptance) and explicit q/a format example. Provider selection is still checked against the owning candidate locally; no invented or wrong-owner reference is repaired.",
+  "startup_v67": {
+    "routing_version": "20261014-67",
+    "timing": {
+      "retrieval_ms": 90,
+      "review_ms": 31296,
+      "planning_ms": 0,
+      "total_ms": 31386
+    },
+    "test_wire_ms": 31524,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 1,
+    "context_pending_candidates": 1,
+    "pairs": 4,
+    "shares": [
+      {
+        "ministry": "経済産業省",
+        "percent": 100,
+        "count": 4
+      }
+    ],
+    "assessment_error": null,
+    "review_model_calls": 5,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 16628,
+        "cache_read_ms": 11,
+        "total_ms": 16639,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8840,
+          "output_tokens": 1618
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 20972,
+        "cache_read_ms": 11,
+        "total_ms": 20983,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8839,
+          "output_tokens": 1591
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 6873,
+        "cache_read_ms": 14,
+        "total_ms": 6887,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 7973,
+          "output_tokens": 701
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 906,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 16639,
+        "model_ms": 7465,
+        "cache_read_ms": 6,
+        "total_ms": 7471,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 1355,
+          "output_tokens": 898
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2408,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 20983,
+        "model_ms": 10308,
+        "cache_read_ms": 5,
+        "total_ms": 10313,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2393,
+          "output_tokens": 856
+        }
+      }
+    ],
+    "evidence": [
+      {
+        "case_id": "121114080X00220230309:121114080X00220230309_070",
+        "ministry": "経済産業省",
+        "question_evidence": "中小企業庁さんはどのような支援策、助成金も含めて、中小企業の方々に対して行っているんでしょうか。",
+        "answer_evidence": "また、家事、育児と両立、仕事の両立をテクノロジーの面から支援するために、スタートアップなどが提供します例えば就労妊婦のオンライン健康相談サービスなど、フェムテックの実証事業を企業等と連携をして実施してきております。",
+        "review_reason": "政府はスタートアップにフェムテック実証事業を支援"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_182",
+        "ministry": "経済産業省",
+        "question_evidence": "武藤大臣、まず、ベンチャーキャピタルあるいはファンドなどから女性起業家に対するセクハラあるいは性加害、この現状をどう認識しているのか、どう把握しているのか、お答えいただけますか。",
+        "answer_evidence": "女性起業家に対する投資家等からのハラスメントが発生している、まさにこういう調査やまた報道があるということは、私も正直言って、これは起業家に限らずですけれども、ハラスメントは絶対にあってはならないと考えているところで、女性起業家が事業を継続し成長させていくためには、前提として、個人の尊厳と安全、安心等が守られるビジネス環境というものが整備されていないといけないことだろう、不可欠であるというふうに承知をしているところです。",
+        "review_reason": "政府は女性起業家へのハラスメント防止を重視し、コンプライアンス管理を推奨して支援していると回答した。"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_186",
+        "ministry": "経済産業省",
+        "question_evidence": "一方で、私が注目をしたのは、経済産業省所管の官民ファンド、産業革新投資機構、JICですね、二〇二四年十二月四日に、このベンチャーキャピタルに出資する際の要件にハラスメント防止規程というものを盛り込みました、追加したんですね。",
+        "answer_evidence": "そういった中、産業革新投資機構、JICとしても、DEアンドIを推進する取組の検討を開始していた中、国内ファンドの成長支援を行う官民ファンドとして、率先してこのような取組を進めることはスタートアップ業界の健全な発展において重要であるとの考えの下、出資要件の見直しに至ったというふうに認識してございます。",
+        "review_reason": "回答は投資家のハラスメント防止規程を導入し、女性起業家支援策として位置づけている。"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_192",
+        "ministry": "経済産業省",
+        "question_evidence": "投資家によるスタートアップ、特に女性起業家へのハラスメントが大きな問題となっている、最近公開された調査では、半数以上の女性起業家が被害に遭っているということが明らかになった、こうしたハラスメント発生を防止することが不可欠である、投資先のハラスメントを禁ずる規定を必須とすべきではないか。",
+        "answer_evidence": "経済産業省で昨年十月に、ベンチャーキャピタルにおいて推奨・期待される事項、これは金融庁とともにまとめてきているところだと思いますが、この中で、ハラスメント防止を含めてコンプライアンス管理という観点での体制確保を推奨し、その遵守を働きかけているところでもあると思っています。",
+        "review_reason": "政府はベンチャーキャピタルに対しハラスメント防止を含むコンプライアンス体制を推奨し、ガイドライン策定で支援していると答えた。"
+      }
+    ],
+    "finding": "Invalid-reference holds resolved, but the known SME/provider-role false positive _070 returned and FSA _072 was not retained. The one-row early scope input has 906 characters, matching the _070 source. Its final reason treats startup product/service support as startup-sector female participation. This version fails the semantic regression gate."
+  },
+  "v68_change": "Strengthen generic compound-domain scope checking: distinguish B within A from A providing services to B; require actual beneficiary/activity relationship in scope comparison. No ministry or case-ID rule, no source loss, and no reduction in candidates or inference effort."
 }
