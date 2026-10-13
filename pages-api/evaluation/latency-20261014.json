@@ -1,0 +1,223 @@
+{
+  "question": "スタートアップ分野における女性活躍を推進するため、政府はどのような支援を行っているか。",
+  "before": {
+    "analyzed_at": "2026-10-13T15:16:54.161Z",
+    "routing_version": "20261012-57",
+    "assessment_status": "reviewed",
+    "assessment_error": "model_unavailable",
+    "assessment_partial": true,
+    "reviewed_candidates": 16,
+    "pairs": 3,
+    "shares": [
+      {
+        "ministry": "経済産業省",
+        "percent": 67,
+        "count": 2
+      },
+      {
+        "ministry": "金融庁",
+        "percent": 33,
+        "count": 1
+      }
+    ],
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 24300,
+        "cache_read_ms": 10,
+        "total_ms": 24310,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9223,
+          "output_tokens": 1370
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 23172,
+        "cache_read_ms": 12,
+        "total_ms": 23184,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9222,
+          "output_tokens": 1523
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 9204,
+        "cache_read_ms": 22,
+        "total_ms": 9226,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8356,
+          "output_tokens": 565
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10970,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 40000,
+        "cache_read_ms": 9,
+        "total_ms": 40009,
+        "cache_write_deferred": false
+      }
+    ],
+    "timing": {
+      "retrieval_ms": 32,
+      "review_ms": 64319,
+      "planning_ms": 0,
+      "total_ms": 64351
+    },
+    "context_pending_candidates": 1,
+    "wire_ms": 73316
+  },
+  "change": "Completed rejections are not reconsidered only for high retrieval score. Accepted evidence is independently checked if the target is absent in source text OR in the extracted beneficiary/activity. Only acceptance with verified original source references contributes shares.",
+  "tradeoff": "Removing automatic reconsideration of rejected matches can retain false negatives. This is a latency and request reduction, not a demonstrated improvement in overall recall.",
+  "after": null,
+  "intermediate_v58": {
+    "routing_version": "20261014-58",
+    "analyzed_at": "2026-10-13T15:29:54.693Z",
+    "test_wire_ms": 24246,
+    "timing": {
+      "retrieval_ms": 146,
+      "review_ms": 17340,
+      "planning_ms": 0,
+      "total_ms": 17486
+    },
+    "reviewed_candidates": 24,
+    "pairs": 3,
+    "shares": [
+      {
+        "ministry": "経済産業省",
+        "percent": 67,
+        "count": 2
+      },
+      {
+        "ministry": "金融庁",
+        "percent": 33,
+        "count": 1
+      }
+    ],
+    "review_model_calls": 3,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 17091,
+        "cache_read_ms": 18,
+        "total_ms": 17109,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 9223,
+          "output_tokens": 1532
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 15520,
+        "cache_read_ms": 19,
+        "total_ms": 15539,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9222,
+          "output_tokens": 1371
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 17311,
+        "cache_read_ms": 29,
+        "total_ms": 17340,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8356,
+          "output_tokens": 1387
+        }
+      }
+    ],
+    "finding": "24 candidates completed in 24.246 seconds, but the known SME/provider-role false positive returned. Counts alone concealed a changed accepted case. Added verification triggered by extracted beneficiary/activity as well as source target absence."
+  },
+  "latest_version": "20261014-59",
+  "latest_status": "offline_passed_awaiting_cloudflare_build",
+  "validation_notes": [
+    "All offline tests passed, including a source that mentions the target only as service provider. Mock tests do not establish live model accuracy.",
+    "Before and intermediate runs used uncached AI judgments but reused source retrieval; these are not end-to-end cold-source latency benchmarks.",
+    "The earlier v57 40-second scope timeout has no reported usage, so a complete Neuron cost reduction cannot be calculated."
+  ]
+}
