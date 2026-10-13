@@ -432,7 +432,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         if (finalDecision === 'accept' && (!beneficiary.trim() || !activity.trim() ||
             !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; continue; }
         const fallbackReason = finalDecision === 'uncertain' ? '対象と答弁の対応を確認できないため保留。' : '質問案の対象・活動に対応する答弁ではないと判定。';
-        byId.set(id, { id, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim().slice(0,300) || fallbackReason });
+        byId.set(id, { id, beneficiary, activity, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim().slice(0,300) || fallbackReason });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
@@ -460,6 +460,8 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     }
   }));
   const byId = new Map(candidates.map(row => [row.candidate_id, row]));
+  const reviewedRoles = new Map(outcomes.flatMap(outcome => outcome.reviews)
+    .map(r => [r.id, normalize(`${r.beneficiary || ''} ${r.activity || ''}`)]));
   const reviewed = outcomes.flatMap(outcome => outcome.reviews).map(r => {
     const row = byId.get(r.id), parts = grounded.get(r.id);
     const q = Object.hasOwn(parts.question, r.question_part) ? parts.question[r.question_part] : '';
@@ -476,8 +478,9 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   let scopeResult = null, scopeMissing = 0;
   if (!ctx.scopeCheck) {
     const anchor = makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
-    const ambiguous = anchor ? reviewed.filter(row => row.screening === 'accept' &&
-      !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor)) : [];
+    const ambiguous = anchor ? reviewed.filter(row => row.screening === 'accept' && (
+      !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor) ||
+      !reviewedRoles.get(row.candidate_id)?.includes(anchor))) : [];
     // The first pass already compares beneficiary, activity and source roles.
     // A high lexical retrieval score alone does not justify redoing a valid
     // rejection. Rechecking those rows added a serial model wait and turned

@@ -149,6 +149,18 @@ assert.equal(boundaryCalls,1,'High lexical relevance does not trigger a second g
 assert.equal(boundary.pairs,0);assert.equal(boundary.rejected_candidates,1);
 assert.equal(boundary.reviewed_candidates,1);assert.equal(boundary.uncertain_candidates,0);
 
+// A target appearing as a provider in the source must not suppress the role
+// check when the extracted beneficiary/activity describes another group.
+let providerCalls=0;
+const providerOnly={...row('provider:q1'),question:'研究者が作ったサービスで地域の子育てを支援するには。',answer:'一般住民の育児相談を支援します。'};
+const providerChecked=await reviewCompactAssignments('研究者の育児と研究の両立支援について',result([providerOnly]),{...env,AI:{run:async(_,p)=>{
+ providerCalls++;const rs=reviews(JSON.parse(p.messages[1].content));
+ Object.assign(rs[0],{beneficiary:'一般住民',activity:'地域での子育て'});
+ if(p.messages[0].content.includes('この判定は')) Object.assign(rs[0],{relation:'provider_only',decision:'reject',q:'',a:''});
+ return {response:{reviews:rs}};
+}}});
+assert.equal(providerCalls,2);assert.equal(providerChecked.pairs,0);assert.equal(providerChecked.rejected_candidates,1);
+
 // A permissive decision cannot override an explicit mismatch in source roles.
 for(const relation of ['broader','provider_only','different','unclear']) {
  const guarded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('role:'+relation)]),{...env,AI:{run:async(_,p)=>{
