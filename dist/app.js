@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261014-61"};
+ const params={question:input,v:"20261014-62"};
  // Let the server's analysis cache report current wait and original timings.
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),115000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
@@ -74,7 +74,7 @@ function diagnosticRows(value){
  // Explicitly allow only numeric metrics, boolean states and known error codes.
  // Never copy source text, questions, provider responses or arbitrary properties.
  const errors=new Set(['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied','invalid_json']);
- return (Array.isArray(value)?value:[]).slice(0,4).map(item=>{
+ return (Array.isArray(value)?value:[]).slice(0,7).map(item=>{
   const source=timingObject(item)||{},row={};
   for(const key of ['expected','completed','input_chars','output_token_limit','model_ms','cache_read_ms','total_ms']){
    if(Number.isSafeInteger(source[key])&&source[key]>=0)row[key]=source[key];
