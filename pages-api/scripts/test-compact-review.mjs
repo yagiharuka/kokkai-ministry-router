@@ -26,6 +26,7 @@ let active=0,peak=0,calls=0;
 const parallel=await reviewCompactAssignments('教員の長時間労働の是正について',twentyfour,{...env,AI:{run:async(model,payload)=>{
  calls++;active++;peak=Math.max(peak,active);
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,3072);
+ assert.equal(payload.reasoning_effort,'low','Send the provider reasoning setting, not only prose instructions');
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=8);
  assert.equal(input.candidates[0].id,'c1');
@@ -39,17 +40,6 @@ assert.equal(calls,3);assert.equal(peak,3);
 assert.equal(parallel.pairs,24);assert.equal(parallel.evidence.length,24);
 assert.equal(parallel.unreviewed_candidates,8);
 assert.ok(parallel.candidates.every(r=>clustered.some(s=>r.url===s.url&&r.ministry===s.ministry)));
-
-let smallActive=0,smallPeak=0,smallCalls=0;
-const small=await reviewCompactAssignments('教員の長時間労働の是正について',twentyfour,{...env,REVIEW_BATCH_SIZE:'4',AI:{run:async(_,payload)=>{
- smallCalls++;smallActive++;smallPeak=Math.max(smallPeak,smallActive);
- const input=JSON.parse(payload.messages[1].content);
- assert.equal(input.candidates.length,4);assert.equal(payload.max_tokens,2048);
- await new Promise(resolve=>setTimeout(resolve,5));smallActive--;
- return {response:{reviews:reviews(input)}};
-}}});
-assert.equal(smallCalls,6);assert.equal(smallPeak,6);assert.equal(small.reviewed_candidates,24);
-assert.deepEqual(small.evidence.map(e=>e.case_id),parallel.evidence.map(e=>e.case_id),'Smaller parallel batches preserve every selected source');
 
 const repeated=[row('same:q1','文部科学省','a'),{...row('same:q1','文部科学省','b'),answer:'教師の勤務負担を減らすため業務を削減します。'}];
 let repeatedInput;
@@ -143,12 +133,6 @@ assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics
 let boundedCalls=0;
 const bounded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result(Array.from({length:24},(_,i)=>({...synonym,case_id:'scope:'+i}))),{...env,AI:{run:async(_,p)=>{boundedCalls++;return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};}}});
 assert.equal(boundedCalls,4);assert.equal(bounded.pairs,8);assert.equal(bounded.uncertain_candidates,16,'Beyond one extra scope batch stays pending');
-let smallScopeCalls=0;
-const smallScope=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result(Array.from({length:24},(_,i)=>({...synonym,case_id:'small-scope:'+i}))),{...env,REVIEW_BATCH_SIZE:'4',AI:{run:async(_,p)=>{
- smallScopeCalls++;return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};
-}}});
-assert.equal(smallScopeCalls,7);assert.equal(smallScope.review_diagnostics.at(-1).expected,8,'Scope still uses at most one request');
-assert.equal(smallScope.pairs,8);assert.equal(smallScope.uncertain_candidates,16);
 let failedScopeCalls=0;
 const failedScope=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([synonym]),{...env,AI:{run:async(_,p)=>{
  failedScopeCalls++;if(p.messages[0].content.includes('この判定は'))throw new Error('timeout');

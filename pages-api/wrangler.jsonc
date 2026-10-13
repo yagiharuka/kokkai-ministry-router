@@ -7,7 +7,6 @@
     "binding": "AI"
   },
   "vars": {
-    "CLOUDFLARE_WORKERS_PLAN": "free",
-    "REVIEW_BATCH_SIZE": "4"
+    "CLOUDFLARE_WORKERS_PLAN": "free"
   }
 }

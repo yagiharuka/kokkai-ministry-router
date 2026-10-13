@@ -126,9 +126,15 @@
       }
     ],
     "reviewed_candidates": 24,
-    "uncertain_candidates": 2
+    "uncertain_candidates": 2,
+    "usage_estimate": {
+      "input_tokens": 30080,
+      "output_tokens": 4738,
+      "neurons": 676.134,
+      "all_calls_reported_usage": true
+    }
   },
-  "change": "Restore original instructions. Production initial batches are four candidates, up to six concurrent requests, with unchanged 24 candidate cap and at most one eight-candidate scope request. Smaller batches retain full source passages. Request count increases, so actual usage must be measured separately.",
+  "change": "Restore v60 instructions and three initial batches. Set the actual provider input reasoning_effort=low (previously only a system-message instruction). Include reasoning effort in cache identity. No source truncation, candidate reduction or model change.",
   "after": null,
   "rejected_trial_v61": {
     "routing_version": "20261014-61",
@@ -239,6 +245,195 @@
         "count": 2
       }
     ],
-    "finding": "Shorter requested explanations did not reduce observed output or latency. MEXT evidence became uncertain. Original prompt restored."
-  }
+    "finding": "Shorter requested explanations did not reduce observed output or latency. MEXT evidence became uncertain. Original prompt restored.",
+    "usage_estimate": {
+      "input_tokens": 30348,
+      "output_tokens": 5010,
+      "neurons": 688.425,
+      "all_calls_reported_usage": true
+    }
+  },
+  "rejected_trial_v62": {
+    "routing_version": "20261014-62",
+    "test_wire_ms": 34534,
+    "timing": {
+      "retrieval_ms": 88,
+      "review_ms": 34273,
+      "planning_ms": 0,
+      "total_ms": 34361
+    },
+    "review_diagnostics": [
+      {
+        "expected": 4,
+        "input_chars": 4910,
+        "output_token_limit": 2048,
+        "output_format": "compact_objects_v2",
+        "returned": 4,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 4,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 18992,
+        "cache_read_ms": 52,
+        "total_ms": 19044,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 4923,
+          "output_tokens": 1824
+        }
+      },
+      {
+        "expected": 4,
+        "input_chars": 5341,
+        "error": "model_output_limit",
+        "completed": 0,
+        "output_token_limit": 2048,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 27675,
+        "cache_read_ms": 58,
+        "total_ms": 27733,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 5293,
+          "output_tokens": 2048
+        }
+      },
+      {
+        "expected": 4,
+        "input_chars": 5861,
+        "output_token_limit": 2048,
+        "output_format": "compact_objects_v2",
+        "returned": 4,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 4,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 15153,
+        "cache_read_ms": 52,
+        "total_ms": 15205,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 5480,
+          "output_tokens": 1186
+        }
+      },
+      {
+        "expected": 4,
+        "input_chars": 4462,
+        "error": "model_output_limit",
+        "completed": 0,
+        "output_token_limit": 2048,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 25206,
+        "cache_read_ms": 52,
+        "total_ms": 25258,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 4457,
+          "output_tokens": 2048
+        }
+      },
+      {
+        "expected": 4,
+        "input_chars": 5965,
+        "output_token_limit": 2048,
+        "output_format": "compact_objects_v2",
+        "returned": 4,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 4,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 20461,
+        "cache_read_ms": 44,
+        "total_ms": 20505,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 5572,
+          "output_tokens": 1377
+        }
+      },
+      {
+        "expected": 4,
+        "input_chars": 6079,
+        "output_token_limit": 2048,
+        "output_format": "compact_objects_v2",
+        "returned": 4,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 4,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 18558,
+        "cache_read_ms": 52,
+        "total_ms": 18610,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 5749,
+          "output_tokens": 1218
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1452,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 6530,
+        "cache_read_ms": 10,
+        "total_ms": 6540,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 1762,
+          "output_tokens": 545
+        }
+      }
+    ],
+    "reviewed_candidates": 16,
+    "uncertain_candidates": 10,
+    "pairs": 3,
+    "shares": [
+      {
+        "ministry": "内閣府・内閣官房等",
+        "percent": 67,
+        "count": 2
+      },
+      {
+        "ministry": "厚生労働省",
+        "percent": 33,
+        "count": 1
+      }
+    ],
+    "assessment_error": "model_unavailable",
+    "finding": "Six smaller batches still took 34 seconds. Two batches hit output limits, so eight candidates were not completed; measured token-based Neuron estimate increased. Reverted to three initial batches.",
+    "usage_estimate": {
+      "input_tokens": 33236,
+      "output_tokens": 10246,
+      "neurons": 883.736,
+      "all_calls_reported_usage": true
+    }
+  },
+  "provider_reference": "https://github.com/cloudflare/ai/blob/main/packages/workers-ai-provider/README.md#reasoning-controls",
+  "pricing_reference": "https://developers.cloudflare.com/workers-ai/platform/pricing/"
 }
