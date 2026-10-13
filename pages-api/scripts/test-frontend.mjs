@@ -180,6 +180,9 @@ const diagnostics=[
 const diagnosticBase={...timedBase,routing_version:'20261014-62',analyzed_at:'2026-10-11T13:30:00.000Z',review_diagnostics:diagnostics};
 const textFor=result=>{context.result=result;return vm.runInContext('diagnosticText(result,diagnosticRows(result.review_diagnostics))',context)};
 assert.ok(textFor({...diagnosticBase,review_diagnostics:[...diagnostics,diagnostics[0]]}).includes('バッチ 3'));
+const sevenBatchText=textFor({...diagnosticBase,review_diagnostics:Array(8).fill(diagnostics[0])});
+assert.ok(sevenBatchText.includes('バッチ 7'),'Show all six initial calls and one scope call');
+assert.ok(!sevenBatchText.includes('バッチ 8'),'Diagnostics remain bounded');
 const text=textFor(diagnosticBase),html=render(diagnosticBase);
 assert.ok(html.includes('<details class="diagnostics"><summary>詳しい処理時間</summary>'));
 assert.ok(html.includes('readonly rows="12"'));
