@@ -195,6 +195,49 @@ for(const field of ['beneficiary','activity','comparison','q','a']) {
  assert.equal(missingAccept.pairs,0);assert.equal(missingAccept.uncertain_candidates,1,'Accepted evidence still requires '+field);
 }
 
+// The first scope request must start before the third initial response arrives.
+// Its failure cannot prevent a later batch's valid scope result from surviving.
+let releaseLast, initialPipelineCalls=0, pipelineScopeCalls=0;
+const lastInitial = new Promise(resolve => { releaseLast=resolve; });
+const pipelineInput=result(Array.from({length:24},(_,i)=>row('pipeline:'+i)));
+let watchdog;
+const pipeline = await Promise.race([
+ reviewCompactAssignments('教員の長時間労働について',pipelineInput,{...env,AI:{run:async(_,p)=>{
+  const input=JSON.parse(p.messages[1].content), rs=reviews(input);
+  if(p.messages[0].content.includes('この判定は')) {
+   pipelineScopeCalls++;
+   if(pipelineScopeCalls===1) { releaseLast(); throw new Error('model_timeout'); }
+  } else {
+   const index=initialPipelineCalls++;
+   if(index>0) await lastInitial;
+   if(index<2) Object.assign(rs[0],{beneficiary:'教師',activity:'学校での勤務'});
+  }
+  return {response:{reviews:rs}};
+ }}}),
+ new Promise((_,reject)=>{watchdog=setTimeout(()=>reject(new Error('Scope waited for all initial batches')),2000);})
+]).finally(()=>clearTimeout(watchdog));
+assert.equal(initialPipelineCalls,3);assert.equal(pipelineScopeCalls,2);
+assert.equal(pipeline.review_model_calls,5);
+assert.equal(pipeline.pairs,23);assert.equal(pipeline.reviewed_candidates,23);
+assert.equal(pipeline.uncertain_candidates,1);assert.equal(pipeline.assessment_partial,true);
+assert.ok(pipeline.evidence.every(r=>pipelineInput.review_candidates.some(s=>r.url===s.url&&r.answer===s.answer)));
+
+// Splitting required verification across early/tail phases must retain a
+// single deterministic eight-candidate budget across all initial batches.
+let budgetInitial=0;const scopeSizes=[];
+const pipelinedBudget=await reviewCompactAssignments('教員の長時間労働について',pipelineInput,{...env,AI:{run:async(_,p)=>{
+ const input=JSON.parse(p.messages[1].content), rs=reviews(input);
+ if(p.messages[0].content.includes('この判定は')) scopeSizes.push(rs.length);
+ else {
+  const index=budgetInitial++;
+  rs.forEach((r,i)=>{if(index>0||i<2)Object.assign(r,{beneficiary:'教師',activity:'学校での勤務'});});
+ }
+ return {response:{reviews:rs}};
+}}});
+assert.deepEqual(scopeSizes,[8], 'Already completed batches share one scope call');
+assert.equal(pipelinedBudget.pairs,14);assert.equal(pipelinedBudget.uncertain_candidates,10);
+assert.equal(pipelinedBudget.reviewed_candidates,24);
+
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
 const previousFetch=globalThis.fetch,previousNow=Date.now;let clock=previousNow();Date.now=()=>clock+=3001;

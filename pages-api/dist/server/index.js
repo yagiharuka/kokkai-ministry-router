@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261014-64';
+const routingVersion = '20261014-65';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -794,6 +794,7 @@ async function saveCompactCache(key, data, ctx) {
 }
 
 async function reviewCompactAssignments(question, result, env = {}, fetchModel = fetch, ctx = {}) {
+  const reviewStartedAt = ctx.reviewStartedAt ?? Date.now();
   const all = semanticCandidates(result, 96), variants = new Map();
   const groupKey = row => `${row.case_id}:${row.ministry}`;
   for (const row of all) {
@@ -843,7 +844,8 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
   for (let i = 0; i < ordered.length; i += 8) batches.push(ordered.slice(i, i + 8));
   const instructions = ctx.scopeCheck ? scopeInstructions : compactInstructions;
   const outputLimit = batch => ctx.scopeCheck ? 3072 : batch.length > 4 ? 3072 : 2048;
-  const outcomes = await Promise.all(batches.map(async batch => {
+  const settledOutcomes = [];
+  const outcomePromises = batches.map(async batch => {
     const batchStarted = Date.now();
     // Every independent generation gets the same short local ID range.
     // Remapping locally prevents a model that starts numbering from one from
@@ -874,7 +876,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     }) };
     let modelUsage, cacheHit = false, modelCalled = false;
     let modelMs = 0, cacheReadMs = 0, cacheWriteDeferred = false;
-    const durationDiagnostic = () => ({ model_ms: modelMs, cache_read_ms: cacheReadMs,
+    const durationDiagnostic = () => ({ started_after_ms: Math.max(0, batchStarted - reviewStartedAt), model_ms: modelMs, cache_read_ms: cacheReadMs,
       total_ms: Math.max(0, Date.now() - batchStarted), cache_write_deferred: cacheWriteDeferred });
     try {
       // Compact references need a single generation. Never grow a failed
@@ -939,12 +941,11 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };
     }
-  }));
+  }).map((pending, index) => pending.then(outcome => { settledOutcomes[index] = outcome; return outcome; }));
   const byId = new Map(candidates.map(row => [row.candidate_id, row]));
-  const reviewedRoles = new Map(outcomes.flatMap(outcome => outcome.reviews)
-    .map(r => [r.id, normalize(`${r.beneficiary || ''} ${r.activity || ''}`)]));
-  const selectedEvidence = new Map();
-  const reviewed = outcomes.flatMap(outcome => outcome.reviews).map(r => {
+  const reviewedRoles = new Map(), selectedEvidence = new Map();
+  const groundReviews = outcome => outcome.reviews.map(r => {
+    reviewedRoles.set(r.id, normalize(`${r.beneficiary || ''} ${r.activity || ''}`));
     const row = byId.get(r.id), parts = grounded.get(r.id);
     const q = Object.hasOwn(parts.question, r.question_part) ? parts.question[r.question_part] : '';
     const a = Object.hasOwn(parts.answer, r.answer_part) ? parts.answer[r.answer_part] : '';
@@ -955,46 +956,52 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
       review_reason: valid ? normalize(r.reason) : '原文番号を確認できないため保留。',
       question_evidence: questionQuoteWithContext(row.question, q), answer_evidence: a };
   });
-  // Literal absence is only a trigger for semantic confirmation, never a
-  // rejection rule or a ministry dictionary. Synonyms can still be accepted.
-  // Bound this extra pass to one small batch; further ambiguous rows stay pending.
-  let scopeResult = null, scopeMissing = 0;
-  if (!ctx.scopeCheck) {
-    const anchor = makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
-    const ambiguous = anchor ? reviewed.filter(row => row.screening === 'accept' && (
-      !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor) ||
-      !selectedEvidence.get(row.candidate_id)?.includes(anchor) ||
-      !reviewedRoles.get(row.candidate_id)?.includes(anchor))) : [];
-    // The first pass already compares beneficiary, activity and source roles.
-    // A high lexical retrieval score alone does not justify redoing a valid
-    // rejection. Rechecking those rows added a serial model wait and turned
-    // completed rejections into pending rows on timeout. Reserve this pass
-    // for accepted evidence whose target still needs semantic confirmation.
-    const checking = ambiguous.slice(0, 8);
-    for (const row of ambiguous.slice(8)) {
+  // Start required verification for the ready prefix while remaining initial
+  // batches run. Already-ready batches share one call. Later rows share the eight-row budget,
+  // in the same candidate order, and are coalesced into at most one tail call.
+  // No speculative calls: only accepted, grounded candidates are checked.
+  const anchor = !ctx.scopeCheck && makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
+  const ambiguousRows = rows => anchor ? rows.filter(row => row.screening === 'accept' && (
+    !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor) ||
+    !selectedEvidence.get(row.candidate_id)?.includes(anchor) ||
+    !reviewedRoles.get(row.candidate_id)?.includes(anchor))) : [];
+  const verifyScope = async (ambiguous, capacity) => {
+    const checking = ambiguous.slice(0, capacity);
+    for (const row of ambiguous.slice(capacity)) {
       row.screening = 'uncertain'; row.review_reason = '対象の追加確認の件数上限に達したため保留。';
     }
-    if (checking.length) {
-      scopeResult = await reviewCompactAssignments(question, {
-        review_candidates: checking, recent_since: result.recent_since, searched: [], errors: [],
-      }, env, fetchModel, { scopeCheck: true, ...(typeof ctx.waitUntil === 'function' ? { waitUntil: ctx.waitUntil.bind(ctx) } : {}) });
-      const key = row => `${row.case_id}:${row.ministry}`;
-      const verified = new Map(scopeResult.evidence.map(row => [key(row), row]));
-      const pending = new Map(scopeResult.review_candidates.map(row => [key(row), row]));
-      for (const row of checking) {
-        const final = verified.get(key(row)) || pending.get(key(row));
-        if (final) Object.assign(row, { screening: final.screening, review_reason: final.review_reason,
-          question_evidence: final.question_evidence, answer_evidence: final.answer_evidence });
-        else { row.screening = 'reject'; row.review_reason = '追加確認で、質問案が指定する対象・活動との対応を確認できなかった。'; }
-      }
-      scopeMissing = Math.max(0, checking.length - scopeResult.reviewed_candidates);
+    if (!checking.length) return null;
+    const checked = await reviewCompactAssignments(question, {
+      review_candidates: checking, recent_since: result.recent_since, searched: [], errors: [],
+    }, env, fetchModel, { scopeCheck: true, reviewStartedAt, ...(typeof ctx.waitUntil === 'function' ? { waitUntil: ctx.waitUntil.bind(ctx) } : {}) });
+    const key = row => `${row.case_id}:${row.ministry}`;
+    const verified = new Map(checked.evidence.map(row => [key(row), row]));
+    const pending = new Map(checked.review_candidates.map(row => [key(row), row]));
+    for (const row of checking) {
+      const final = verified.get(key(row)) || pending.get(key(row));
+      if (final) Object.assign(row, { screening: final.screening, review_reason: final.review_reason,
+        question_evidence: final.question_evidence, answer_evidence: final.answer_evidence });
+      else { row.screening = 'reject'; row.review_reason = '追加確認で、質問案が指定する対象・活動との対応を確認できなかった。'; }
     }
-  }
+    return { result: checked, missing: Math.max(0, checking.length - checked.reviewed_candidates) };
+  };
+  await outcomePromises[0];
+  let readyPrefix = 0;
+  while (settledOutcomes[readyPrefix]) readyPrefix++;
+  const firstReviewed = settledOutcomes.slice(0, readyPrefix).flatMap(groundReviews);
+  const firstAmbiguous = ambiguousRows(firstReviewed);
+  const earlyScope = verifyScope(firstAmbiguous, 8);
+  const outcomes = await Promise.all(outcomePromises);
+  const laterReviewed = outcomes.slice(readyPrefix).flatMap(groundReviews);
+  const tailScope = verifyScope(ambiguousRows(laterReviewed), Math.max(0, 8 - firstAmbiguous.length));
+  const scopeOutcomes = (await Promise.all([earlyScope, tailScope])).filter(Boolean);
+  const reviewed = [...firstReviewed, ...laterReviewed];
+  const scopeMissing = scopeOutcomes.reduce((sum, entry) => sum + entry.missing, 0);
   const accepted = reviewed.filter(row => row.screening === 'accept');
   const unique = [...new Map(accepted.map(row => [`${row.case_id}:${row.ministry}`, row])).values()];
   const errors = outcomes.map(outcome => outcome.error).filter(Boolean);
-  if (scopeResult?.assessment_error) errors.push(scopeResult.assessment_error);
-  const diagnostics = [...outcomes.map(outcome => outcome.diagnostic), ...(scopeResult?.review_diagnostics || [])];
+  for (const entry of scopeOutcomes) if (entry.result.assessment_error) errors.push(entry.result.assessment_error);
+  const diagnostics = [...outcomes.map(outcome => outcome.diagnostic), ...scopeOutcomes.flatMap(entry => entry.result.review_diagnostics || [])];
   const completed = outcomes.reduce((sum, outcome) => sum + outcome.completed, 0) - scopeMissing;
   return { ...base, ...summarize(unique), evidence: unique, candidates: unique,
     review_candidates: [...reviewed.filter(row => row.screening === 'uncertain'), ...contextPending],
@@ -1113,7 +1120,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261014-64';
+const publicRoutingVersion = '20261014-65';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];
