@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261012-57';
+const routingVersion = '20261014-58';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -958,12 +958,12 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     const anchor = makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
     const ambiguous = anchor ? reviewed.filter(row => row.screening === 'accept' &&
       !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor)) : [];
-    // Strong lexical matches are not evidence by themselves. A rejection at
-    // this boundary gets the same independent semantic check, without forcing
-    // inclusion or introducing another request/batch.
-    const recallBoundary = reviewed.filter(row => row.screening === 'reject' && row.retrieval_score >= .875)
-      .sort((a,b) => b.retrieval_score - a.retrieval_score);
-    const checking = [...ambiguous, ...recallBoundary].slice(0, 8);
+    // The first pass already compares beneficiary, activity and source roles.
+    // A high lexical retrieval score alone does not justify redoing a valid
+    // rejection. Rechecking those rows added a serial model wait and turned
+    // completed rejections into pending rows on timeout. Reserve this pass
+    // for accepted evidence whose target still needs semantic confirmation.
+    const checking = ambiguous.slice(0, 8);
     for (const row of ambiguous.slice(8)) {
       row.screening = 'uncertain'; row.review_reason = '対象の追加確認の件数上限に達したため保留。';
     }
@@ -1106,7 +1106,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261012-57';
+const publicRoutingVersion = '20261014-58';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

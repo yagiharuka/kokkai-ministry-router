@@ -145,8 +145,9 @@ const boundary=await reviewCompactAssignments('教員の長時間労働を是正
  if(!p.messages[0].content.includes('この判定は'))Object.assign(rs[0],{comparison:'最初の判定では措置の対象が異なると判断',decision:'reject',q:'',a:''});
  return {response:{reviews:rs}};
 }}});
-assert.equal(boundaryCalls,2);assert.equal(boundary.pairs,1,'Strong retrieval plus rejection is checked semantically, not forced into or out of evidence');
-assert.equal(boundary.reviewed_candidates,1);assert.equal(boundary.evidence[0].ministry,'文部科学省');
+assert.equal(boundaryCalls,1,'High lexical relevance does not trigger a second generation for a completed rejection');
+assert.equal(boundary.pairs,0);assert.equal(boundary.rejected_candidates,1);
+assert.equal(boundary.reviewed_candidates,1);assert.equal(boundary.uncertain_candidates,0);
 
 // A permissive decision cannot override an explicit mismatch in source roles.
 for(const relation of ['broader','provider_only','different','unclear']) {

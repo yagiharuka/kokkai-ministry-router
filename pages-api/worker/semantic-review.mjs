@@ -478,12 +478,12 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     const anchor = makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
     const ambiguous = anchor ? reviewed.filter(row => row.screening === 'accept' &&
       !normalize(`${row.question} ${row.answer} ${row.previous_context || ''}`).includes(anchor)) : [];
-    // Strong lexical matches are not evidence by themselves. A rejection at
-    // this boundary gets the same independent semantic check, without forcing
-    // inclusion or introducing another request/batch.
-    const recallBoundary = reviewed.filter(row => row.screening === 'reject' && row.retrieval_score >= .875)
-      .sort((a,b) => b.retrieval_score - a.retrieval_score);
-    const checking = [...ambiguous, ...recallBoundary].slice(0, 8);
+    // The first pass already compares beneficiary, activity and source roles.
+    // A high lexical retrieval score alone does not justify redoing a valid
+    // rejection. Rechecking those rows added a serial model wait and turned
+    // completed rejections into pending rows on timeout. Reserve this pass
+    // for accepted evidence whose target still needs semantic confirmation.
+    const checking = ambiguous.slice(0, 8);
     for (const row of ambiguous.slice(8)) {
       row.screening = 'uncertain'; row.review_reason = '対象の追加確認の件数上限に達したため保留。';
     }
