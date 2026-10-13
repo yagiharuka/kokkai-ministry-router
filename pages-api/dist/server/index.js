@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261014-66';
+const routingVersion = '20261014-67';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -737,7 +737,7 @@ beneficiary：原文における実際の受益者。activity：その人の活�
 relation：質問案の対象・領域との関係。same=同じ、broader=上位概念・一般論だけ、provider_only=対象が提供者として出るだけ、different=別対象・領域、unclear=確認不能。
 comparison：受益者・提供者の役割と質問案との対応または相違を日本語20〜60字で説明。他候補の理由流用や「一致する」だけの記述は不可。
 decision：上記比較から accept/reject/uncertain。same以外は採用不可。sameでも取組が別ならreject。
-q/a：acceptだけ、対応する対象・課題と取組を示す質問・答弁の原文番号を一つずつ選択。単なる同意・挨拶・問い掛けは不可。reject/uncertainでは両方空文字。引用文は生成せず他候補の番号も使いません。
+q/a：acceptだけ、対応する対象・課題と取組を示す質問・答弁の原文番号を一つずつ選択。単なる同意・挨拶・問い掛けは不可。reject/uncertainでは両方空文字。例：q="q1", a="v1a2"。引用文は生成せず他候補の番号も使いません。
 source_question/source_answerは文単位の番号付き原文辞書。source_question_refは指定候補と同一の質問です。省略されたprevious_contextは空、truncatedはfalseです。`;
 
 
@@ -865,7 +865,8 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         relation: { type: 'string', enum: ['same', 'broader', 'provider_only', 'different', 'unclear'] },
         comparison: { type: 'string' },
         decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
-        q: { type: 'string' }, a: { type: 'string' },
+        q: { type: 'string', enum: ['', ...new Set(batch.flatMap(row => Object.keys(grounded.get(row.candidate_id).question)))] },
+        a: { type: 'string', enum: ['', ...new Set(batch.flatMap(row => Object.keys(grounded.get(row.candidate_id).answer)))] },
       }, required: ['id', 'beneficiary', 'activity', 'relation', 'comparison', 'decision', 'q', 'a'], additionalProperties: false,
     } } }, required: ['reviews'], additionalProperties: false };
     const questions = new Map();
@@ -1126,7 +1127,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261014-66';
+const publicRoutingVersion = '20261014-67';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

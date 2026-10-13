@@ -240,5 +240,368 @@
     ]
   },
   "finding_v65": "Initial batch 1 timed out at 30 seconds despite unchanged model input. Remaining batches completed earlier; waiting for the first ordered prefix meant the scope call began at 30074 ms. No speed improvement observed. One timed-out call did not report usage, so total cost cannot be estimated. This trial does not isolate a causal quality regression from scheduling.",
-  "v66_change": "Retain bounded pipelining, consolidate repeated initial-review instructions while preserving criteria, full source input, 24 candidates, role extraction, output fields, scope verification and default inference configuration. Live validation pending."
+  "v66_change": "Retain bounded pipelining, consolidate repeated initial-review instructions while preserving criteria, full source input, 24 candidates, role extraction, output fields, scope verification and default inference configuration. Research live validation completed; startup regression check pending.",
+  "research_v66": {
+    "routing_version": "20261014-66",
+    "timing": {
+      "retrieval_ms": 6189,
+      "review_ms": 20627,
+      "planning_ms": 0,
+      "total_ms": 26816
+    },
+    "test_wire_ms": 26930,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 2,
+    "context_pending_candidates": 2,
+    "pairs": 4,
+    "shares": [
+      {
+        "ministry": "内閣府・内閣官房等",
+        "percent": 50,
+        "count": 2
+      },
+      {
+        "ministry": "文部科学省",
+        "percent": 25,
+        "count": 1
+      },
+      {
+        "ministry": "経済産業省",
+        "percent": 25,
+        "count": 1
+      }
+    ],
+    "assessment_error": null,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 15432,
+        "cache_read_ms": 28,
+        "total_ms": 15460,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8414,
+          "output_tokens": 1408
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 15032,
+        "cache_read_ms": 27,
+        "total_ms": 15059,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8135,
+          "output_tokens": 1350
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 19969,
+        "cache_read_ms": 29,
+        "total_ms": 19998,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9519,
+          "output_tokens": 2020
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2906,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 15460,
+        "model_ms": 5154,
+        "cache_read_ms": 13,
+        "total_ms": 5167,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2818,
+          "output_tokens": 735
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache_read_ms": 18,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 0,
+        "fetch_ms": 2289,
+        "cache_write_deferred": true,
+        "total_ms": 2307
+      },
+      {
+        "resource": "meeting",
+        "cache_read_ms": 23,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2977,
+        "fetch_ms": 882,
+        "cache_write_deferred": true,
+        "total_ms": 3882
+      }
+    ],
+    "evidence": [
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_203",
+        "ministry": "内閣府・内閣官房等",
+        "question_evidence": "日本の低迷の背景には、大学教員が学内事務や教育、資金獲得のための手続に追われ、本来の研究に没頭できる時間の割合が低下し続けている、若手研究者の基盤となる博士課程への進学者が停滞しており、研究を支える人材が不足している、国立大学への運営費交付金あるいは私立大学への私立大学経常費補助金などの基盤的経費が減額されている、大学における常勤教員数が伸び悩み、若手研究者の多くが任期付きの不安定な雇用形態にあるため、長期的な視点での挑戦的な研究が難しくなっている、などが指摘されています。",
+        "answer_evidence": "技術やイノベーションの礎となる基礎研究について、我が国の国際的な優位性が相対的に失われつつあるところ、基礎研究力の強化が今まさに重要であると我々も考えております。",
+        "url": "https://kokkai.ndl.go.jp/txt/122115385X00920260710/204",
+        "review_reason": "質問案は基礎研究支援の強化を求めている。候補c1の質問は基礎研究の課題を指摘し、答弁でその強化を明言しているため、同一課題と一致。"
+      },
+      {
+        "case_id": "122104889X02120260619:122104889X02120260619_153",
+        "ministry": "内閣府・内閣官房等",
+        "question_evidence": "そうしますと、事業化を対象としない基礎研究への支援というのは、この運営法人の対象外ということでしょうか。",
+        "answer_evidence": "ただいまの御質問であります基礎研究の支援でございます。",
+        "url": "https://kokkai.ndl.go.jp/txt/122104889X02120260619/154",
+        "review_reason": "質問案は基礎研究支援強化を問う。候補c2の質問はGSC運営法人の基礎研究支援を問い、答弁でその重要性を述べている。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_104",
+        "ministry": "経済産業省",
+        "question_evidence": "それでは、最後に、前回の質疑で、文科省の答弁で科研費が百億円増えましたというふうなお話もありましたが、百億円というと、大体、その基が四兆円ですから、僅か〇・二五%増で、大体、物価上昇とかで、エネルギーコスト上昇でキャンセルされる程度の微増という程度ですけれども、いわゆる失われた三十年の中で、政府の財政支出をいかに拡大しないかということを前提に各種の産業振興政策とか産業技術振興政策というのを行ってきまして、結果として、国際比較の中では、前回出てきたように、日本の科学技術力が相対的にプレゼンスを失いつつあるという状況ですから、ここは、基礎分野も含めて、大胆な研究開発投資というのを政府主導でやっていただきまして。",
+        "answer_evidence": "新技術立国担当大臣として、科研費の大幅拡充といった基礎研究分野の支援も含めて、関係省庁と連携して、技術で勝ち、ビジネスでも勝ち切る経済への展開をしていきたいというふうに思っております。",
+        "url": "https://kokkai.ndl.go.jp/txt/122104080X01020260529/105",
+        "review_reason": "質問案は基礎研究支援強化を求める。候補c5の質問は大胆なR&D投資を求め、答弁で基礎研究の拡充を明示しているため、同一課題。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_183",
+        "ministry": "文部科学省",
+        "question_evidence": "今般の改正では、短期的に成果が期待できる分野に対する企業側の研究開発投資を後押しをするということは結構できると思うんですが、より中長期の目線で見ていったときの日本の科学技術力というのを根本的に底上げするには、すぐ産業分野への応用をするということを前提としない基礎研究の分野、さっき出てきたゾウリムシとか、ああいうところも含めて、抜本的に国の科研費というものを拡充していかないと、やはりどうしても、企業に税制のインセンティブを与えて、企業から大学にお金を流してくださいというだけじゃなくて、国の側から大学にしっかりかける予算という、ここを根本的に増やしていかないと、中長期での日本の科学技術力というのはなかなかやはり育ちづらいと思うんですね。",
+        "answer_evidence": "委員御指摘のとおり、科研費については、第七期基本計画においても、若手研究者による挑戦的、萌芽的な研究や国際性の高い研究などへの支援を強化するなど、大幅に拡充するという計画にもなっておりまして、令和八年度予算におきましても、十五年ぶりに対前年度百億以上の増額となる、二千四百七十九億円を計上することができたところであります。",
+        "url": "https://kokkai.ndl.go.jp/txt/122104080X00920260527/184",
+        "review_reason": "源文のq4で「基礎研究の分野を抜本的に国の科研費で拡充する必要性」を問い、回答v1a2でその拡充計画を示している"
+      }
+    ],
+    "usage_estimate": {
+      "input_tokens": 28886,
+      "output_tokens": 5513,
+      "neurons": 675.561,
+      "all_calls_reported_usage": true,
+      "baseline_neurons": 676.134,
+      "finding": "Approximately unchanged consumption; reduced prompt input was offset by increased output. Do not claim additional daily search capacity."
+    },
+    "assessment": "Four accepted original-source cases: the three visible in the user screenshot remain, plus a METI answer explicitly promising basic-research support. Compared with the separate v60 baseline, MEXT case _095 (research time and industry-academia collaboration) is no longer accepted; recall equivalence is not established. Two plenary-context cases remain held. All 24 model outputs completed; zero AI cache hits; four calls. Scope began at 15460 ms while the third initial batch ended at 19998 ms, demonstrating actual overlap of approximately 4.5 seconds. Citation granularity still needs improvement: one answer excerpt is an introductory line, though its full original answer contains the support commitment."
+  },
+  "pricing_reference": "https://developers.cloudflare.com/workers-ai/platform/pricing/",
+  "startup_v66": {
+    "routing_version": "20261014-66",
+    "timing": {
+      "retrieval_ms": 13802,
+      "review_ms": 32821,
+      "planning_ms": 0,
+      "total_ms": 46623
+    },
+    "test_wire_ms": 46816,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 3,
+    "context_pending_candidates": 1,
+    "pairs": 1,
+    "shares": [
+      {
+        "ministry": "金融庁",
+        "percent": 100,
+        "count": 1
+      }
+    ],
+    "assessment_error": null,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 25145,
+        "cache_read_ms": 15,
+        "total_ms": 25160,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8825,
+          "output_tokens": 2541
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 11179,
+        "cache_read_ms": 13,
+        "total_ms": 11192,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8824,
+          "output_tokens": 1157
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 7237,
+        "cache_read_ms": 17,
+        "total_ms": 7254,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 7958,
+          "output_tokens": 1015
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2533,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 25160,
+        "model_ms": 7653,
+        "cache_read_ms": 8,
+        "total_ms": 7661,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2493,
+          "output_tokens": 997
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache_read_ms": 11,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 0,
+        "fetch_ms": 4092,
+        "cache_write_deferred": true,
+        "total_ms": 4103
+      },
+      {
+        "resource": "meeting",
+        "cache_read_ms": 32,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2968,
+        "fetch_ms": 1604,
+        "cache_write_deferred": true,
+        "total_ms": 4604
+      },
+      {
+        "resource": "speech",
+        "cache_read_ms": 24,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2976,
+        "fetch_ms": 2095,
+        "cache_write_deferred": true,
+        "total_ms": 5095
+      }
+    ],
+    "accepted_case_ids": [
+      "121704376X00220250212:121704376X00220250212_072"
+    ],
+    "held_cases": [
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_186",
+        "reason": "原文番号を確認できないため保留。"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_192",
+        "reason": "原文番号を確認できないため保留。"
+      },
+      {
+        "case_id": "121615254X00420241204:121615254X00420241204_020",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ],
+    "finding": "Known general-SME/provider-role false positive absent, but only FSA case accepted. Two known METI cases (_186, _192) held because model-selected reference strings failed exact source validation; _184 was not retained either. Accuracy/recall preservation not established."
+  },
+  "v67_change": "Keep full sources and candidate-local reference verification. Add JSON-schema enums of existing source reference IDs (plus empty string for nonacceptance) and explicit q/a format example. Provider selection is still checked against the owning candidate locally; no invented or wrong-owner reference is repaired."
 }

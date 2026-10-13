@@ -257,7 +257,7 @@ beneficiary：原文における実際の受益者。activity：その人の活�
 relation：質問案の対象・領域との関係。same=同じ、broader=上位概念・一般論だけ、provider_only=対象が提供者として出るだけ、different=別対象・領域、unclear=確認不能。
 comparison：受益者・提供者の役割と質問案との対応または相違を日本語20〜60字で説明。他候補の理由流用や「一致する」だけの記述は不可。
 decision：上記比較から accept/reject/uncertain。same以外は採用不可。sameでも取組が別ならreject。
-q/a：acceptだけ、対応する対象・課題と取組を示す質問・答弁の原文番号を一つずつ選択。単なる同意・挨拶・問い掛けは不可。reject/uncertainでは両方空文字。引用文は生成せず他候補の番号も使いません。
+q/a：acceptだけ、対応する対象・課題と取組を示す質問・答弁の原文番号を一つずつ選択。単なる同意・挨拶・問い掛けは不可。reject/uncertainでは両方空文字。例：q="q1", a="v1a2"。引用文は生成せず他候補の番号も使いません。
 source_question/source_answerは文単位の番号付き原文辞書。source_question_refは指定候補と同一の質問です。省略されたprevious_contextは空、truncatedはfalseです。`;
 
 
@@ -385,7 +385,8 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         relation: { type: 'string', enum: ['same', 'broader', 'provider_only', 'different', 'unclear'] },
         comparison: { type: 'string' },
         decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
-        q: { type: 'string' }, a: { type: 'string' },
+        q: { type: 'string', enum: ['', ...new Set(batch.flatMap(row => Object.keys(grounded.get(row.candidate_id).question)))] },
+        a: { type: 'string', enum: ['', ...new Set(batch.flatMap(row => Object.keys(grounded.get(row.candidate_id).answer)))] },
       }, required: ['id', 'beneficiary', 'activity', 'relation', 'comparison', 'decision', 'q', 'a'], additionalProperties: false,
     } } }, required: ['reviews'], additionalProperties: false };
     const questions = new Map();

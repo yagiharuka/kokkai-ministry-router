@@ -44,6 +44,10 @@ const repeated=[row('same:q1','文部科学省','a'),{...row('same:q1','文部�
 let repeatedInput;
 const selected=await reviewCompactAssignments('教員の負担を減らすべきではないか',result(repeated),{...env,AI:{run:async(_,p)=>{
  const input=JSON.parse(p.messages[1].content);repeatedInput=input;
+ const properties=p.response_format.json_schema.properties.reviews.items.properties;
+ assert.deepEqual(new Set(properties.q.enum),new Set(['',...Object.keys(input.candidates[0].source_question)]));
+ assert.deepEqual(new Set(properties.a.enum),new Set(['',...Object.keys(input.candidates[0].source_answer)]));
+ assert.ok(properties.a.enum.some(k=>k.startsWith('v2')),'Later answer variants remain selectable');
  const rs=reviews(input);rs[0].a=Object.keys(input.candidates[0].source_answer).find(k=>k.startsWith('v2'));
  return {response:{reviews:rs}};
 }}});
