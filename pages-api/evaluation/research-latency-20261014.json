@@ -134,8 +134,11 @@
       "all_calls_reported_usage": true
     }
   },
-  "change": "Restore v60 instructions and three initial batches. Set the actual provider input reasoning_effort=low (previously only a system-message instruction). Include reasoning effort in cache identity. No source truncation, candidate reduction or model change.",
-  "after": null,
+  "change": "Three attempted speed optimizations rejected after live evaluation. Restore the known v60 semantic review in v64 and retain all measurements, including regressions.",
+  "after": {
+    "routing_version": "20261014-64",
+    "decision": "Revert semantic-review.mjs and its compact-review test exactly to v60; no new paid provider or model. No further live AI request required for the code-identical review rollback. Version bump invalidates trial result caches. Verify build/tests and deployed status."
+  },
   "rejected_trial_v61": {
     "routing_version": "20261014-61",
     "test_wire_ms": 43188,
@@ -435,5 +438,141 @@
     }
   },
   "provider_reference": "https://github.com/cloudflare/ai/blob/main/packages/workers-ai-provider/README.md#reasoning-controls",
-  "pricing_reference": "https://developers.cloudflare.com/workers-ai/platform/pricing/"
+  "pricing_reference": "https://developers.cloudflare.com/workers-ai/platform/pricing/",
+  "rejected_trial_v63": {
+    "routing_version": "20261014-63",
+    "test_wire_ms": 11621,
+    "timing": {
+      "retrieval_ms": 215,
+      "review_ms": 11249,
+      "planning_ms": 0,
+      "total_ms": 11464
+    },
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 7937,
+        "cache_read_ms": 35,
+        "total_ms": 7972,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8812,
+          "output_tokens": 682
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 6244,
+        "cache_read_ms": 38,
+        "total_ms": 6282,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8533,
+          "output_tokens": 575
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 6274,
+        "cache_read_ms": 36,
+        "total_ms": 6310,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 9917,
+          "output_tokens": 421
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2906,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "model_ms": 3269,
+        "cache_read_ms": 8,
+        "total_ms": 3277,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2818,
+          "output_tokens": 353
+        }
+      }
+    ],
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 17,
+    "context_pending_candidates": 2,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "pairs": 4,
+    "shares": [
+      {
+        "ministry": "内閣府・内閣官房等",
+        "percent": 50,
+        "count": 2
+      },
+      {
+        "ministry": "厚生労働省",
+        "percent": 25,
+        "count": 1
+      },
+      {
+        "ministry": "文部科学省",
+        "percent": 25,
+        "count": 1
+      }
+    ],
+    "accepted_case_ids": [
+      "122115385X00920260710:122115385X00920260710_203",
+      "122104889X02120260619:122104889X02120260619_153",
+      "122104080X00920260527:122104080X00920260527_183",
+      "122104260X01920260715:122104260X01920260715_110"
+    ],
+    "usage_estimate": {
+      "input_tokens": 30080,
+      "output_tokens": 2031,
+      "neurons": 602.306,
+      "all_calls_reported_usage": true
+    },
+    "finding": "Explicit low effort reduced AI latency to 11.249 seconds with zero AI cache hits, but uncertainty rose from 2 to 17 and the previously accepted MEXT basic-research case ending _095 was missed. The additional MHLW case does mention basic research in its full answer; its selected quote and comparison instead focus on general/applied research support. It is not treated as a proven false positive or excluded solely by ministry. Accuracy/recall preservation was not established. Source retrieval was cached, so 11.464 seconds is not a cold-source benchmark."
+  }
 }

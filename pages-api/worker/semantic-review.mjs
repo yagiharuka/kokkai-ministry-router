@@ -52,11 +52,9 @@ export function workersAiFailure(error, status = 0) {
   return classified;
 }
 
-const reasoningEffort = 'low';
-
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
   const timeoutMs = name === 'kokkai_scope_check' ? 20000 : name === 'kokkai_compact_review' ? 30000 : 40000;
-  const payload = { stream: false, temperature: 0, reasoning_effort: reasoningEffort,
+  const payload = { stream: false, temperature: 0,
     max_tokens: name === 'kokkai_scope_check' ? 3072 : name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 3072 : 2048) : 3072,
     messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
       { role: 'user', content: JSON.stringify(input) }],
@@ -292,7 +290,7 @@ function questionQuoteWithContext(text, quote) {
 const compactCacheSeconds = 7 * 86400;
 async function compactCacheAddress(config, schema, input, instructions = compactInstructions) {
   if (typeof caches === 'undefined' || typeof crypto === 'undefined') return null;
-  const value = JSON.stringify([routingVersion, config.model, reasoningEffort, instructions, schema, input]);
+  const value = JSON.stringify([routingVersion, config.model, instructions, schema, input]);
   try {
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(b => b.toString(16).padStart(2, '0')).join('');
     return `https://kokkai-ministry-router.haru620328.workers.dev/__review_cache/${hash}`;

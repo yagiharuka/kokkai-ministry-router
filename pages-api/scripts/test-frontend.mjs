@@ -120,7 +120,7 @@ assert.equal(getNode('submit').disabled,false);
 assert.ok(getNode('results').innerHTML.includes('100%'));
 await submit('半導体産業の国内生産を支援すべきではないか');
 assert.equal(caseRequests.length,2);
-assert.ok(caseRequests.every(url=>url.searchParams.get('v')==='20261014-63'));
+assert.ok(caseRequests.every(url=>url.searchParams.get('v')==='20261014-64'));
 assert.equal(caseRequests[1].searchParams.get('question'),'半導体産業の国内生産を支援すべきではないか');
 const latestHtml=getNode('results').innerHTML;
 assert.ok(latestHtml.includes('合計 37.8秒'));
@@ -177,7 +177,7 @@ const diagnostics=[
  {expected:12,completed:12,input_chars:18123,output_token_limit:2560,model_ms:17900,cache_read_ms:8,total_ms:17930,cache_hit:false,model_called:true,usage:{input_tokens:12345,output_tokens:600}},
  {expected:12,completed:12,input_chars:17901,output_token_limit:2560,model_ms:14500,cache_read_ms:5,total_ms:14520,cache_hit:false,model_called:true},
 ];
-const diagnosticBase={...timedBase,routing_version:'20261014-63',analyzed_at:'2026-10-11T13:30:00.000Z',review_diagnostics:diagnostics};
+const diagnosticBase={...timedBase,routing_version:'20261014-64',analyzed_at:'2026-10-11T13:30:00.000Z',review_diagnostics:diagnostics};
 const textFor=result=>{context.result=result;return vm.runInContext('diagnosticText(result,diagnosticRows(result.review_diagnostics))',context)};
 assert.ok(textFor({...diagnosticBase,review_diagnostics:[...diagnostics,diagnostics[0]]}).includes('バッチ 3'));
 const sevenBatchText=textFor({...diagnosticBase,review_diagnostics:Array(8).fill(diagnostics[0])});
@@ -193,7 +193,7 @@ assert.ok(text.includes('出力トークン：600'));
 assert.ok(text.includes('入力トークン：未提供'));
 assert.ok(text.includes('AI待ち時間：17900ms'));
 assert.ok(text.includes('候補判定は並列'));
-assert.ok(text.includes('公開版：20261014-63'));
+assert.ok(text.includes('公開版：20261014-64'));
 assert.ok(text.includes('元の分析日時：2026-10-11T13:30:00.000Z'));
 assert.ok(html.includes('100%')&&html.includes(item.answer),'Diagnostics must not replace the existing judgment or evidence');
 assert.equal(render(diagnosticBase),html,'Repeated render must not duplicate the disclosure');
@@ -275,7 +275,7 @@ assert.notEqual(getNode('diagnostic-text').selected,true,'Late copy failure must
 const source=await readFile(new URL('../frontend/app.js',import.meta.url),'utf8');
 assert.equal(await readFile(new URL('../../dist/app.js',import.meta.url),'utf8'),source,'Published and source frontend files must match');
 const page=await readFile(new URL('../../dist/index.html',import.meta.url),'utf8');
-assert.ok(page.includes('app.js?v=20261014-63'),'Only the frontend asset cache key changes');
-assert.ok(source.includes('question:input,v:"20261014-63"'),'The analysis/cache version remains unchanged');
+assert.ok(page.includes('app.js?v=20261014-64'),'Only the frontend asset cache key changes');
+assert.ok(source.includes('question:input,v:"20261014-64"'),'The analysis/cache version remains unchanged');
 console.log('Frontend states, timings, safe numeric diagnostics, cache labels, absent usage, clipboard success/fallback/repeated taps, stale-copy isolation, escaping, unchanged source requests and nonblocking law lookup passed. No network or model calls.');
 

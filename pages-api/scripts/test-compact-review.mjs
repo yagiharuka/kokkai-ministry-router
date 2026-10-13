@@ -26,7 +26,6 @@ let active=0,peak=0,calls=0;
 const parallel=await reviewCompactAssignments('教員の長時間労働の是正について',twentyfour,{...env,AI:{run:async(model,payload)=>{
  calls++;active++;peak=Math.max(peak,active);
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,3072);
- assert.equal(payload.reasoning_effort,'low','Send the provider reasoning setting, not only prose instructions');
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=8);
  assert.equal(input.candidates[0].id,'c1');

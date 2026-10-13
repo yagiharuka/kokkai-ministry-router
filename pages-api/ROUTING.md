@@ -53,4 +53,4 @@ NDLの機械的アクセスは多重要求を避け、取得完了後3秒の間�
 受益者・活動領域・質問対象との関係を別項目で取り出し、上位概念だけの一般論・提供者としての言及・別対象・不明という判定は採用しません。原文の番号と所属の検証は引き続き行います。
 
 
-モデル呼出は `reasoning_effort: "low"` を入力に明示します。systemメッセージ内の文章指示だけに依存せず、Cloudflare公式の推論量設定を使います。設定値は判定キャッシュの識別にも含めます。参照: https://github.com/cloudflare/ai/blob/main/packages/workers-ai-provider/README.md#reasoning-controls
+推論量を明示的に low にする実機試験は AI 判定を11.249秒に短縮しましたが、同じ24候補で保留が2件から17件に増えたため採用を見送りました。公開版64は版60の判定実装に戻しています。設定方法と試験結果は evaluation/research-latency-20261014.json を参照してください。
