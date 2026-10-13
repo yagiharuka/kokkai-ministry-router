@@ -906,7 +906,13 @@
       "121704080X01120250418:121704080X01120250418_186",
       "121704080X01120250418:121704080X01120250418_192"
     ],
-    "finding": "All four v60 positive IDs retained, plus valid METI _182. Known provider-role negative _070 absent. One clipped plenary case remains held. Four calls; AI 34.120 s; retrieval cached."
+    "finding": "All four v60 positive IDs retained, plus valid METI _182. Known provider-role negative _070 absent. One clipped plenary case remains held. Four calls; AI 34.120 s; retrieval cached.",
+    "usage_estimate": {
+      "input_tokens": 29209,
+      "output_tokens": 6795,
+      "neurons": 716.398,
+      "all_calls_reported_usage": true
+    }
   },
   "research_v68": {
     "routing_version": "20261014-68",
@@ -1065,7 +1071,94 @@
       "122104260X01920260715:122104260X01920260715_110",
       "122115385X00920260710:122115385X00920260710_178"
     ],
-    "finding": "Screenshot three positive cases retained, but newly accepted Cabinet _178 is an identified cross-topic false positive: its question speech first discusses basic research, then asks about dual-use; the actual answer addresses dual-use. Shortened initial instructions fail this regression. AI 28.204 s; retrieval cached; five calls. MEXT _095 and METI _104 remain omitted."
+    "finding": "Screenshot three positive cases retained, but newly accepted Cabinet _178 is an identified cross-topic false positive: its question speech first discusses basic research, then asks about dual-use; the actual answer addresses dual-use. Shortened initial instructions fail this regression. AI 28.204 s; retrieval cached; five calls. MEXT _095 and METI _104 remain omitted.",
+    "usage_estimate": {
+      "input_tokens": 30204,
+      "output_tokens": 5611,
+      "neurons": 702.198,
+      "all_calls_reported_usage": true
+    }
   },
-  "v69_change": "Restore original full initial instructions and examples; explicitly compare the question actually answered within multi-topic source turns. Retain pipelining, candidate-owned source enums, and generic compound-target scope verification. Validate two existing questions; no further prompt trials planned in this task."
+  "v69_change": "Restore original full initial instructions and examples; explicitly compare the question actually answered within multi-topic source turns. Retain pipelining, candidate-owned source enums, and generic compound-target scope verification. Validate two existing questions; no further prompt trials planned in this task.",
+  "research_v69_blocked": {
+    "routing_version": "20261014-69",
+    "timing": {
+      "retrieval_ms": 102,
+      "review_ms": 168,
+      "planning_ms": 0,
+      "total_ms": 270
+    },
+    "test_wire_ms": 846,
+    "reviewed_candidates": 0,
+    "uncertain_candidates": 26,
+    "context_pending_candidates": 2,
+    "pairs": 0,
+    "assessment_error": "quota_exhausted",
+    "quota_reset_at": "2026-10-14T00:00:00.000Z",
+    "review_model_calls": 3,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "error": "quota_exhausted",
+        "completed": 0,
+        "provider_error_kind": "daily_neuron_quota",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 119,
+        "cache_read_ms": 49,
+        "total_ms": 168,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "error": "quota_exhausted",
+        "completed": 0,
+        "provider_error_kind": "daily_neuron_quota",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 118,
+        "cache_read_ms": 50,
+        "total_ms": 168,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "error": "quota_exhausted",
+        "completed": 0,
+        "provider_error_kind": "daily_neuron_quota",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 123,
+        "cache_read_ms": 44,
+        "total_ms": 167,
+        "cache_write_deferred": false
+      }
+    ]
+  },
+  "final_status": {
+    "routing_version": "20261014-69",
+    "code_and_deployment": "Published; full npm test and build passed. Runtime status verified.",
+    "live_validation": "Blocked by confirmed daily_neuron_quota. No further AI calls made after the error. The 270 ms response is an error response, not performance data. Latest code has not passed the two-question live gate.",
+    "quota_reset_jst": "2026-10-14 09:00 JST",
+    "decision": "Retain original detailed instructions with scheduling and reference-integrity fixes; reject instruction-shortening as a validated optimization. Do not claim 27 or 28 second performance for the final version.",
+    "remaining_gates": [
+      "Research: screenshot-positive IDs _203, _153, _183 remain; cross-topic _178 must not be accepted. Track _095 and _104 recall explicitly.",
+      "Startup: positive IDs _184, _186, _192 and FSA _072 remain; provider-role _070 must not be accepted.",
+      "Record actual initial/scope timing, cache status and all reported token usage; missing usage cannot imply lower cost."
+    ],
+    "automation": "No follow-up run has been scheduled."
+  }
 }
