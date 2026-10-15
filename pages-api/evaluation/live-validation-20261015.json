@@ -1,0 +1,323 @@
+{
+  "tested_at_jst": "2026-10-15 evening",
+  "routing_version": "20261014-69",
+  "conclusion": "Inference recovered. Validation failed: 17 research holds, startup scope timeout and missing known positives. No further live retries.",
+  "research": {
+    "analyzed_at": "2026-10-15T10:02:52.821Z",
+    "timing": {
+      "retrieval_ms": 6956,
+      "review_ms": 28104,
+      "planning_ms": 0,
+      "total_ms": 35060
+    },
+    "pairs": 4,
+    "reviewed_candidates": 24,
+    "uncertain_candidates": 17,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 20563,
+        "cache_read_ms": 14,
+        "total_ms": 20577,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8901,
+          "output_tokens": 1414
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 8675,
+        "cache_read_ms": 12,
+        "total_ms": 8687,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8622,
+          "output_tokens": 742
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 6381,
+        "cache_read_ms": 14,
+        "total_ms": 6395,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 10006,
+          "output_tokens": 576
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2906,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 20577,
+        "model_ms": 7518,
+        "cache_read_ms": 9,
+        "total_ms": 7527,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 3069,
+          "output_tokens": 670
+        }
+      }
+    ],
+    "accepted": [
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_203",
+        "ministry": "内閣府・内閣官房等"
+      },
+      {
+        "case_id": "122104889X02120260619:122104889X02120260619_153",
+        "ministry": "内閣府・内閣官房等"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_104",
+        "ministry": "経済産業省"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_183",
+        "ministry": "文部科学省"
+      }
+    ],
+    "held": [
+      {
+        "case_id": "122104260X01620260619:122104260X01620260619_035",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_016",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_035",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_112",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_095",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_064",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_147",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_178",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_100",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_122",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_217",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_009",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_033",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_093",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122114260X01020260602:122114260X01020260602_114",
+        "reason": "対象と答弁の対応を確認できないため保留。"
+      },
+      {
+        "case_id": "122105254X00420260225:122105254X00420260225_011",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      },
+      {
+        "case_id": "122105254X00320260224:122105254X00320260224_006",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ]
+  },
+  "startup": {
+    "analyzed_at": "2026-10-15T10:04:11.660Z",
+    "timing": {
+      "retrieval_ms": 16054,
+      "review_ms": 38276,
+      "planning_ms": 0,
+      "total_ms": 54330
+    },
+    "assessment_error": "model_unavailable",
+    "pairs": 2,
+    "reviewed_candidates": 23,
+    "uncertain_candidates": 2,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 18263,
+        "cache_read_ms": 6,
+        "total_ms": 18269,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9312,
+          "output_tokens": 1488
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 17655,
+        "cache_read_ms": 7,
+        "total_ms": 17662,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9311,
+          "output_tokens": 1599
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 8859,
+        "cache_read_ms": 7,
+        "total_ms": 8866,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8445,
+          "output_tokens": 935
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1398,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 18269,
+        "model_ms": 20000,
+        "cache_read_ms": 7,
+        "total_ms": 20007,
+        "cache_write_deferred": false
+      }
+    ],
+    "accepted": [
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_186",
+        "ministry": "経済産業省"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_192",
+        "ministry": "経済産業省"
+      }
+    ],
+    "held": [
+      {
+        "case_id": "121704376X00220250212:121704376X00220250212_072",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "121615254X00420241204:121615254X00420241204_020",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ]
+  }
+}
