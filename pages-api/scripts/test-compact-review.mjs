@@ -278,7 +278,7 @@ assert.deepEqual(outOfOrder.evidence.map(r=>r.case_id),parallel.evidence.map((_,
 // Blank semantic judgments must not count as completed or enter reusable caches.
 for (const decision of ['uncertain','reject']) {
  const blank=await reviewCompactAssignments('教員の長時間労働について',result([row('blank:one'),row('blank:two')]),{...env,AI:{run:async(_,p)=>{
-  assert.equal(p.response_format.json_schema.properties.reviews.items.properties.comparison.minLength,1);
+  assert.deepEqual(p.response_format.json_schema.properties.reviews.items.properties.comparison,{type:'string'});
   const rs=reviews(JSON.parse(p.messages[1].content));
   Object.assign(rs[0],{beneficiary:'',activity:'',comparison:'  ',relation:decision==='uncertain'?'unclear':'different',decision,q:'',a:''});
   return {response:{reviews:rs}};
