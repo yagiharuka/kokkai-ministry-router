@@ -272,10 +272,14 @@ context.navigator={clipboard:{writeText:()=>new Promise((_,reject)=>{rejectOld=r
 button=mountDiagnostics(diagnosticBase);const oldCopy=button.listeners.click();
 mountDiagnostics(cachedDiagnostics);rejectOld(new Error('late denial'));await oldCopy;
 assert.notEqual(getNode('diagnostic-text').selected,true,'Late copy failure must not focus or select a different result');
+const partialNotice=render({...timedBase,assessment_partial:true});
+assert.ok(partialNotice.startsWith('<p class="error" role="status">一部のAI判定が未完了です。'));
+assert.ok(partialNotice.indexOf('取りこぼし')<partialNotice.indexOf('class="shares"'),'Incomplete judgments must be visible before percentages');
+assert.ok(!render({...timedBase,assessment_partial:false}).includes('一部のAI判定が未完了です。'));
 const source=await readFile(new URL('../frontend/app.js',import.meta.url),'utf8');
 assert.equal(await readFile(new URL('../../dist/app.js',import.meta.url),'utf8'),source,'Published and source frontend files must match');
 const page=await readFile(new URL('../../dist/index.html',import.meta.url),'utf8');
-assert.ok(page.includes('app.js?v=20261015-71'),'Only the frontend asset cache key changes');
+assert.ok(page.includes('app.js?v=20261015-71-ui1'),'Only the frontend asset cache key changes');
 assert.ok(source.includes('question:input,v:"20261015-71"'),'The analysis/cache version remains unchanged');
 console.log('Frontend states, timings, safe numeric diagnostics, cache labels, absent usage, clipboard success/fallback/repeated taps, stale-copy isolation, escaping, unchanged source requests and nonblocking law lookup passed. No network or model calls.');
 

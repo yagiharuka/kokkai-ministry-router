@@ -144,7 +144,7 @@ function render(r){
   count=pending.length?'未判定の候補 '+pending.length+'件':'';
  }else if(r.assessment_status==='failed'){
   title=r.assessment_error==='quota_exhausted'?'AI判定の本日の無料枠を使い切りました':r.assessment_error==='model_busy'?'AI判定が混み合っています':'文脈判定を完了できませんでした';
-  note=r.assessment_error==='quota_exhausted'?'国会図書館のAPIではなく、AI判定サービスの無料枠による停止です。日本時間の午前9時に枠がリセットされます。有料サービスへ自動で切り替えることはありません。':'AIによる関連性の確認が完了していません。少し時間を置いて再試行してください。';
+  note=r.assessment_error==='quota_exhausted'?'国会図書館のAPIではなく、AI判定サービスの無料枠による停止です。アプリは日本時間の午前9時以降に受付を再確認できますが、提供元の利用枠が回復する時刻は保証できません。有料サービスへ自動で切り替えることはありません。':'AIによる関連性の確認が完了していません。少し時間を置いて再試行してください。';
   count=pending.length?'未判定の候補 '+pending.length+'件':'';
  }else if(reviewed){
   title='採用できる答弁を確認できませんでした';
@@ -157,6 +157,7 @@ function render(r){
  const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(validDuration(r.elapsedSeconds)&&!cachedResult(r)?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const analyzedAt=Date.parse(r.analyzed_at||'');
  const saved=reviewed&&cachedResult(r)?'<p class="caveat">保存済みの結果を表示しています'+(Number.isFinite(analyzedAt)?'（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）':'')+'。同じ質問の結果は最大24時間再利用します。</p>':'';
+ const incompleteNotice=r.assessment_partial?'<p class="error" role="status">一部のAI判定が未完了です。関連する答弁の取りこぼしがあり、以下の割合は判定できた一部の質疑だけで算出しています。</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
  const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,24).map(evidenceCard).join('')+'</div>':'';
@@ -164,7 +165,7 @@ function render(r){
  // Counts and error categories only: no prompts, generated text or secrets.
  const rows=diagnosticRows(r.review_diagnostics),diagnostic=diagnosticText(r,rows);
  $('results').setAttribute('data-review-diagnostics',JSON.stringify(rows));
- $('results').innerHTML='<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+diagnosticSection(diagnostic)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ $('results').innerHTML=incompleteNotice+'<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+diagnosticSection(diagnostic)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
  bindDiagnosticCopy(diagnostic);
 
 }

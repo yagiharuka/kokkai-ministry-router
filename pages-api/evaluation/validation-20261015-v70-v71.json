@@ -1,0 +1,604 @@
+{
+  "changes": [
+    "Reject empty/whitespace comparison as invalid per-row output; no automatic retry.",
+    "Start bounded scope verification from ready batches without waiting for a slow first batch.",
+    "Version70 attempted generation minLength/maxLength and explicit nonempty rejection explanations; version71 reverted those after all initial batches timed out."
+  ],
+  "tests": "Full build and automated suite passed on version70. Compact review, review cache and frontend tests passed after version71 rollback. Mocks do not measure model accuracy.",
+  "v70_research": {
+    "routing_version": "20261015-70",
+    "analyzed_at": "2026-10-15T11:59:49.728Z",
+    "assessment_status": "failed",
+    "assessment_error": "model_unavailable",
+    "assessment_partial": true,
+    "timing": {
+      "retrieval_ms": 7517,
+      "review_ms": 30021,
+      "planning_ms": 0,
+      "total_ms": 37538
+    },
+    "pairs": 0,
+    "reviewed_candidates": 0,
+    "uncertain_candidates": 26,
+    "review_model_calls": 3,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 21,
+        "total_ms": 30021,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 21,
+        "total_ms": 30021,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 20,
+        "total_ms": 30020,
+        "cache_write_deferred": false
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache_read_ms": 7,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 0,
+        "fetch_ms": 2087,
+        "cache_write_deferred": true,
+        "total_ms": 2094
+      },
+      {
+        "resource": "meeting",
+        "cache_read_ms": 12,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2988,
+        "fetch_ms": 2423,
+        "cache_write_deferred": true,
+        "total_ms": 5423
+      }
+    ],
+    "accepted": [],
+    "held": [
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_203",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X02120260619:122104889X02120260619_153",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X02020260617:122104889X02020260617_052",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X01820260610:122104889X01820260610_008",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_104",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_011",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_004",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_183",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01920260715:122104260X01920260715_110",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01620260619:122104260X01620260619_035",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_016",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_035",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_112",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_095",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_064",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_147",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_178",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_100",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_122",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_217",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_009",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_033",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_093",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122114260X01020260602:122114260X01020260602_114",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122105254X00420260225:122105254X00420260225_011",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      },
+      {
+        "case_id": "122105254X00320260224:122105254X00320260224_006",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ]
+  },
+  "conclusion": "Research validation failed. Ready-batch scope started at13.783s and ended17.175s before the slow first batch timed out at30s. Seven blank judgments are correctly counted invalid, but not recovered. This is evidence of scheduling behavior, not successful latency/recall improvement. Source retrieval cached; AI cache zero. Startup24.981s (retrieval12.224s; AI12.757s), only two METI cases; known FSA and METI184 positives missed, 14 invalid judgments plus one plenary pending. No scope call because initial generation did not accept the FSA case. Lower latency is not evidence of successful optimization. No further live calls.",
+  "v71_research": {
+    "routing_version": "20261015-71",
+    "analyzed_at": "2026-10-15T12:02:15.597Z",
+    "assessment_status": "reviewed",
+    "assessment_error": "model_unavailable",
+    "assessment_partial": true,
+    "timing": {
+      "retrieval_ms": 29,
+      "review_ms": 30016,
+      "planning_ms": 0,
+      "total_ms": 30045
+    },
+    "pairs": 1,
+    "reviewed_candidates": 9,
+    "uncertain_candidates": 17,
+    "review_model_calls": 4,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 16,
+        "total_ms": 30016,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 7,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 13767,
+        "cache_read_ms": 16,
+        "total_ms": 13783,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8622,
+          "output_tokens": 874
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 28001,
+        "cache_read_ms": 16,
+        "total_ms": 28017,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 10006,
+          "output_tokens": 2074
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1452,
+        "output_token_limit": 3072,
+        "output_format": "scope_check_v2",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 13783,
+        "model_ms": 3382,
+        "cache_read_ms": 10,
+        "total_ms": 3392,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2013,
+          "output_tokens": 392
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache": "edge",
+        "cache_read_ms": 11,
+        "total_ms": 11
+      },
+      {
+        "resource": "meeting",
+        "cache": "edge",
+        "cache_read_ms": 18,
+        "total_ms": 18
+      }
+    ],
+    "accepted": [
+      {
+        "case_id": "122104260X01920260715:122104260X01920260715_110",
+        "ministry": "厚生労働省",
+        "review_reason": "原文ではiPS細胞研究の基礎研究開発支援を重点的に行っていると述べられ、質問の内容と一致する",
+        "question_evidence": "やはり優れた研究は、もちろんテクノロジーは、生み出すのはまた人でございますので、そこの根本に立ち返る必要があると思っておりまして、こうした研究者の方々のこれまでの努力が実を結ぶように、国として重点的な研究開発支援、現時点でのお取組、そして将来的な御方針についてお伺いをしたいと思います。",
+        "answer_evidence": "iPS細胞を含めた再生医療については、国としてもこれまで重点的な支援を行ってまいりました。"
+      }
+    ],
+    "held": [
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_203",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X02120260619:122104889X02120260619_153",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X02020260617:122104889X02020260617_052",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X01820260610:122104889X01820260610_008",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_104",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_011",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_004",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_183",
+        "reason": "AI判定を完了できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01620260619:122104260X01620260619_035",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_016",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_035",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122104260X01520260612:122104260X01520260612_112",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_095",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_064",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122114080X01020260611:122114080X01020260611_147",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122105254X00420260225:122105254X00420260225_011",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      },
+      {
+        "case_id": "122105254X00320260224:122105254X00320260224_006",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ]
+  },
+  "v71_startup": {
+    "routing_version": "20261015-71",
+    "analyzed_at": "2026-10-15T12:03:06.058Z",
+    "assessment_status": "reviewed",
+    "assessment_error": "model_unavailable",
+    "assessment_partial": true,
+    "timing": {
+      "retrieval_ms": 12224,
+      "review_ms": 12757,
+      "planning_ms": 0,
+      "total_ms": 24981
+    },
+    "pairs": 2,
+    "reviewed_candidates": 10,
+    "uncertain_candidates": 15,
+    "review_model_calls": 3,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 12750,
+        "cache_read_ms": 7,
+        "total_ms": 12757,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9312,
+          "output_tokens": 1285
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 6,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 9592,
+        "cache_read_ms": 7,
+        "total_ms": 9599,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 9311,
+          "output_tokens": 924
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_objects_v2",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 8,
+        "duplicate_id": 0,
+        "completed": 0,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 3783,
+        "cache_read_ms": 7,
+        "total_ms": 3790,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8445,
+          "output_tokens": 476
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache_read_ms": 6,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 0,
+        "fetch_ms": 3444,
+        "cache_write_deferred": true,
+        "total_ms": 3450
+      },
+      {
+        "resource": "meeting",
+        "cache_read_ms": 14,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2986,
+        "fetch_ms": 823,
+        "cache_write_deferred": true,
+        "total_ms": 3823
+      },
+      {
+        "resource": "speech",
+        "cache_read_ms": 11,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2989,
+        "fetch_ms": 1951,
+        "cache_write_deferred": true,
+        "total_ms": 4951
+      }
+    ],
+    "accepted": [
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_186",
+        "ministry": "経済産業省",
+        "review_reason": "産業革新投資機構が投資要件にハラスメント防止規程を追加し、女性起業家への支援を実施",
+        "question_evidence": "一方で、私が注目をしたのは、経済産業省所管の官民ファンド、産業革新投資機構、JICですね、二〇二四年十二月四日に、このベンチャーキャピタルに出資する際の要件にハラスメント防止規程というものを盛り込みました、追加したんですね。",
+        "answer_evidence": "そういった中、産業革新投資機構、JICとしても、DEアンドIを推進する取組の検討を開始していた中、国内ファンドの成長支援を行う官民ファンドとして、率先してこのような取組を進めることはスタートアップ業界の健全な発展において重要であるとの考えの下、出資要件の見直しに至ったというふうに認識してございます。"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_192",
+        "ministry": "経済産業省",
+        "review_reason": "経済産業省がベンチャーキャピタルのコンプライアンスにハラスメント防止を含める方針を推進",
+        "question_evidence": "投資家によるスタートアップ、特に女性起業家へのハラスメントが大きな問題となっている、最近公開された調査では、半数以上の女性起業家が被害に遭っているということが明らかになった、こうしたハラスメント発生を防止することが不可欠である、投資先のハラスメントを禁ずる規定を必須とすべきではないか。",
+        "answer_evidence": "そういう意味の中で分かりやすい表記への修正を検討するように今後働きかけていきますし、このハラスメントの防止というのは、コンプライアンスの確保というものとハラスメントの防止、これはもう責任を持って政府がやっていかなきゃいけない話だというふうには私も思います。"
+      }
+    ],
+    "held": [
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_182",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121303968X00620240405:121303968X00620240405_010",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122114370X01220260714:122114370X01220260714_019",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X02520260710:122104889X02520260710_195",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_010",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_010",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121214080X00320231207:121214080X00320231207_070",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121114080X00220230309:121114080X00220230309_068",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122114370X01220260714:122114370X01220260714_036",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122104889X02520260710:122104889X02520260710_197",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121303968X00620240405:121303968X00620240405_006",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121704080X01220250423:121704080X01220250423_066",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121114080X00220230309:121114080X00220230309_072",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_014",
+        "reason": "この候補のAI判定を確認できなかったため保留。"
+      },
+      {
+        "case_id": "121615254X00420241204:121615254X00420241204_020",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ]
+  },
+  "ui": "Incomplete-judgment notice now precedes percentages; quota text no longer guarantees provider recovery at09:00JST. Frontend test passed."
+}
