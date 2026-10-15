@@ -53,7 +53,7 @@ export function workersAiFailure(error, status = 0) {
 }
 
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
-  const timeoutMs = name === 'kokkai_scope_check' ? 20000 : name === 'kokkai_compact_review' ? 30000 : 40000;
+  const timeoutMs = name === 'kokkai_scope_check' ? 30000 : name === 'kokkai_compact_review' ? 45000 : 40000;
   const compactReview = name === 'kokkai_compact_review' || name === 'kokkai_scope_check';
   const formatInstruction = compactReview
     ? `JSONオブジェクトだけを返します。reviewsには候補ID ${input.candidates.map(row => row.id).join(', ')} を各1回、計${input.candidates.length}件返します。各候補を最後まで原文と比較し、comparisonは不採用・保留でも具体的な理由を書き、空欄にしません。`

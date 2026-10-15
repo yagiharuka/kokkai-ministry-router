@@ -288,6 +288,24 @@ for (const decision of ['uncertain','reject']) {
  assert.match(blank.review_candidates[0].review_reason,/AI判定を確認できなかった/);
 }
 
+// JSON-object transport still validates every row locally; provider enum
+// constraints are no longer a prerequisite for rejecting forged decisions.
+const textJson=await reviewCompactAssignments('教員の長時間労働について',result([row('json:one')]),{...env,AI:{run:async(_,p)=>{
+ assert.deepEqual(p.response_format,{type:'json_object'});
+ return {response:JSON.stringify({reviews:reviews(JSON.parse(p.messages[1].content))})};
+}}});
+assert.equal(textJson.pairs,1);
+for (const patch of [{decision:'adopt'},{relation:'identical'},{comparison:'',decision:'reject',relation:'different'}]) {
+ const invalidJson=await reviewCompactAssignments('教員の長時間労働について',result([row('json:bad'),row('json:good')]),{...env,AI:{run:async(_,p)=>{
+  const rs=reviews(JSON.parse(p.messages[1].content));Object.assign(rs[0],patch);
+  return {response:JSON.stringify({reviews:rs})};
+ }}});
+ assert.equal(invalidJson.pairs,1);
+ assert.equal(invalidJson.reviewed_candidates,1);
+ assert.equal(invalidJson.assessment_partial,true);
+ assert.equal(invalidJson.review_diagnostics[0].invalid_fields,1);
+}
+
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
 const previousFetch=globalThis.fetch,previousNow=Date.now;let clock=previousNow();Date.now=()=>clock+=3001;

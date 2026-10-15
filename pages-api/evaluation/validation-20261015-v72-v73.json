@@ -1,0 +1,102 @@
+{
+  "purpose": "Evaluate JSON-object review transport and bounded response deadlines. No accuracy/speed success claimed before source-backed gates pass.",
+  "v72_research": {
+    "routing_version": "20261015-72",
+    "analyzed_at": "2026-10-15T14:15:13.604Z",
+    "timing": {
+      "retrieval_ms": 6302,
+      "review_ms": 30013,
+      "planning_ms": 0,
+      "total_ms": 36315
+    },
+    "assessment_error": "model_unavailable",
+    "assessment_partial": true,
+    "reviewed_candidates": 8,
+    "pairs": 0,
+    "uncertain_candidates": 18,
+    "review_model_calls": 3,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 12,
+        "total_ms": 30012,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "error": "model_timeout",
+        "completed": 0,
+        "provider_error_kind": "timeout",
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 30000,
+        "cache_read_ms": 13,
+        "total_ms": 30013,
+        "cache_write_deferred": false
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 29906,
+        "cache_read_ms": 13,
+        "total_ms": 29919,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 10070,
+          "output_tokens": 1537
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache_read_ms": 11,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 0,
+        "fetch_ms": 2302,
+        "cache_write_deferred": true,
+        "total_ms": 2313
+      },
+      {
+        "resource": "meeting",
+        "cache_read_ms": 14,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2986,
+        "fetch_ms": 989,
+        "cache_write_deferred": true,
+        "total_ms": 3989
+      }
+    ]
+  },
+  "v72_conclusion": "Two batches timed out at30s. Third batch returned all8 with no invalid fields at29.906s. Zero accepted,18held. Startup not attempted on this version.",
+  "tests": "Full automated suite passed on72; extra JSON-string/invalid enum/empty reason tests and compact/frontend checks passed on73.",
+  "v73_change": "Same JSON-object transport; initial response deadline45s, scope30s. No extra attempts, candidate reduction, model change or increased max_tokens. Binding timeout does not cancel provider inference, so waiting longer can receive already-running work but does not promise lower latency."
+}
