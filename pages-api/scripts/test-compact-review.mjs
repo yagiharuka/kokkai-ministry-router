@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {makePlan, diversifyCandidates} from '../worker/routing-core.mjs';
-import {sourceParts, reviewCompactAssignments} from '../worker/semantic-review.mjs';
+import {sourceParts, reviewCompactAssignments, balanceReviewBatches} from '../worker/semantic-review.mjs';
 import worker from '../worker/model-api.js';
 
 const row = (id, ministry='文部科学省', suffix='') => ({case_id:id,ministry,question:'教員の長時間労働を是正するにはどうしますか。',answer:'教員の長時間労働を減らすため支援員を配置します。',date:'2026-05-01',position:'文部科学大臣',url:`https://kokkai.ndl.go.jp/txt/fixture/${id}${suffix}`,retrieval_score:1});
@@ -12,6 +12,20 @@ const parts=sourceParts('原文の文章です。'+ '長い文章'.repeat(80)+'�
 assert.equal(Object.values(parts).length,2,'Keep whole sentences rather than splitting words at a fixed character count');
 assert.ok(Object.values(parts).every(p=>('原文の文章です。'+'長い文章'.repeat(80)+'。').includes(p)));
 assert.deepEqual(Object.values(sourceParts('教師の業務削減についてのお尋ねです。教員の負担軽減に取り組みます。','a')),['教員の負担軽減に取り組みます。']);
+
+// Keep all 24 source candidates while balancing the most expensive parallel call.
+const weighted=Array.from({length:24},(_,i)=>[{candidate_id:'c'+(i+1),weight:i<8?3000:200}]);
+const balanced=balanceReviewBatches(weighted, rows=>rows.reduce((n,r)=>n+r.weight,0));
+const flatBalanced=balanced.flat().map(r=>r.candidate_id).sort();
+assert.equal(balanced.length,3,'Batch balancing must retain three concurrent generations');
+assert.ok(balanced.every(batch=>batch.length===8));
+assert.deepEqual(flatBalanced,weighted.flat().map(r=>r.candidate_id).sort(),'No candidate may disappear or be duplicated');
+const maxCost=batches=>Math.max(...batches.map(batch=>batch.reduce((sum,row)=>sum+row.weight,0)));
+const naive=Array.from({length:3},(_,i)=>weighted.slice(i*8,(i+1)*8).flat());
+assert.ok(maxCost(balanced)<maxCost(naive),'Cost balancing reduces the critical-path input size on uneven batches');
+const sameQuestion=Array.from({length:6},(_,g)=>Array.from({length:4},(_,i)=>({candidate_id:'c'+(g*4+i+1),weight:100+g})));
+const grouped=balanceReviewBatches(sameQuestion,rows=>rows.reduce((n,r)=>n+r.weight,0));
+assert.ok(sameQuestion.every(group=>grouped.some(batch=>group.every(row=>batch.includes(row)))),'Identical-question groups fit without unnecessary duplication');
 
 const clustered=[...Array.from({length:30},(_,i)=>row(`dense:q${i}`)),row('other:q1','財務省'),row('third:q1','経済産業省')];
 const diverse=diversifyCandidates(clustered,24);

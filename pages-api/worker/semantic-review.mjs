@@ -289,6 +289,34 @@ function questionQuoteWithContext(text, quote) {
   return text.slice(start, start + quote.length + next.length);
 }
 
+// Balance expensive parallel inference batches while retaining every candidate.
+export function balanceReviewBatches(groups, weigh, capacity = 8) {
+  const count = groups.reduce((sum, rows) => sum + rows.length, 0);
+  if (!count) return [];
+  const bins = Array.from({length: Math.ceil(count/capacity)}, () => ({rows: [], weight: 0}));
+  const units = groups.flatMap((rows, index) =>
+    Array.from({length: Math.ceil(rows.length/capacity)}, (_, j) => ({
+      rows: rows.slice(j*capacity,(j+1)*capacity), index
+    })));
+  units.sort((a,b) => weigh(b.rows) - weigh(a.rows) || a.index-b.index);
+  for (const unit of units) {
+    let rest = unit.rows;
+    while (rest.length) {
+      const fit = bins.filter(b => b.rows.length+rest.length<=capacity);
+      const choices = fit.length ? fit : bins.filter(b => b.rows.length<capacity);
+      const bin = choices.reduce((min, b) => !min || b.weight<min.weight ? b : min, null);
+      const size = Math.min(rest.length, capacity-bin.rows.length);
+      const part = rest.slice(0,size);
+      bin.rows.push(...part);
+      bin.weight += weigh(part);
+      rest=rest.slice(size);
+    }
+  }
+  const ordinal = row => Number(String(row.candidate_id).replace(/^c/,''));
+  bins.forEach(bin => bin.rows.sort((a,b)=>ordinal(a)-ordinal(b)));
+  return bins.map(bin=>bin.rows).sort((a,b)=>ordinal(a[0])-ordinal(b[0]));
+}
+
 // Reuse only a fully validated decision for an identical question AND identical
 // source payload, prompt, schema, model and release. Never cache a model failure.
 const compactCacheSeconds = 7 * 86400;
@@ -364,8 +392,12 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     if (!questionGroups.has(key)) questionGroups.set(key, []);
     questionGroups.get(key).push(row);
   }
-  const ordered = [...questionGroups.values()].flat(), batches = [];
-  for (let i = 0; i < ordered.length; i += 8) batches.push(ordered.slice(i, i + 8));
+  const batches = balanceReviewBatches([...questionGroups.values()], rows => {
+    const first = grounded.get(rows[0].candidate_id);
+    return JSON.stringify(first.question).length + rows.reduce((sum, row) =>
+      sum + JSON.stringify(grounded.get(row.candidate_id).answer).length +
+      String(row.previous_context || '').length + 90, 0);
+  });
   const instructions = ctx.scopeCheck ? scopeInstructions : compactInstructions;
   const outputLimit = batch => ctx.scopeCheck ? 3072 : batch.length > 4 ? 3072 : 2048;
   const settledOutcomes = [];
@@ -537,7 +569,9 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   });
   const tailScope = verifyScope(ambiguousRows(laterReviewed), Math.max(0, 8 - firstAmbiguous.length));
   const scopeOutcomes = (await Promise.all([earlyScope, tailScope])).filter(Boolean);
-  const reviewed = batches.flatMap((_, index) => reviewedByBatch.get(index));
+  const originalRank = new Map(candidates.map((row, i) => [row.candidate_id, i]));
+  const reviewed = batches.flatMap((_, index) => reviewedByBatch.get(index))
+    .sort((a,b) => originalRank.get(a.candidate_id) - originalRank.get(b.candidate_id));
   const scopeMissing = scopeOutcomes.reduce((sum, entry) => sum + entry.missing, 0);
   const accepted = reviewed.filter(row => row.screening === 'accept');
   const unique = [...new Map(accepted.map(row => [`${row.case_id}:${row.ministry}`, row])).values()];
