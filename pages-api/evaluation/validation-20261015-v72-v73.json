@@ -98,5 +98,400 @@
   },
   "v72_conclusion": "Two batches timed out at30s. Third batch returned all8 with no invalid fields at29.906s. Zero accepted,18held. Startup not attempted on this version.",
   "tests": "Full automated suite passed on72; extra JSON-string/invalid enum/empty reason tests and compact/frontend checks passed on73.",
-  "v73_change": "Same JSON-object transport; initial response deadline45s, scope30s. No extra attempts, candidate reduction, model change or increased max_tokens. Binding timeout does not cancel provider inference, so waiting longer can receive already-running work but does not promise lower latency."
+  "v73_change": "Same JSON-object transport; initial response deadline45s, scope30s. No extra attempts, candidate reduction, model change or increased max_tokens. Binding timeout does not cancel provider inference, so waiting longer can receive already-running work but does not promise lower latency.",
+  "v73_research": {
+    "routing_version": "20261015-73",
+    "analyzed_at": "2026-10-15T14:18:24.748Z",
+    "timing": {
+      "retrieval_ms": 128,
+      "review_ms": 32798,
+      "planning_ms": 0,
+      "total_ms": 32926
+    },
+    "assessment_error": null,
+    "assessment_partial": null,
+    "reviewed_candidates": 24,
+    "pairs": 5,
+    "uncertain_candidates": 2,
+    "review_model_calls": 5,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 10187,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 26390,
+        "cache_read_ms": 16,
+        "total_ms": 26406,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8965,
+          "output_tokens": 2727
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 10259,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 11654,
+        "cache_read_ms": 16,
+        "total_ms": 11670,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 8686,
+          "output_tokens": 1243
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11980,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 13466,
+        "cache_read_ms": 17,
+        "total_ms": 13483,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 10070,
+          "output_tokens": 859
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1452,
+        "output_token_limit": 3072,
+        "output_format": "scope_json_v3",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 11670,
+        "model_ms": 3893,
+        "cache_read_ms": 6,
+        "total_ms": 3899,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2056,
+          "output_tokens": 374
+        }
+      },
+      {
+        "expected": 1,
+        "input_chars": 1518,
+        "output_token_limit": 3072,
+        "output_format": "scope_json_v3",
+        "returned": 1,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 1,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 26406,
+        "model_ms": 6388,
+        "cache_read_ms": 4,
+        "total_ms": 6392,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2121,
+          "output_tokens": 666
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache": "edge",
+        "cache_read_ms": 12,
+        "total_ms": 12
+      },
+      {
+        "resource": "meeting",
+        "cache": "edge",
+        "cache_read_ms": 116,
+        "total_ms": 116
+      }
+    ],
+    "accepted": [
+      {
+        "case_id": "122115385X00920260710:122115385X00920260710_203",
+        "ministry": "内閣府・内閣官房等",
+        "review_reason": "回答は基礎研究支援の充実を計画として示し、研究者を対象にした支援策を提示している。",
+        "question_evidence": "しかし、現状、基礎研究の経常経費も十分に賄えていません。資源配分の優先順位を間違っていないでしょうか。大臣、いかがですか。",
+        "answer_evidence": "本年三月に策定した第七期科学技術・イノベーション基本計画においては、大きな柱の一つに科学の再興を掲げており、基礎研究支援の充実を図ることとしております。"
+      },
+      {
+        "case_id": "122104889X02120260619:122104889X02120260619_153",
+        "ministry": "内閣府・内閣官房等",
+        "review_reason": "回答は基礎研究への長期的な集中的支援を重要とし、研究者を対象にした支援策を示している。",
+        "question_evidence": "そうしますと、事業化を対象としない基礎研究への支援というのは、この運営法人の対象外ということでしょうか。",
+        "answer_evidence": "長期的な国家の礎となる基礎研究は、実用化により大きな経済的、社会的インパクトの創出が見込まれることから、長期的かつ集中的に支援することが重要なものと認識しております。"
+      },
+      {
+        "case_id": "122104080X01020260529:122104080X01020260529_104",
+        "ministry": "経済産業省",
+        "review_reason": "回答は科研費拡充を含む基礎研究支援を強化する方針を示し、研究者を対象にした施策を提示している。",
+        "question_evidence": "それでは、最後に、前回の質疑で、文科省の答弁で科研費が百億円増えましたというふうなお話もありましたが、百億円というと、大体、その基が四兆円ですから、僅か〇・二五%増で、大体、物価上昇とかで、エネルギーコスト上昇でキャンセルされる程度の微増という程度ですけれども、いわゆる失われた三十年の中で、政府の財政支出をいかに拡大しないかということを前提に各種の産業振興政策とか産業技術振興政策というのを行ってきまして、結果として、国際比較の中では、前回出てきたように、日本の科学技術力が相対的にプレゼンスを失いつつあるという状況ですから、ここは、基礎分野も含めて、大胆な研究開発投資というのを政府主導でやっていただきまして。",
+        "answer_evidence": "新技術立国担当大臣として、科研費の大幅拡充といった基礎研究分野の支援も含めて、関係省庁と連携して、技術で勝ち、ビジネスでも勝ち切る経済への展開をしていきたいというふうに思っております。"
+      },
+      {
+        "case_id": "122104080X00920260527:122104080X00920260527_183",
+        "ministry": "文部科学省",
+        "review_reason": "原文で基礎研究支援拡充を示唆し、科研費増額計画を提示",
+        "question_evidence": "なので、今後、この科研費を中心とした国レベルの研究開発投資をしっかり拡充していくという具体的な予定とか目標値があるのか、ここについて文科省からお伺いできますでしょうか。",
+        "answer_evidence": "委員御指摘のとおり、科研費については、第七期基本計画においても、若手研究者による挑戦的、萌芽的な研究や国際性の高い研究などへの支援を強化するなど、大幅に拡充するという計画にもなっておりまして、令和八年度予算におきましても、十五年ぶりに対前年度百億以上の増額となる、二千四百七十九億円を計上することができたところであります。"
+      },
+      {
+        "case_id": "122104260X01920260715:122104260X01920260715_110",
+        "ministry": "厚生労働省",
+        "review_reason": "iPS細胞研究の基礎研究支援について国が重点的に行っていると述べている",
+        "question_evidence": "やはり優れた研究は、もちろんテクノロジーは、生み出すのはまた人でございますので、そこの根本に立ち返る必要があると思っておりまして、こうした研究者の方々のこれまでの努力が実を結ぶように、国として重点的な研究開発支援、現時点でのお取組、そして将来的な御方針についてお伺いをしたいと思います。",
+        "answer_evidence": "iPS細胞を含めた再生医療については、国としてもこれまで重点的な支援を行ってまいりました。"
+      }
+    ],
+    "held": [
+      {
+        "case_id": "122105254X00420260225:122105254X00420260225_011",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      },
+      {
+        "case_id": "122105254X00320260224:122105254X00320260224_006",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ],
+    "regression_notes": "4of5 known positive sources accepted; MEXT095 omitted. Hard negative Cabinet178 excluded. MHLW110 boundary accepted; full source explicitly mentions regenerative-medicine basic-research strength, while selected quote is broad."
+  },
+  "v73_startup": {
+    "routing_version": "20261015-73",
+    "analyzed_at": "2026-10-15T14:19:38.015Z",
+    "timing": {
+      "retrieval_ms": 13779,
+      "review_ms": 37437,
+      "planning_ms": 0,
+      "total_ms": 51216
+    },
+    "assessment_error": null,
+    "assessment_partial": null,
+    "reviewed_candidates": 24,
+    "pairs": 2,
+    "uncertain_candidates": 3,
+    "review_model_calls": 5,
+    "review_cache_hits": 0,
+    "review_diagnostics": [
+      {
+        "expected": 8,
+        "input_chars": 11215,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 29744,
+        "cache_read_ms": 5,
+        "total_ms": 29749,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 9376,
+          "output_tokens": 1818
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 11290,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 16588,
+        "cache_read_ms": 5,
+        "total_ms": 16593,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 9375,
+          "output_tokens": 1438
+        }
+      },
+      {
+        "expected": 8,
+        "input_chars": 9913,
+        "output_token_limit": 3072,
+        "output_format": "compact_json_v3",
+        "returned": 8,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 8,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 0,
+        "model_ms": 20433,
+        "cache_read_ms": 3,
+        "total_ms": 20436,
+        "cache_write_deferred": false,
+        "usage": {
+          "input_tokens": 8509,
+          "output_tokens": 1716
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2477,
+        "output_token_limit": 3072,
+        "output_format": "scope_json_v3",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 20436,
+        "model_ms": 6285,
+        "cache_read_ms": 5,
+        "total_ms": 6290,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2748,
+          "output_tokens": 506
+        }
+      },
+      {
+        "expected": 2,
+        "input_chars": 2222,
+        "output_token_limit": 3072,
+        "output_format": "scope_json_v3",
+        "returned": 2,
+        "unknown_id": 0,
+        "invalid_shape": 0,
+        "invalid_fields": 0,
+        "duplicate_id": 0,
+        "completed": 2,
+        "cache_hit": false,
+        "model_called": true,
+        "started_after_ms": 29749,
+        "model_ms": 7683,
+        "cache_read_ms": 5,
+        "total_ms": 7688,
+        "cache_write_deferred": true,
+        "usage": {
+          "input_tokens": 2565,
+          "output_tokens": 599
+        }
+      }
+    ],
+    "source_diagnostics": [
+      {
+        "resource": "speech",
+        "cache_read_ms": 8,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 0,
+        "fetch_ms": 2777,
+        "cache_write_deferred": true,
+        "total_ms": 2785
+      },
+      {
+        "resource": "meeting",
+        "cache_read_ms": 15,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2985,
+        "fetch_ms": 3930,
+        "cache_write_deferred": true,
+        "total_ms": 6930
+      },
+      {
+        "resource": "speech",
+        "cache_read_ms": 9,
+        "cache": "miss",
+        "queue_wait_ms": 0,
+        "throttle_wait_ms": 2991,
+        "fetch_ms": 1064,
+        "cache_write_deferred": true,
+        "total_ms": 4064
+      }
+    ],
+    "accepted": [
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_184",
+        "ministry": "経済産業省",
+        "review_reason": "女性起業家へのハラスメント防止を含むコンプライアンス対策を官民で連携して実施",
+        "question_evidence": "大臣、このスタートアップ業界でのハラスメント、これが本当に深刻になっている、その背景の一つに、こうした出資者と起業家をめぐる構造的な問題、これがあるという認識はございますでしょうか。",
+        "answer_evidence": "ハラスメント防止を含めたコンプライアンスの確保、これは責任ある企業であるための前提でありますので、スタートアップエコシステムの健全な発展に向けては、官民で連携をしながらハラスメント防止に取り組んでまいりたいというふうに思います。"
+      },
+      {
+        "case_id": "121704080X01120250418:121704080X01120250418_186",
+        "ministry": "経済産業省",
+        "review_reason": "女性起業家に対するハラスメント防止規程を投資要件に盛り込み、JICが支援策を実施することで女性活躍を推進。",
+        "question_evidence": "一方で、私が注目をしたのは、経済産業省所管の官民ファンド、産業革新投資機構、JICですね、二〇二四年十二月四日に、このベンチャーキャピタルに出資する際の要件にハラスメント防止規程というものを盛り込みました、追加したんですね。",
+        "answer_evidence": "そういった中、産業革新投資機構、JICとしても、DEアンドIを推進する取組の検討を開始していた中、国内ファンドの成長支援を行う官民ファンドとして、率先してこのような取組を進めることはスタートアップ業界の健全な発展において重要であるとの考えの下、出資要件の見直しに至ったというふうに認識してございます。"
+      }
+    ],
+    "held": [
+      {
+        "case_id": "121105206X00920230414:121105206X00920230414_052",
+        "reason": "回答はスタートアップ経営者の住所公開に関する懸念を扱っているが、女性に特化した支援策ではないため、質問の対象と一致しない"
+      },
+      {
+        "case_id": "121704080X01220250423:121704080X01220250423_066",
+        "reason": "原文番号を確認できないため保留。"
+      },
+      {
+        "case_id": "121615254X00420241204:121615254X00420241204_020",
+        "reason": "本会議の総理答弁は抜粋だけでは割り振り根拠を確認できないため保留。"
+      }
+    ],
+    "regression_notes": "Known METI184/186 accepted; METI192 and FSA072 not accepted. Known provider/beneficiary-negative070 not accepted. All24 initial outputs had nonempty valid-shaped comparison, but one later evidence-reference failure and one semantic uncertain row remain alongside one plenary hold."
+  },
+  "conclusion": "Two final-version live questions completed all24 initial reviews with zero blank comparison/invalid fields and no timeout. Research semantic holds17to2 compared withv69 (plenary only), but MEXT095 still omitted. Startup METI184 recovered while192 and FSA072 remain omitted. Startup51.216s from a fresh source retrieval; research32.926s with source edge cache. Both AI review cache zero. This is evidence of improved completion in two trials, not representative accuracy, stable latency, lower cost, or full recall. No additional live retries.",
+  "scope_of_change": "JSON-object transport and bounded response deadlines. All model-independent source ownership, ID, relation and nonempty reason checks retained. No policy/ministry dictionary, special positive-case exceptions, model change, paid fallback or retry tree."
 }
