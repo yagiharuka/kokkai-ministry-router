@@ -100,6 +100,9 @@ for(const bad of [
 }
 const coded=await reviewCompactAssignments('教員の長時間労働について',result([row('code:q1'),row('code:q2')]),{...env,AI:{run:async()=>({response:{reviews:[{id:'c1',beneficiary:'一般労働者',activity:'一般就労',relation:'different',comparison:'対象とする政策活動の範囲が異なる',decision:'reject',q:'',a:''},{id:'c2',beneficiary:'不明',activity:'不明',relation:'unclear',comparison:'原文の文脈が不足し対応を判断できない',decision:'uncertain',q:'',a:''}]}})}});
 assert.equal(coded.rejected_candidates,1);assert.equal(coded.uncertain_candidates,1);assert.equal(coded.pairs,0);
+assert.equal(coded.rejected_evidence.length,1,'Retain rejected records without counting them as shares');
+assert.equal(coded.rejected_evidence[0].case_id,'code:q1');
+assert.equal(coded.rejected_evidence[0].review_reason,'対象とする政策活動の範囲が異なる');
 assert.equal(coded.review_candidates[0].review_reason,'原文の文脈が不足し対応を判断できない');
 const forged=await reviewCompactAssignments('教員の長時間労働について',result([row('bad:q1')]),{...env,AI:{run:async(_,p)=>{
  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].id='unknown';return {response:{reviews:rs}};
@@ -138,6 +141,8 @@ const scopeEnv={...env,AI:{run:async(_,p)=>{
 }}};
 const scoped=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([synonym,general]),scopeEnv);
 assert.equal(scopeCalls,2);assert.equal(scoped.pairs,1);assert.equal(scoped.rejected_candidates,1);
+assert.equal(scoped.rejected_evidence[0].case_id,general.case_id);
+assert.equal(scoped.rejected_evidence[0].review_reason,'労働者一般の施策で学校の勤務との対応が原文にない','Retain actual scope-check rejection rationale');
 assert.equal(scoped.evidence[0].case_id,synonym.case_id,'Synonyms remain eligible despite missing literal wording');
 assert.equal(scoped.reviewed_candidates,2,'Scope verification does not double-count candidates');
 assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics.at(-1).output_format,'scope_json_v3');

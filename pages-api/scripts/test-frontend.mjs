@@ -27,6 +27,12 @@ const rejected=render({...base,assessment_status:'reviewed',shares:[],pairs:0,ev
 assert.ok(rejected.includes('12件の候補を確認'));
 assert.ok(!rejected.includes('100%'));
 assert.ok(!rejected.includes('会議録が存在しない'));
+const excluded=render({...base,assessment_status:'reviewed',rejected_candidates:1,rejected_evidence:[{...item,ministry:'経済産業省',review_reason:'<img src=x onerror=alert(1)>'}]});
+assert.ok(excluded.includes('不採用と判断した候補の確認（1件中1件）'));
+assert.ok(excluded.includes('&lt;img src=x onerror=alert(1)&gt;'));
+assert.ok(!excluded.includes('<img'));
+assert.ok(!render({...base,assessment_status:'failed',rejected_evidence:[item]}).includes('不採用と判断した候補の確認'));
+assert.ok(!render({...base,assessment_status:'reviewed',rejected_evidence:[]}).includes('不採用と判断した候補の確認'));
 const quota=render({...base,assessment_status:'failed',assessment_error:'quota_exhausted',review_candidates:[]});
 assert.ok(quota.includes('AI判定の本日の無料枠を使い切りました'));
 assert.ok(!quota.includes('100%'));

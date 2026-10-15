@@ -340,7 +340,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   const candidates = diversifyCandidates(eligible, 24)
     .map((row, i) => ({ ...row, candidate_id: `c${i + 1}` }));
   const config = semanticConfiguration(env);
-  const base = { ...result, shares: [], pairs: 0, evidence: [], candidates: [], review_candidates: [...candidates, ...contextPending],
+  const base = { ...result, shares: [], pairs: 0, evidence: [], candidates: [], rejected_evidence: [], review_candidates: [...candidates, ...contextPending],
     assessment_status: 'not_configured', assessment_method: 'semantic', reviewed_candidates: 0,
     accepted_candidates: 0, rejected_candidates: 0, uncertain_candidates: 0,
     unreviewed_candidates: Math.max(0, eligible.length - candidates.length),
@@ -502,8 +502,9 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     const key = row => `${row.case_id}:${row.ministry}`;
     const verified = new Map(checked.evidence.map(row => [key(row), row]));
     const pending = new Map(checked.review_candidates.map(row => [key(row), row]));
+    const rejected = new Map((checked.rejected_evidence || []).map(row => [key(row), row]));
     for (const row of checking) {
-      const final = verified.get(key(row)) || pending.get(key(row));
+      const final = verified.get(key(row)) || pending.get(key(row)) || rejected.get(key(row));
       if (final) Object.assign(row, { screening: final.screening, review_reason: final.review_reason,
         question_evidence: final.question_evidence, answer_evidence: final.answer_evidence });
       else { row.screening = 'reject'; row.review_reason = '追加確認で、質問案が指定する対象・活動との対応を確認できなかった。'; }
@@ -542,6 +543,8 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   const diagnostics = [...outcomes.map(outcome => outcome.diagnostic), ...scopeOutcomes.flatMap(entry => entry.result.review_diagnostics || [])];
   const completed = outcomes.reduce((sum, outcome) => sum + outcome.completed, 0) - scopeMissing;
   return { ...base, ...summarize(unique), evidence: unique, candidates: unique,
+    // Bounded, source-backed audit trail. Rejected rows never affect shares.
+    rejected_evidence: reviewed.filter(row => row.screening === 'reject').slice(0, 12),
     review_candidates: [...reviewed.filter(row => row.screening === 'uncertain'), ...contextPending],
     assessment_status: completed ? 'reviewed' : 'failed', assessment_model: config.model,
     ...(errors.length ? { assessment_error: errors.includes('quota_exhausted') ? 'quota_exhausted' : errors[0], assessment_partial: true } : {}),
