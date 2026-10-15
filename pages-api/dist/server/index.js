@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261015-71';
+const routingVersion = '20261015-72';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -534,11 +534,15 @@ function workersAiFailure(error, status = 0) {
 
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
   const timeoutMs = name === 'kokkai_scope_check' ? 20000 : name === 'kokkai_compact_review' ? 30000 : 40000;
+  const compactReview = name === 'kokkai_compact_review' || name === 'kokkai_scope_check';
+  const formatInstruction = compactReview
+    ? `JSONオブジェクトだけを返します。reviewsには候補ID ${input.candidates.map(row => row.id).join(', ')} を各1回、計${input.candidates.length}件返します。各候補を最後まで原文と比較し、comparisonは不採用・保留でも具体的な理由を書き、空欄にしません。`
+    : '指定のJSONスキーマに従うJSONオブジェクトだけを返してください。';
   const payload = { stream: false, temperature: 0,
     max_tokens: name === 'kokkai_scope_check' ? 3072 : name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 3072 : 2048) : 3072,
-    messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
+    messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n' + formatInstruction },
       { role: 'user', content: JSON.stringify(input) }],
-    response_format: { type: 'json_schema', json_schema: schema } };
+    response_format: compactReview ? { type: 'json_object' } : { type: 'json_schema', json_schema: schema } };
   let data;
   if (config.binding) {
     let timer;
@@ -896,7 +900,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
       }
       const byId = new Map(), duplicates = new Set();
       const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
-        output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_check_v2' : 'compact_objects_v2',
+        output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
         returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0 };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       diagnostic.returned = data.reviews.length;
@@ -937,7 +941,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied'].includes(error?.message) ? error.message : 'invalid_json', completed: 0,
           ...(error?.provider_code ? { provider_code: error.provider_code } : {}),
           ...(error?.provider_error_kind ? { provider_error_kind: error.provider_error_kind } : {}),
-          output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_check_v2' : 'compact_objects_v2',
+          output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
           cache_hit: cacheHit, model_called: modelCalled, ...durationDiagnostic(), ...(modelUsage ? { usage: modelUsage } : {}) },
         reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };
@@ -1134,7 +1138,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261015-71';
+const publicRoutingVersion = '20261015-72';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

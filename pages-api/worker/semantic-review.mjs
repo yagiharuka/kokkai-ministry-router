@@ -54,11 +54,15 @@ export function workersAiFailure(error, status = 0) {
 
 async function structuredModelOnce(config, name, schema, instructions, input, fetchModel, observeUsage = () => {}) {
   const timeoutMs = name === 'kokkai_scope_check' ? 20000 : name === 'kokkai_compact_review' ? 30000 : 40000;
+  const compactReview = name === 'kokkai_compact_review' || name === 'kokkai_scope_check';
+  const formatInstruction = compactReview
+    ? `JSONオブジェクトだけを返します。reviewsには候補ID ${input.candidates.map(row => row.id).join(', ')} を各1回、計${input.candidates.length}件返します。各候補を最後まで原文と比較し、comparisonは不採用・保留でも具体的な理由を書き、空欄にしません。`
+    : '指定のJSONスキーマに従うJSONオブジェクトだけを返してください。';
   const payload = { stream: false, temperature: 0,
     max_tokens: name === 'kokkai_scope_check' ? 3072 : name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 3072 : 2048) : 3072,
-    messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n指定のJSONスキーマに従うJSONオブジェクトだけを返してください。' },
+    messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n' + formatInstruction },
       { role: 'user', content: JSON.stringify(input) }],
-    response_format: { type: 'json_schema', json_schema: schema } };
+    response_format: compactReview ? { type: 'json_object' } : { type: 'json_schema', json_schema: schema } };
   let data;
   if (config.binding) {
     let timer;
@@ -416,7 +420,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
       }
       const byId = new Map(), duplicates = new Set();
       const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
-        output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_check_v2' : 'compact_objects_v2',
+        output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
         returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0 };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       diagnostic.returned = data.reviews.length;
@@ -457,7 +461,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         diagnostic: { expected: batch.length, input_chars: JSON.stringify(input).length, error: ['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied'].includes(error?.message) ? error.message : 'invalid_json', completed: 0,
           ...(error?.provider_code ? { provider_code: error.provider_code } : {}),
           ...(error?.provider_error_kind ? { provider_error_kind: error.provider_error_kind } : {}),
-          output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_check_v2' : 'compact_objects_v2',
+          output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
           cache_hit: cacheHit, model_called: modelCalled, ...durationDiagnostic(), ...(modelUsage ? { usage: modelUsage } : {}) },
         reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };

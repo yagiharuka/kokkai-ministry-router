@@ -29,9 +29,8 @@ const parallel=await reviewCompactAssignments('教員の長時間労働の是正
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=8);
  assert.equal(input.candidates[0].id,'c1');
- assert.equal(payload.response_format.type,'json_schema');
- assert.equal(payload.response_format.json_schema.properties.reviews.minItems,input.candidates.length);
- assert.equal(payload.response_format.json_schema.properties.reviews.maxItems,input.candidates.length);
+ assert.deepEqual(payload.response_format,{type:'json_object'});
+ assert.ok(payload.messages[0].content.includes(`計${input.candidates.length}件`));
  await new Promise(resolve=>setTimeout(resolve,5));active--;
  return {response:{reviews:reviews(input)}};
 }}});
@@ -44,10 +43,8 @@ const repeated=[row('same:q1','文部科学省','a'),{...row('same:q1','文部�
 let repeatedInput;
 const selected=await reviewCompactAssignments('教員の負担を減らすべきではないか',result(repeated),{...env,AI:{run:async(_,p)=>{
  const input=JSON.parse(p.messages[1].content);repeatedInput=input;
- const properties=p.response_format.json_schema.properties.reviews.items.properties;
- assert.deepEqual(new Set(properties.q.enum),new Set(['',...Object.keys(input.candidates[0].source_question)]));
- assert.deepEqual(new Set(properties.a.enum),new Set(['',...Object.keys(input.candidates[0].source_answer)]));
- assert.ok(properties.a.enum.some(k=>k.startsWith('v2')),'Later answer variants remain selectable');
+ assert.deepEqual(p.response_format,{type:'json_object'});
+ assert.ok(Object.keys(input.candidates[0].source_answer).some(k=>k.startsWith('v2')),'Later answer variants remain selectable');
  const rs=reviews(input);rs[0].a=Object.keys(input.candidates[0].source_answer).find(k=>k.startsWith('v2'));
  return {response:{reviews:rs}};
 }}});
@@ -65,7 +62,7 @@ const ownership=await reviewCompactAssignments('教員の長時間労働につ�
  {...row('owner:one'),answer:'教員の業務を減らします。'},
  {...row('owner:two'),answer:'教員の業務を減らします。教員向けに支援員を配置します。'}
 ]),{...env,AI:{run:async(_,p)=>{
- assert.ok(p.response_format.json_schema.properties.reviews.items.properties.a.enum.includes('v1a2'));
+ assert.ok(JSON.parse(p.messages[1].content).candidates.some(c=>Object.hasOwn(c.source_answer,'v1a2')));
  const rs=reviews(JSON.parse(p.messages[1].content));rs[0].a='v1a2';rs[1].a='v1a2';
  return {response:{reviews:rs}};
 }}});
@@ -143,7 +140,7 @@ const scoped=await reviewCompactAssignments('教員の長時間労働を是正�
 assert.equal(scopeCalls,2);assert.equal(scoped.pairs,1);assert.equal(scoped.rejected_candidates,1);
 assert.equal(scoped.evidence[0].case_id,synonym.case_id,'Synonyms remain eligible despite missing literal wording');
 assert.equal(scoped.reviewed_candidates,2,'Scope verification does not double-count candidates');
-assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics.at(-1).output_format,'scope_check_v2');
+assert.equal(scoped.review_model_calls,2);assert.equal(scoped.review_diagnostics.at(-1).output_format,'scope_json_v3');
 let boundedCalls=0;
 const bounded=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result(Array.from({length:24},(_,i)=>({...synonym,case_id:'scope:'+i}))),{...env,AI:{run:async(_,p)=>{boundedCalls++;return {response:{reviews:reviews(JSON.parse(p.messages[1].content))}};}}});
 assert.equal(boundedCalls,4);assert.equal(bounded.pairs,8);assert.equal(bounded.uncertain_candidates,16,'Beyond one extra scope batch stays pending');
@@ -278,7 +275,7 @@ assert.deepEqual(outOfOrder.evidence.map(r=>r.case_id),parallel.evidence.map((_,
 // Blank semantic judgments must not count as completed or enter reusable caches.
 for (const decision of ['uncertain','reject']) {
  const blank=await reviewCompactAssignments('教員の長時間労働について',result([row('blank:one'),row('blank:two')]),{...env,AI:{run:async(_,p)=>{
-  assert.deepEqual(p.response_format.json_schema.properties.reviews.items.properties.comparison,{type:'string'});
+  assert.deepEqual(p.response_format,{type:'json_object'});
   const rs=reviews(JSON.parse(p.messages[1].content));
   Object.assign(rs[0],{beneficiary:'',activity:'',comparison:'  ',relation:decision==='uncertain'?'unclear':'different',decision,q:'',a:''});
   return {response:{reviews:rs}};
