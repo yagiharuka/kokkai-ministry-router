@@ -66,3 +66,24 @@ await retrieveAssignments(plan, async (resource, params) => { legacyCalls.push({
 const firstSearches = legacyCalls.filter(call => call.resource === 'speech').slice(0, 6);
 assert.deepEqual([...new Set(firstSearches.map(call => call.any))], ['ペット 生体販売', '生体販売'], 'Legacy recall must not fall back to the broadened actor after query reordering');
 console.log('Recall quality: generic phrasing, Katakana word spans, compound query priority, two sourced debates, 40 synthetic distractions and unchanged request/shortlist caps passed. No model calls or live searches.');
+
+
+// Diagnostic-only stage boundary: sourced historical fixtures are not injected
+// into production routing or semantic prompts, and this spends no AI quota.
+const regression = JSON.parse(await readFile(new URL('../evaluation/latency-regressions-20261014.json', import.meta.url), 'utf8'));
+const byQuestion = new Map();
+for (const [i, entry] of regression.cases.entries()) {
+  const source = entry.source, issue = 'offline-fixture-' + i;
+  const row = {issueID:issue, date:source.date, nameOfMeeting:source.meeting, speechRecord:[
+    {issueID:issue,speechID:issue+'_q',speechOrder:1,speakerGroup:'会派',speakerPosition:'',speech:source.question,speechURL:source.question_url},
+    {issueID:issue,speechID:issue+'_a',speechOrder:2,speakerGroup:'',speaker:source.speaker,speakerPosition:source.position,speech:source.answer,speechURL:source.url},
+  ]};
+  if (!byQuestion.has(entry.proposed_question)) byQuestion.set(entry.proposed_question, []);
+  byQuestion.get(entry.proposed_question).push({entry,row,index:i});
+}
+for (const [question, entries] of byQuestion) {
+  const results=reviewCandidates(entries.map(x=>x.row),makePlan(question),96);
+  const shortlisted=diversifyCandidates(results,24);
+  const omitted=entries.filter(x=>!results.some(r=>r.case_id.startsWith(x.row.issueID+':')));
+  console.log('OFFLINE REGRESSION RECALL',JSON.stringify({question,cases:entries.length,found:results.length,shortlisted:shortlisted.length,omitted:omitted.map(x=>({case_id:x.entry.source.case_id,expected:x.entry.expected,position:x.entry.source.position}))}));
+}
