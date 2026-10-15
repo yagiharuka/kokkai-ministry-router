@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261014-69';
+const routingVersion = '20261015-70';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -732,7 +732,7 @@ const compactInstructions = `国会会議録の質疑が、利用者の proposed
 2. 対象が一致したら取組を比較します。「どのような支援」「活躍を推進」「環境改善」は広い政策目的です。その対象の活動を妨げる障壁の除去、資金、参加機会、安全確保など具体策・政府方針も accept。支援は給付や補助金だけではありません。例：「教員の働く環境改善」に対する「長時間労働を減らす支援員配置」の答弁は accept。元の問いが具体的だから、質問案と同じ言い回しでないからという理由で落としません。特定制度・変更内容を明示した案の場合だけ、その指定を満たす応答が必要です。制度の運営・予算・効果・改善・慎重な見解も実質的な応答です。
 3. 対象・課題は source_question と source_answer を合わせて読みます。答弁が質問の対象者を繰り返さず「御指摘の問題」などと答えても、質問への応答なら対象を引き継ぎます。受益者を守るため提供者や規制対象者に取組を求める施策も accept。対象者専用の施策でなくても、質問でその活動上の障壁を扱い答弁が解消への取組を示せば accept。無関係な論点同士を結び付けたり、対象の名前が背景に出るだけの候補を採用してはいけません。一つの質問発言に複数の論点がある場合、答弁が実際に応答している問いを特定し、その問いと取組を質問案と比較します。質問発言の前段が質問案と同じ話題でも、答弁が後段の別の問いに答えていればrejectです。質問文だけの一致では採用しません。挨拶・手続・附帯決議尊重の挨拶、本会議で総理が多数の無関係な分野をまとめて答えた曖昧なものは reject。文脈不足なら uncertain。
 source_question / source_answer は原文を文単位に分けた番号付き辞書です。source_question_ref があればその候補の質問原文と同一です。省略された previous_context は空、truncated は false です。
-出力全体は {"reviews":[判定オブジェクト,...]} の形です。reviews の各要素は id, beneficiary, activity, relation, comparison, decision, q, a を持つオブジェクトです。beneficiary に候補の施策の実際の受益者、activity にその受益者の活動領域を記述します。relation は質問案の対象との関係で、同じ対象・領域なら same、上位概念や一般論だけなら broader、質問案の対象がサービス提供者として出るだけなら provider_only、別の対象・領域なら different、確認不能なら unclear です。same 以外は採用不可。提供者と受益者は原文から別々に特定し、質問案の対象を候補の受益者欄に転記してはいけません。comparison に「誰のどの活動への施策か、受益者と提供者の役割、質問案との対応または相違」を候補ごとに日本語20〜60字で先に書き、その比較に従い decision を accept / reject / uncertain から選びます。前の候補の理由を流用せず、各候補の実際の対象と取組を比較します。「same」などのコードや「一致する」だけの説明は不可。例: {"id":"c1","beneficiary":"学校の教員","activity":"学校での教育業務","relation":"same","comparison":"教員の長時間労働に対し支援員配置で業務負担を軽減する答弁","decision":"accept","q":"q1","a":"v1a2"}。全候補を一度ずつ返します。accept の q と a には対象・課題と取組が分かる質問・答弁の原文番号をそれぞれ一つ選びます。単なる同意・挨拶・問い掛けを選びません。reject / uncertain の q と a は両方空文字。原文番号を別候補から持ってこないでください。引用文は生成しません。`;
+出力全体は {"reviews":[判定オブジェクト,...]} の形です。reviews の各要素は id, beneficiary, activity, relation, comparison, decision, q, a を持つオブジェクトです。beneficiary に候補の施策の実際の受益者、activity にその受益者の活動領域を記述します。relation は質問案の対象との関係で、同じ対象・領域なら same、上位概念や一般論だけなら broader、質問案の対象がサービス提供者として出るだけなら provider_only、別の対象・領域なら different、確認不能なら unclear です。same 以外は採用不可。提供者と受益者は原文から別々に特定し、質問案の対象を候補の受益者欄に転記してはいけません。comparison に「誰のどの活動への施策か、受益者と提供者の役割、質問案との対応または相違」を候補ごとに日本語20〜60字で先に書き、その比較に従い decision を accept / reject / uncertain から選びます。前の候補の理由を流用せず、各候補の実際の対象と取組を比較します。「same」などのコードや「一致する」だけの説明は不可。例: {"id":"c1","beneficiary":"学校の教員","activity":"学校での教育業務","relation":"same","comparison":"教員の長時間労働に対し支援員配置で業務負担を軽減する答弁","decision":"accept","q":"q1","a":"v1a2"}。全候補を一度ずつ返します。reject / uncertain でも comparison を空欄にせず、原文のどの対象が異なるか、または何の文脈が不足するかを具体的に書きます。accept の q と a には対象・課題と取組が分かる質問・答弁の原文番号をそれぞれ一つ選びます。単なる同意・挨拶・問い掛けを選びません。reject / uncertain の q と a は両方空文字。原文番号を別候補から持ってこないでください。引用文は生成しません。`;
 
 
 const scopeInstructions = `この判定は、採否と原文の検索上の一致が食い違う候補の追加確認です。proposed_question と source_question / source_answer / previous_context を比較し、同じ対象者の同じ活動分野を実際に扱っているかだけを厳密に確認します。質問案が「A分野におけるB」「AのB」の形なら、確認するのは「Aの領域内のB」への施策です。Aへの支援だけ、B一般への支援だけでは足りません。原文でAが製品やサービスを提供し、その利用者であるBを支援する話を、Aの領域内のBへの支援と読み替えてはいけません。Aの企業への実証・開発支援があっても、その企業の特定層の活躍支援だとは推測しません。まず質問案の「活動領域／その領域内の対象者」を一組として読み、原文の受益者と活動領域がその組合せに対応するか比較します。beneficiaryには製品・サービスの実際の利用者や施策の受益者を書き、activityにはその人が原文で行う活動を書きます。comparisonではこの組合せとの対応・相違を説明し、質問案の一部の語だけに対する支援を採用理由にしません。単語一致は不要で、同義語・言い換え・直前文脈から確認できる対象も認めます。ただし、特定の対象を問う案に対する「国民全般」「働く人全般」「企業全般」の一般論は、その中に対象者も含まれるというだけでは accept にしません。一般住民の育児支援を、研究者の研究と育児の両立支援の根拠にはできません。国内外の指定がない質問案は国内施策が対象です。外国だけの事例・国際協力は reject。海外・輸出・外交を問う案は指定された範囲で確認します。提供者と受益者の役割が異なる場合も reject。議長の案内や挨拶、背景での名前の列挙だけも reject。原文に対応が確認できなければ reject、抜粋不足で確認できなければ uncertain にします。対象が対応していれば、広い支援の問いに対する障壁除去・制度説明・政府方針などの具体策は accept です。
@@ -857,7 +857,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         id: { type: 'string', enum: localIds },
         beneficiary: { type: 'string' }, activity: { type: 'string' },
         relation: { type: 'string', enum: ['same', 'broader', 'provider_only', 'different', 'unclear'] },
-        comparison: { type: 'string' },
+        comparison: { type: 'string', minLength: 1, maxLength: 300 },
         decision: { type: 'string', enum: ['accept', 'reject', 'uncertain'] },
         q: { type: 'string', enum: ['', ...new Set(batch.flatMap(row => Object.keys(grounded.get(row.candidate_id).question)))] },
         a: { type: 'string', enum: ['', ...new Set(batch.flatMap(row => Object.keys(grounded.get(row.candidate_id).answer)))] },
@@ -907,7 +907,7 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
         const id = globalIds.get(localId);
         if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
         const validDecision = ['accept', 'reject', 'uncertain'].includes(decision);
-        if (!validDecision || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) { diagnostic.invalid_fields++; continue; }
+        if (!validDecision || !comparison.trim() || comparison.length > 300 || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) { diagnostic.invalid_fields++; continue; }
         const finalDecision = relation === 'unclear' ? 'uncertain' : relation !== 'same' ? 'reject' : decision;
         // A rejected/uncertain item does not contribute evidence or a share.
         // Empty ancillary labels or unnecessary refs must not turn a clear
@@ -957,9 +957,9 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
       review_reason: valid ? normalize(r.reason) : '原文番号を確認できないため保留。',
       question_evidence: questionQuoteWithContext(row.question, q), answer_evidence: a };
   });
-  // Start required verification for the ready prefix while remaining initial
-  // batches run. Already-ready batches share one call. Later rows share the eight-row budget,
-  // in the same candidate order, and are coalesced into at most one tail call.
+  // Start required verification as soon as any batch supplies grounded candidates.
+  // Do not wait for a slower first batch. Already-ready batches share one call;
+  // remaining rows share the eight-row budget and at most one tail call.
   // No speculative calls: only accepted, grounded candidates are checked.
   const anchor = !ctx.scopeCheck && makePlan(question).groups.find(group => group.role !== 'requested_change')?.text;
   const ambiguousRows = rows => anchor ? rows.filter(row => row.screening === 'accept' && (
@@ -986,17 +986,30 @@ async function reviewCompactAssignments(question, result, env = {}, fetchModel =
     }
     return { result: checked, missing: Math.max(0, checking.length - checked.reviewed_candidates) };
   };
-  await outcomePromises[0];
-  let readyPrefix = 0;
-  while (settledOutcomes[readyPrefix]) readyPrefix++;
-  const firstReviewed = settledOutcomes.slice(0, readyPrefix).flatMap(groundReviews);
-  const firstAmbiguous = ambiguousRows(firstReviewed);
+  const consumed = new Set(), reviewedByBatch = new Map();
+  let firstAmbiguous = [];
+  while (consumed.size < batches.length && !firstAmbiguous.length) {
+    await Promise.race(outcomePromises.filter((_, index) => !consumed.has(index)));
+    for (let index = 0; index < batches.length; index++) {
+      if (!consumed.has(index) && settledOutcomes[index]) {
+        consumed.add(index);
+        const rows = groundReviews(settledOutcomes[index]);
+        reviewedByBatch.set(index, rows);
+        firstAmbiguous.push(...ambiguousRows(rows));
+      }
+    }
+  }
   const earlyScope = verifyScope(firstAmbiguous, 8);
   const outcomes = await Promise.all(outcomePromises);
-  const laterReviewed = outcomes.slice(readyPrefix).flatMap(groundReviews);
+  const laterReviewed = outcomes.flatMap((outcome, index) => {
+    if (consumed.has(index)) return [];
+    const rows = groundReviews(outcome);
+    reviewedByBatch.set(index, rows);
+    return rows;
+  });
   const tailScope = verifyScope(ambiguousRows(laterReviewed), Math.max(0, 8 - firstAmbiguous.length));
   const scopeOutcomes = (await Promise.all([earlyScope, tailScope])).filter(Boolean);
-  const reviewed = [...firstReviewed, ...laterReviewed];
+  const reviewed = batches.flatMap((_, index) => reviewedByBatch.get(index));
   const scopeMissing = scopeOutcomes.reduce((sum, entry) => sum + entry.missing, 0);
   const accepted = reviewed.filter(row => row.screening === 'accept');
   const unique = [...new Map(accepted.map(row => [`${row.case_id}:${row.ministry}`, row])).values()];
@@ -1121,7 +1134,7 @@ async function retrieveFastAssignments(plan, fetchNdl, since = '2001-01-01', opt
 
 
 const frontendOrigin = "https://yagiharuka.github.io";
-const publicRoutingVersion = '20261014-69';
+const publicRoutingVersion = '20261015-70';
 const analysisCacheSeconds = 86400;
 const rootPage = `<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="robots" content="noindex"><title>国会会議録API中継</title><p>検索画面は <a href="https://yagiharuka.github.io/kokkai-ministry-router/">GitHub Pages</a> です。</p></html>`;
 const departments = ["経済産業省", "厚生労働省", "文部科学省", "総務省", "財務省", "金融庁", "外務省", "法務省", "農林水産省", "国土交通省", "環境省", "防衛省", "デジタル庁", "こども家庭庁", "個人情報保護委員会"];

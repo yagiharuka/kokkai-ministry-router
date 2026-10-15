@@ -253,6 +253,44 @@ assert.deepEqual(scopeSizes,[8], 'Already completed batches share one scope call
 assert.equal(pipelinedBudget.pairs,14);assert.equal(pipelinedBudget.uncertain_candidates,10);
 assert.equal(pipelinedBudget.reviewed_candidates,24);
 
+// A slow first batch must not block scope verification of a later batch.
+let releaseFirst, outOfOrderInitial = 0, outOfOrderScope = 0;
+const firstBlocked = new Promise(resolve => { releaseFirst = resolve; });
+let orderWatchdog;
+const outOfOrder = await Promise.race([
+ reviewCompactAssignments('教員の長時間労働について',pipelineInput,{...env,AI:{run:async(_,p)=>{
+  const input=JSON.parse(p.messages[1].content), rs=reviews(input);
+  if(p.messages[0].content.includes('この判定は')) { outOfOrderScope++; releaseFirst(); }
+  else {
+   const index=outOfOrderInitial++;
+   if(index===0) await firstBlocked;
+   if(index===1) Object.assign(rs[0],{beneficiary:'教師',activity:'学校での勤務'});
+  }
+  return {response:{reviews:rs}};
+ }}}),
+ new Promise((_,reject)=>{orderWatchdog=setTimeout(()=>reject(new Error('Scope blocked by first batch')),2000);})
+]).finally(()=>clearTimeout(orderWatchdog));
+assert.equal(outOfOrderScope,1);
+assert.equal(outOfOrder.review_model_calls,4);
+assert.equal(outOfOrder.pairs,24);
+assert.deepEqual(outOfOrder.evidence.map(r=>r.case_id),parallel.evidence.map((_,i)=>'pipeline:'+i),'Completion order must not change evidence ordering');
+
+// Blank semantic judgments must not count as completed or enter reusable caches.
+for (const decision of ['uncertain','reject']) {
+ const blank=await reviewCompactAssignments('教員の長時間労働について',result([row('blank:one'),row('blank:two')]),{...env,AI:{run:async(_,p)=>{
+  assert.equal(p.response_format.json_schema.properties.reviews.items.properties.comparison.minLength,1);
+  const rs=reviews(JSON.parse(p.messages[1].content));
+  Object.assign(rs[0],{beneficiary:'',activity:'',comparison:'  ',relation:decision==='uncertain'?'unclear':'different',decision,q:'',a:''});
+  return {response:{reviews:rs}};
+ }}});
+ assert.equal(blank.reviewed_candidates,1);
+ assert.equal(blank.pairs,1);
+ assert.equal(blank.assessment_partial,true);
+ assert.equal(blank.review_diagnostics[0].invalid_fields,1);
+ assert.equal(blank.review_diagnostics[0].cache_write_deferred,false);
+ assert.match(blank.review_candidates[0].review_reason,/AI判定を確認できなかった/);
+}
+
 // Public request path: source retrieval starts without an AI planning call,
 // adjacent full source turns are reviewed, and the identical question is cached.
 const previousFetch=globalThis.fetch,previousNow=Date.now;let clock=previousNow();Date.now=()=>clock+=3001;
