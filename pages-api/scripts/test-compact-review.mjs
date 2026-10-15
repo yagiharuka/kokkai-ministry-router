@@ -197,7 +197,9 @@ for(const relation of ['broader','provider_only','different','unclear']) {
   return {response:{reviews:rs}};
  }}});
  assert.equal(guarded.pairs,0,'Only the same beneficiary/activity relation may enter the shares');
- assert.equal(relation==='unclear'?guarded.uncertain_candidates:guarded.rejected_candidates,1);
+ assert.equal(guarded.uncertain_candidates,1,'Conflicting acceptance and mismatch relation must be held, not silently rejected');
+  assert.equal(guarded.rejected_candidates,0);
+  assert.match(guarded.review_candidates[0].review_reason,/採否と対象分類が矛盾|対象.*対応/);
 }
 
 const shortReject=await reviewCompactAssignments('教員の長時間労働を是正するための対策',result([row('short:reject')]),{...env,AI:{run:async(_,p)=>{

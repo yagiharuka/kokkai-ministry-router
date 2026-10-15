@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261015-74"};
+ const params={question:input,v:"20261015-75"};
  // Let the server's analysis cache report current wait and original timings.
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),115000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
@@ -161,7 +161,7 @@ function render(r){
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
  const pendingHtml=pending.length?'<div class="examples"><h3>確認が必要な質疑の候補</h3><p class="caveat">関連性が未判定、または判断に文脈が足りない候補です。表示された所属は実際の答弁者の所属で、担当を確定した結果ではありません。</p>'+pending.slice(0,24).map(evidenceCard).join('')+'</div>':'';
- const rejects=reviewed&&Array.isArray(r.rejected_evidence)?r.rejected_evidence.slice(0,12):[];
+ const rejects=reviewed&&Array.isArray(r.rejected_evidence)?r.rejected_evidence.slice(0,24):[];
  const rejectedHtml=rejects.length?'<details class="examples"><summary>不採用と判断した候補の確認（'+Number(r.rejected_candidates||rejects.length)+'件中'+rejects.length+'件）</summary><p class="caveat">AIが関連性なしと判断した質疑です。判定の誤りや取りこぼしを検証するため、原文・所属・不採用理由を表示します。採用件数や割合には含めていません。</p>'+rejects.map(evidenceCard).join('')+'</details>':'';
  $('results').hidden=false;
  // Counts and error categories only: no prompts, generated text or secrets.

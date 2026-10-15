@@ -85,5 +85,6 @@ for (const [question, entries] of byQuestion) {
   const results=reviewCandidates(entries.map(x=>x.row),makePlan(question),96);
   const shortlisted=diversifyCandidates(results,24);
   const omitted=entries.filter(x=>!results.some(r=>r.case_id.startsWith(x.row.issueID+':')));
+  assert.deepEqual(omitted,[],'Every sourced fixture must survive the model-independent recall stage');
   console.log('OFFLINE REGRESSION RECALL',JSON.stringify({question,cases:entries.length,found:results.length,shortlisted:shortlisted.length,omitted:omitted.map(x=>({case_id:x.entry.source.case_id,expected:x.entry.expected,position:x.entry.source.position}))}));
 }

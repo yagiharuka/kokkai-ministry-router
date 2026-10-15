@@ -432,7 +432,10 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
         const validDecision = ['accept', 'reject', 'uncertain'].includes(decision);
         if (!validDecision || !comparison.trim() || comparison.length > 300 || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) { diagnostic.invalid_fields++; continue; }
-        const finalDecision = relation === 'unclear' ? 'uncertain' : relation !== 'same' ? 'reject' : decision;
+        const contradictoryAcceptance = decision === 'accept' && relation !== 'same';
+        // A model decision that contradicts its own beneficiary/activity relation
+        // is not evidence of rejection. Hold it for audit, never add it to shares.
+        const finalDecision = relation === 'unclear' || contradictoryAcceptance ? 'uncertain' : relation !== 'same' ? 'reject' : decision;
         // A rejected/uncertain item does not contribute evidence or a share.
         // Empty ancillary labels or unnecessary refs must not turn a clear
         // rejection into a failed batch. Accepted items still need full roles,
@@ -440,7 +443,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         if (finalDecision === 'accept' && (!beneficiary.trim() || !activity.trim() ||
             !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; continue; }
         const fallbackReason = finalDecision === 'uncertain' ? '対象と答弁の対応を確認できないため保留。' : '質問案の対象・活動に対応する答弁ではないと判定。';
-        byId.set(id, { id, beneficiary, activity, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: comparison.trim().slice(0,300) || fallbackReason });
+        byId.set(id, { id, beneficiary, activity, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: contradictoryAcceptance ? ('採否と対象分類が矛盾：' + comparison.trim()).slice(0,300) : comparison.trim().slice(0,300) || fallbackReason });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
@@ -544,7 +547,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
   const completed = outcomes.reduce((sum, outcome) => sum + outcome.completed, 0) - scopeMissing;
   return { ...base, ...summarize(unique), evidence: unique, candidates: unique,
     // Bounded, source-backed audit trail. Rejected rows never affect shares.
-    rejected_evidence: reviewed.filter(row => row.screening === 'reject').slice(0, 12),
+    rejected_evidence: reviewed.filter(row => row.screening === 'reject').slice(0, 24),
     review_candidates: [...reviewed.filter(row => row.screening === 'uncertain'), ...contextPending],
     assessment_status: completed ? 'reviewed' : 'failed', assessment_model: config.model,
     ...(errors.length ? { assessment_error: errors.includes('quota_exhausted') ? 'quota_exhausted' : errors[0], assessment_partial: true } : {}),
