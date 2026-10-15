@@ -157,6 +157,8 @@ function render(r){
  const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(validDuration(r.elapsedSeconds)&&!cachedResult(r)?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const analyzedAt=Date.parse(r.analyzed_at||'');
  const saved=reviewed&&cachedResult(r)?'<p class="caveat">保存済みの結果を表示しています'+(Number.isFinite(analyzedAt)?'（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）':'')+'。同じ質問の結果は最大24時間再利用します。</p>':'';
+ const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261015-75';
+ const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261015-75）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
  const incompleteNotice=r.assessment_partial?'<p class="error" role="status">一部のAI判定が未完了です。関連する答弁の取りこぼしがあり、以下の割合は判定できた一部の質疑だけで算出しています。</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
@@ -167,7 +169,7 @@ function render(r){
  // Counts and error categories only: no prompts, generated text or secrets.
  const rows=diagnosticRows(r.review_diagnostics),diagnostic=diagnosticText(r,rows);
  $('results').setAttribute('data-review-diagnostics',JSON.stringify(rows));
- $('results').innerHTML=incompleteNotice+'<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+diagnosticSection(diagnostic)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+rejectedHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
+ $('results').innerHTML=engineNotice+incompleteNotice+'<div class="heading"><div><p class="eyebrow">分析結果</p><h2>'+title+'</h2></div><span>'+count+'</span></div>'+shareHtml+stats+saved+timingSection(r)+diagnosticSection(diagnostic)+'<p class="caveat">'+note+'</p>'+acceptedHtml+pendingHtml+rejectedHtml+'<div id="law-results">'+lawSection(r)+'</div>'+(r.search_limited?'<p class="caveat">取得件数の上限に達しました。確認できた一部の事例です。</p>':'')+(r.assessment_partial?'<p class="caveat">一部の候補は判定を完了できませんでした。確認できた質疑から算出しています。</p>':'')+(r.unreviewed_candidates?'<p class="caveat">ほかに未判定の候補が '+Number(r.unreviewed_candidates)+'件あります。</p>':'')+(r.partial?'<p class="caveat">一部の会議録を取得できませんでした。</p>':'');
  bindDiagnosticCopy(diagnostic);
 
 }

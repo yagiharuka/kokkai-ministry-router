@@ -282,10 +282,15 @@ const partialNotice=render({...timedBase,assessment_partial:true});
 assert.ok(partialNotice.startsWith('<p class="error" role="status">一部のAI判定が未完了です。'));
 assert.ok(partialNotice.indexOf('取りこぼし')<partialNotice.indexOf('class="shares"'),'Incomplete judgments must be visible before percentages');
 assert.ok(!render({...timedBase,assessment_partial:false}).includes('一部のAI判定が未完了です。'));
+const oldApi=render({...timedBase,routing_version:'20261015-73'});
+assert.ok(oldApi.includes('判定APIが旧版'),'Detect independent API deployment mismatch');
+assert.ok(!render({...timedBase,routing_version:'20261015-75'}).includes('判定APIが旧版'));
+assert.ok(!render({...timedBase,routing_version:'<invalid>'}).includes('判定APIが旧版'));
+
 const source=await readFile(new URL('../frontend/app.js',import.meta.url),'utf8');
 assert.equal(await readFile(new URL('../../dist/app.js',import.meta.url),'utf8'),source,'Published and source frontend files must match');
 const page=await readFile(new URL('../../dist/index.html',import.meta.url),'utf8');
-assert.ok(page.includes('app.js?v=20261015-75'),'Only the frontend asset cache key changes');
+assert.ok(page.includes('app.js?v=20261015-75-ui2'),'Only the frontend asset cache key changes');
 assert.ok(source.includes('question:input,v:"20261015-75"'),'The analysis/cache version remains unchanged');
 console.log('Frontend states, timings, safe numeric diagnostics, cache labels, absent usage, clipboard success/fallback/repeated taps, stale-copy isolation, escaping, unchanged source requests and nonblocking law lookup passed. No network or model calls.');
 
