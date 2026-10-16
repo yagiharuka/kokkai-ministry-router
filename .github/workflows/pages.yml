@@ -30,6 +30,30 @@ jobs:
       - name: Test routing and public UI
         run: npm test
         working-directory: pages-api
+      - name: Inspect live Cloudflare API (no AI inference)
+        run: |
+          node --input-type=module <<'NODE'
+          const expected = '20261016-76';
+          const url = 'https://kokkai-ministry-router.haru620328.workers.dev/api/status';
+          try {
+            const response = await fetch(url, {
+              signal: AbortSignal.timeout(15000),
+              headers: { 'Cache-Control': 'no-cache' },
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const status = await response.json();
+            const actual = typeof status.routing_version === 'string' ? status.routing_version : 'missing';
+            console.log('LIVE_API_STATUS ' + JSON.stringify({
+              expected, actual, matching: actual === expected,
+              model_ready: status.model_ready === true,
+              can_analyze: status.can_analyze === true,
+              quota_exhausted: status.assessment_error === 'quota_exhausted'
+            }));
+            if (actual !== expected) console.log('API_REDEPLOY_REQUIRED: GitHub Pages does not deploy the separate Cloudflare Worker.');
+          } catch (error) {
+            console.log('LIVE_API_STATUS_UNAVAILABLE ' + String(error?.message || error).slice(0, 160));
+          }
+          NODE
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
