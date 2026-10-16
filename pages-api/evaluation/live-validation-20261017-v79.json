@@ -1,0 +1,103 @@
+{
+  "purpose": "One-time live v79 first-analysis latency and recall test. One run per question; no retries.",
+  "date_jst": "2026-10-17",
+  "engine_version": "20261017-79",
+  "comparison_limits": [
+    "The test uses cached meeting-record retrieval (40ms and 37ms), so this is not full cold-start search latency.",
+    "The two prompts are not a representative sample. Model load and prior-version cache conditions differ.",
+    "Startup had incomplete AI review (18/24); its 17.441-second duration is not comparable to a fully complete response.",
+    "No causal attribution to low reasoning in scope alone can be inferred from these two end-to-end measurements."
+  ],
+  "research": {
+    "elapsed_wall_ms": 18829,
+    "retrieval_ms": 40,
+    "review_ms": 18726,
+    "total_ms": 18766,
+    "analysis_cache_hit": false,
+    "model_calls": 5,
+    "reviewed_candidates": 24,
+    "pairs": 5,
+    "uncertain": 2,
+    "error": null,
+    "scope_calls": [
+      {
+        "effort": "low",
+        "ms": 4003,
+        "completed": 1,
+        "expected": 1
+      },
+      {
+        "effort": "low",
+        "ms": 2940,
+        "completed": 1,
+        "expected": 1
+      }
+    ],
+    "accepted_case_ids": [
+      "122115385X00920260710:122115385X00920260710_203",
+      "122104889X02120260619:122104889X02120260619_153",
+      "122104080X01020260529:122104080X01020260529_104",
+      "122104080X00920260527:122104080X00920260527_183",
+      "122104260X01920260715:122104260X01920260715_110"
+    ],
+    "shares": [
+      [
+        "内閣府・内閣官房等",
+        40
+      ],
+      [
+        "厚生労働省",
+        20
+      ],
+      [
+        "文部科学省",
+        20
+      ],
+      [
+        "経済産業省",
+        20
+      ]
+    ]
+  },
+  "startup": {
+    "elapsed_wall_ms": 17508,
+    "retrieval_ms": 37,
+    "review_ms": 17404,
+    "total_ms": 17441,
+    "analysis_cache_hit": false,
+    "model_calls": 3,
+    "reviewed_candidates": 18,
+    "pairs": 4,
+    "uncertain": 7,
+    "error": "model_unavailable",
+    "scope_calls": [],
+    "accepted_case_ids": [
+      "121704080X01120250418:121704080X01120250418_184",
+      "121704376X00220250212:121704376X00220250212_072",
+      "121704080X01120250418:121704080X01120250418_186",
+      "121704080X01120250418:121704080X01120250418_192"
+    ],
+    "shares": [
+      [
+        "経済産業省",
+        75
+      ],
+      [
+        "金融庁",
+        25
+      ]
+    ]
+  },
+  "baseline_v73": {
+    "research": {
+      "total_ms": 32926,
+      "retrieval_ms": 128
+    },
+    "startup": {
+      "total_ms": 51216,
+      "retrieval_ms": 13779
+    }
+  },
+  "followup": "Keep v79 as a monitored trial; do not claim consistent sub-20 second processing until source-cold and fully-completed assessments are validated.",
+  "github_run": "https://github.com/yagiharuka/kokkai-ministry-router/actions/runs/38922560198"
+}
