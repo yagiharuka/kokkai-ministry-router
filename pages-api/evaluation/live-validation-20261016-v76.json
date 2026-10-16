@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-16",
+  "purpose": "Real API benchmark of v76 against historical v73 runs; two trials only, not causal or representative",
+  "environment": "Cloudflare Workers Free, gpt-oss-20b, public API; no retries",
+  "v76": {
+    "routing_version": "20261016-76",
+    "live_status": {
+      "matching": true,
+      "model_ready": true,
+      "can_analyze": true,
+      "quota_exhausted": false
+    },
+    "research": {
+      "wall_ms": 41174,
+      "retrieval_ms": 5419,
+      "review_ms": 35680,
+      "total_ms": 41099,
+      "reviewed_candidates": 24,
+      "pairs": 5,
+      "uncertain_candidates": 2,
+      "review_model_calls": 5,
+      "assessment_error": null,
+      "analysis_cache_hit": false,
+      "accepted_case_ids": [
+        "122115385X00920260710:122115385X00920260710_203",
+        "122104889X02120260619:122104889X02120260619_153",
+        "122104889X02020260617:122104889X02020260617_052",
+        "122104080X00920260527:122104080X00920260527_183",
+        "122114080X01020260611:122114080X01020260611_147"
+      ],
+      "shares": [
+        {
+          "ministry": "文部科学省",
+          "percent": 60
+        },
+        {
+          "ministry": "内閣府・内閣官房等",
+          "percent": 40
+        }
+      ]
+    },
+    "startup": {
+      "wall_ms": 62932,
+      "retrieval_ms": 12021,
+      "review_ms": 50780,
+      "total_ms": 62801,
+      "reviewed_candidates": 16,
+      "pairs": 2,
+      "uncertain_candidates": 10,
+      "review_model_calls": 5,
+      "assessment_error": "model_unavailable",
+      "analysis_cache_hit": false,
+      "accepted_case_ids": [
+        "121704080X01120250418:121704080X01120250418_186",
+        "121704080X01120250418:121704080X01120250418_192"
+      ],
+      "shares": [
+        {
+          "ministry": "経済産業省",
+          "percent": 100
+        }
+      ]
+    }
+  },
+  "v73_baseline": {
+    "research": {
+      "total_ms": 32926,
+      "retrieval_ms": 128,
+      "review_ms": 32798,
+      "reviewed_candidates": 24
+    },
+    "startup": {
+      "total_ms": 51216,
+      "retrieval_ms": 13779,
+      "review_ms": 37437,
+      "reviewed_candidates": 24
+    }
+  },
+  "limitations": [
+    "N=1 for each case and version; source-cache and traffic conditions differ.",
+    "Model failures and semantic acceptance vary; no evidence of latency improvement.",
+    "No new automatic paid services or quota-consuming CI benchmarks."
+  ],
+  "decision": "Revert balancing in v77, preserving deterministic batching and audit safety.",
+  "github_actions_run": "https://github.com/yagiharuka/kokkai-ministry-router/actions/runs/38917821143"
+}

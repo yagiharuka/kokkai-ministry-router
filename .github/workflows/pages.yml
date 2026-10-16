@@ -33,7 +33,7 @@ jobs:
       - name: Inspect live Cloudflare API (no AI inference)
         run: |
           node --input-type=module <<'NODE'
-          const expected = '20261016-76';
+          const expected = '20261016-77';
           const url = 'https://kokkai-ministry-router.haru620328.workers.dev/api/status';
           try {
             const response = await fetch(url, {
@@ -52,46 +52,6 @@ jobs:
             if (actual !== expected) console.log('API_REDEPLOY_REQUIRED: GitHub Pages does not deploy the separate Cloudflare Worker.');
           } catch (error) {
             console.log('LIVE_API_STATUS_UNAVAILABLE ' + String(error?.message || error).slice(0, 160));
-          }
-          NODE
-      - name: One-time v76 live timing comparison (no retries)
-        run: |
-          node --input-type=module <<'NODE'
-          const base = 'https://kokkai-ministry-router.haru620328.workers.dev';
-          const status = await fetch(base + '/api/status', {signal: AbortSignal.timeout(15000)}).then(r => r.json()).catch(() => ({}));
-          if (status.routing_version !== '20261016-76' || status.can_analyze !== true) {
-            console.log('BENCHMARK_SKIPPED: current engine/version not available');
-          } else {
-            const samples = [
-              ['research', '基礎の研究開発支援をさらに強化するべきではないか。'],
-              ['startup', 'スタートアップ分野における女性活躍を推進するため、政府はどのような支援を行っているか。']
-            ];
-            for (const [name, question] of samples) {
-              const start = Date.now();
-              try {
-                const url = base + '/api/cases?' + new URLSearchParams({question, v:'20261016-76'});
-                const response = await fetch(url,{signal:AbortSignal.timeout(115000), headers:{'Cache-Control':'no-store'}});
-                if (!response.ok) throw new Error('HTTP '+response.status);
-                const data = await response.json();
-                const metric = {
-                  name, wall_ms: Date.now()-start, routing_version: data.routing_version,
-                  analysis_cache_hit: data.analysis_cache_hit === true,
-                  assessment_status: data.assessment_status, assessment_error: data.assessment_error || null,
-                  retrieval_ms: data.timing?.retrieval_ms ?? null,
-                  review_ms: data.timing?.review_ms ?? null, total_ms: data.timing?.total_ms ?? null,
-                  candidates: data.reviewed_candidates ?? null, pairs: data.pairs ?? null,
-                  uncertain: data.uncertain_candidates ?? null,
-                  model_calls: data.review_model_calls ?? null,
-                  accepted_case_ids: (data.evidence || []).map(e=>e.case_id),
-                  shares: (data.shares || []).map(e=>({ministry:e.ministry,percent:e.percent})),
-                };
-                console.log('LIVE_V76_BENCHMARK '+JSON.stringify(metric));
-                if (data.assessment_error === 'quota_exhausted' || data.assessment_error === 'model_busy') break;
-              } catch(e) {
-                console.log('LIVE_V76_BENCHMARK_ERROR '+JSON.stringify({name,wall_ms:Date.now()-start,error:String(e.message||e).slice(0,120)}));
-                break;
-              }
-            }
           }
           NODE
       - name: Configure Pages
