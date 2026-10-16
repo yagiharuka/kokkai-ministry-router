@@ -12,6 +12,10 @@ assert.notEqual(identity('質問', '答弁'),identity('質問','答弁','differe
 assert.notEqual(identity('質問', '答弁'),identity('質問','答弁','@cf/openai/gpt-oss-20b','new instructions'),'Policy changes invalidate review');
 assert.notEqual(identity('質問', '答弁'),identity('質問','答弁','@cf/openai/gpt-oss-20b','classify policy',2048),'Generation settings invalidate review');
 assert.notEqual(
+  reviewCacheIdentity({model:'@cf/openai/gpt-oss-20b'}, {type:'object'}, {proposed_question:'質問'}, 'classify policy', 3072, 'default'),
+  reviewCacheIdentity({model:'@cf/openai/gpt-oss-20b'}, {type:'object'}, {proposed_question:'質問'}, 'classify policy', 3072, 'low'),
+  'Provider reasoning effort must be part of the review cache key');
+assert.notEqual(
   reviewCacheIdentity({model:'@cf/openai/gpt-oss-20b'}, {type:'object'}, {proposed_question:'質問'}, 'classify policy', 3072),
   reviewCacheIdentity({model:'@cf/openai/gpt-oss-20b'}, {type:'array'}, {proposed_question:'質問'}, 'classify policy', 3072),
   'Output schema changes invalidate review');

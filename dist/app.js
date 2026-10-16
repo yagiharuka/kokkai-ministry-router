@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261016-78"};
+ const params={question:input,v:"20261017-79"};
  // Let the server's analysis cache report current wait and original timings.
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),115000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
@@ -157,8 +157,8 @@ function render(r){
  const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(validDuration(r.elapsedSeconds)&&!cachedResult(r)?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const analyzedAt=Date.parse(r.analyzed_at||'');
  const saved=reviewed&&cachedResult(r)?'<p class="caveat">保存済みの結果を表示しています'+(Number.isFinite(analyzedAt)?'（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）':'')+'。同じ質問の結果は最大24時間再利用します。</p>':'';
- const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261016-78';
- const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261016-78）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
+ const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261017-79';
+ const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261017-79）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
  const incompleteNotice=r.assessment_partial?'<p class="error" role="status">一部のAI判定が未完了です。関連する答弁の取りこぼしがあり、以下の割合は判定できた一部の質疑だけで算出しています。</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';

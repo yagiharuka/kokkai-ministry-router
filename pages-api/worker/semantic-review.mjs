@@ -59,6 +59,8 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
     ? `JSONオブジェクトだけを返します。reviewsには候補ID ${input.candidates.map(row => row.id).join(', ')} を各1回、計${input.candidates.length}件返します。各候補を最後まで原文と比較し、comparisonは不採用・保留でも具体的な理由を書き、空欄にしません。`
     : '指定のJSONスキーマに従うJSONオブジェクトだけを返してください。';
   const payload = { stream: false, temperature: 0,
+    // Trial: low effort ONLY for the narrow additional scope check.
+    ...(name === 'kokkai_scope_check' ? { reasoning_effort: 'low' } : {}),
     max_tokens: name === 'kokkai_scope_check' ? 3072 : name === 'kokkai_search_plan' ? 1024 : name === 'kokkai_compact_review' ? (input.candidates.length > 4 ? 3072 : 2048) : 3072,
     messages: [{ role: 'system', content: 'Reasoning: low\n' + instructions + '\n' + formatInstruction },
       { role: 'user', content: JSON.stringify(input) }],
@@ -294,13 +296,13 @@ function questionQuoteWithContext(text, quote) {
 // invalidate the cache. All loaded outputs still pass local source validation.
 const compactCacheSeconds = 7 * 86400;
 const reviewCacheContract = 'strict-source-grounded-json-v1';
-export function reviewCacheIdentity(config, schema, input, instructions, maxTokens) {
+export function reviewCacheIdentity(config, schema, input, instructions, maxTokens, effort = 'default') {
   return JSON.stringify([reviewCacheContract, config.model, 'temperature=0', 'reasoning=system-low',
-    maxTokens, instructions, schema, input]);
+    maxTokens, effort, instructions, schema, input]);
 }
-async function compactCacheAddress(config, schema, input, instructions = compactInstructions, maxTokens = 3072) {
+async function compactCacheAddress(config, schema, input, instructions = compactInstructions, maxTokens = 3072, effort = 'default') {
   if (typeof caches === 'undefined' || typeof crypto === 'undefined') return null;
-  const value = reviewCacheIdentity(config, schema, input, instructions, maxTokens);
+  const value = reviewCacheIdentity(config, schema, input, instructions, maxTokens, effort);
   try {
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(b => b.toString(16).padStart(2, '0')).join('');
     return `https://kokkai-ministry-router.haru620328.workers.dev/__review_cache/${hash}`;
@@ -412,7 +414,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     try {
       // Compact references need a single generation. Never grow a failed
       // batch into a retry tree while the user is waiting.
-      const cacheKey = await compactCacheAddress(config, schema, input, instructions, outputLimit(batch));
+      const cacheKey = await compactCacheAddress(config, schema, input, instructions, outputLimit(batch), ctx.scopeCheck ? 'low' : 'default');
       const cacheStarted = Date.now();
       let data = await readCompactCache(cacheKey);
       cacheReadMs = Math.max(0, Date.now() - cacheStarted);
@@ -427,6 +429,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
       const byId = new Map(), duplicates = new Set();
       const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
         output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
+        reasoning_effort: ctx.scopeCheck ? 'low' : 'default',
         returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0 };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       diagnostic.returned = data.reviews.length;
@@ -471,6 +474,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
           ...(error?.provider_code ? { provider_code: error.provider_code } : {}),
           ...(error?.provider_error_kind ? { provider_error_kind: error.provider_error_kind } : {}),
           output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
+        reasoning_effort: ctx.scopeCheck ? 'low' : 'default',
           cache_hit: cacheHit, model_called: modelCalled, ...durationDiagnostic(), ...(modelUsage ? { usage: modelUsage } : {}) },
         reviews: batch.map(row => ({ id: row.candidate_id,
         decision: 'uncertain', reason: 'AI判定を完了できなかったため保留。', question_part: '', answer_part: '' })) };

@@ -26,6 +26,7 @@ let active=0,peak=0,calls=0;
 const parallel=await reviewCompactAssignments('教員の長時間労働の是正について',twentyfour,{...env,AI:{run:async(model,payload)=>{
  calls++;active++;peak=Math.max(peak,active);
  assert.equal(model,'@cf/openai/gpt-oss-20b');assert.equal(payload.max_tokens,3072);
+ assert.equal(payload.reasoning_effort,undefined,'Full 24-candidate analysis cannot use low effort');
  const input=JSON.parse(payload.messages[1].content);
  assert.ok(input.candidates.length<=8);
  assert.equal(input.candidates[0].id,'c1');
@@ -134,6 +135,7 @@ let scopeCalls=0;
 const scopeEnv={...env,AI:{run:async(_,p)=>{
  scopeCalls++;const input=JSON.parse(p.messages[1].content),rs=reviews(input);
  if(p.messages[0].content.includes('この判定は')) {
+  assert.equal(p.reasoning_effort,'low','Only the narrow scope check uses low reasoning');
   assert.ok(input.candidates.length<=8);
   for(const r of rs) if(JSON.stringify(input.candidates.find(c=>c.id===r.id)).includes('労働者全般')) Object.assign(r,{comparison:'労働者一般の施策で学校の勤務との対応が原文にない',decision:'reject',q:'',a:''});
  }
