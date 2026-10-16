@@ -54,6 +54,55 @@ jobs:
             console.log('LIVE_API_STATUS_UNAVAILABLE ' + String(error?.message || error).slice(0, 160));
           }
           NODE
+      - name: One-time v79 first-run latency and recall check
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://kokkai-ministry-router.haru620328.workers.dev';
+          const expected='20261017-79';
+          let ready=false;
+          for(let attempt=0;attempt<12;attempt++){
+            const status=await fetch(base+'/api/status',{signal:AbortSignal.timeout(12000),headers:{'Cache-Control':'no-cache'}}).then(r=>r.json()).catch(()=>({}));
+            if(status.routing_version===expected&&status.can_analyze===true){ready=true;break;}
+            if(status.assessment_error==='quota_exhausted')break;
+            if(attempt<11)await new Promise(done=>setTimeout(done,12000));
+          }
+          if(!ready) {
+            console.log('V79_BENCHMARK_SKIPPED_API_NOT_READY');
+          }else{
+            const cases=[
+              ['research','基礎の研究開発支援をさらに強化するべきではないか。'],
+              ['startup','スタートアップ分野における女性活躍を推進するため、政府はどのような支援を行っているか。']
+            ];
+            for(const [name,question] of cases){
+              const start=Date.now();
+              try {
+                const response=await fetch(base+'/api/cases?'+new URLSearchParams({question,v:expected}),{
+                  signal:AbortSignal.timeout(115000),headers:{'Cache-Control':'no-store'}});
+                if(!response.ok)throw Error('HTTP '+response.status);
+                const data=await response.json();
+                const diagnostics=Array.isArray(data.review_diagnostics)?data.review_diagnostics:[];
+                const row={name,version:data.routing_version,wall_ms:Date.now()-start,
+                  retrieval_ms:data.timing?.retrieval_ms??null,review_ms:data.timing?.review_ms??null,
+                  total_ms:data.timing?.total_ms??null,cache_hit:data.analysis_cache_hit===true,
+                  model_calls:data.review_model_calls??null,reviewed:data.reviewed_candidates??null,
+                  pairs:data.pairs??null,uncertain:data.uncertain_candidates??null,
+                  error:data.assessment_error||null,
+                  scope:diagnostics.filter(d=>d.output_format==='scope_json_v3').map(d=>({
+                    effort:d.reasoning_effort||'unreported',ms:d.model_ms,error:d.error||null,
+                    completed:d.completed,expected:d.expected
+                  })),
+                  accepted:(data.evidence||[]).map(e=>e.case_id),
+                  shares:(data.shares||[]).map(e=>[e.ministry,e.percent])
+                };
+                console.log('V79_BENCHMARK '+JSON.stringify(row));
+                if(row.error)break;
+              }catch(error){
+                console.log('V79_BENCHMARK_ERROR '+JSON.stringify({name,error:String(error.message||error).slice(0,130),wall_ms:Date.now()-start}));
+                break;
+              }
+            }
+          }
+          NODE
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
