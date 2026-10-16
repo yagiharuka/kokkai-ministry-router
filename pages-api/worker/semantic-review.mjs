@@ -1,4 +1,4 @@
-import { routingVersion, makePlan, concepts, normalize, summarize, diversifyCandidates, needsFullPlenaryContext } from './routing-core.mjs';
+import { makePlan, concepts, normalize, summarize, diversifyCandidates, needsFullPlenaryContext } from './routing-core.mjs';
 import { runCacheWrite } from './background-cache.mjs';
 
 const semanticInstructions = `あなたは国会質疑の関連性を確認する担当です。proposed_question は利用者の質問案、各候補の source_question と source_answer は会議録から取得した実際の質問・後続答弁です。この二つを混同しないで比較します。
@@ -289,12 +289,18 @@ function questionQuoteWithContext(text, quote) {
   return text.slice(start, start + quote.length + next.length);
 }
 
-// Reuse only a fully validated decision for an identical question AND identical
-// source payload, prompt, schema, model and release. Never cache a model failure.
+// Only complete, validated judgments are reusable across unrelated releases.
+// Changed sources, instructions, schema, model, or generation settings
+// invalidate the cache. All loaded outputs still pass local source validation.
 const compactCacheSeconds = 7 * 86400;
-async function compactCacheAddress(config, schema, input, instructions = compactInstructions) {
+const reviewCacheContract = 'strict-source-grounded-json-v1';
+export function reviewCacheIdentity(config, schema, input, instructions, maxTokens) {
+  return JSON.stringify([reviewCacheContract, config.model, 'temperature=0', 'reasoning=system-low',
+    maxTokens, instructions, schema, input]);
+}
+async function compactCacheAddress(config, schema, input, instructions = compactInstructions, maxTokens = 3072) {
   if (typeof caches === 'undefined' || typeof crypto === 'undefined') return null;
-  const value = JSON.stringify([routingVersion, config.model, instructions, schema, input]);
+  const value = reviewCacheIdentity(config, schema, input, instructions, maxTokens);
   try {
     const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(b => b.toString(16).padStart(2, '0')).join('');
     return `https://kokkai-ministry-router.haru620328.workers.dev/__review_cache/${hash}`;
@@ -406,7 +412,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     try {
       // Compact references need a single generation. Never grow a failed
       // batch into a retry tree while the user is waiting.
-      const cacheKey = await compactCacheAddress(config, schema, input, instructions);
+      const cacheKey = await compactCacheAddress(config, schema, input, instructions, outputLimit(batch));
       const cacheStarted = Date.now();
       let data = await readCompactCache(cacheKey);
       cacheReadMs = Math.max(0, Date.now() - cacheStarted);

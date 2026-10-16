@@ -1,5 +1,20 @@
 import assert from 'node:assert/strict';
-import { reviewCompactAssignments } from '../worker/semantic-review.mjs';
+import { reviewCompactAssignments, reviewCacheIdentity } from '../worker/semantic-review.mjs';
+
+// Cache fingerprint intentionally excludes routing/UI release numbers. It
+// still isolates every semantic input and the actual generation settings.
+const identity = (question, answer, model='@cf/openai/gpt-oss-20b', instruction='classify policy', maxTokens=3072) =>
+  reviewCacheIdentity({model}, {type:'object',required:['reviews']}, {proposed_question:question,candidates:[{id:'c1',source_answer:answer}]}, instruction, maxTokens);
+assert.equal(identity('質問', '答弁'), identity('質問', '答弁'),'Identical review bytes must share an identity across releases');
+assert.notEqual(identity('質問', '答弁'),identity('別の質問','答弁'),'Question change invalidates review');
+assert.notEqual(identity('質問', '答弁'),identity('質問','新しい答弁'),'Source change invalidates review');
+assert.notEqual(identity('質問', '答弁'),identity('質問','答弁','different-model'),'Model change invalidates review');
+assert.notEqual(identity('質問', '答弁'),identity('質問','答弁','@cf/openai/gpt-oss-20b','new instructions'),'Policy changes invalidate review');
+assert.notEqual(identity('質問', '答弁'),identity('質問','答弁','@cf/openai/gpt-oss-20b','classify policy',2048),'Generation settings invalidate review');
+assert.notEqual(
+  reviewCacheIdentity({model:'@cf/openai/gpt-oss-20b'}, {type:'object'}, {proposed_question:'質問'}, 'classify policy', 3072),
+  reviewCacheIdentity({model:'@cf/openai/gpt-oss-20b'}, {type:'array'}, {proposed_question:'質問'}, 'classify policy', 3072),
+  'Output schema changes invalidate review');
 
 const previousCaches = globalThis.caches, previousNow = Date.now;
 let clock = previousNow(), calls = 0;
