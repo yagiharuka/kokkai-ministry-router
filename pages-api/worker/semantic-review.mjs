@@ -325,6 +325,49 @@ async function saveCompactCache(key, data, ctx) {
     })), ctx);
 }
 
+// Start the final scope call before the last initial batch only when its
+// entire remaining budget is fixed by a completed prefix in original order.
+// Later completions then cannot displace any selected source. This does not
+// speculate, change inputs, add calls, or omit any initial candidate.
+export async function finishReviewTail({ outcomePromises, settledOutcomes, consumed,
+  groundReviews, ambiguousRows, reviewedByBatch, verifyScope, capacity }) {
+  const processed = new Set(consumed), ambiguousByBatch = new Map();
+  let tailScope, launched = false;
+  while (processed.size < outcomePromises.length) {
+    for (let index = 0; index < outcomePromises.length; index++) {
+      if (processed.has(index) || !settledOutcomes[index]) continue;
+      processed.add(index);
+      const rows = groundReviews(settledOutcomes[index]);
+      reviewedByBatch.set(index, rows);
+      // Save eligibility before scope checks mutate the reviewed rows.
+      ambiguousByBatch.set(index, ambiguousRows(rows));
+    }
+    if (!launched && capacity > 0) {
+      const prefix = [];
+      for (let index = 0; index < outcomePromises.length; index++) {
+        if (consumed.has(index)) continue;
+        if (!processed.has(index)) break;
+        prefix.push(...ambiguousByBatch.get(index));
+      }
+      if (prefix.length >= capacity) {
+        launched = true;
+        tailScope = verifyScope(prefix.slice(0, capacity), capacity);
+      }
+    }
+    if (processed.size < outcomePromises.length) {
+      await Promise.race(outcomePromises.filter((_, index) => !processed.has(index)));
+    }
+  }
+  const outcomes = await Promise.all(outcomePromises);
+  const allAmbiguous = outcomes.flatMap((_, index) => ambiguousByBatch.get(index) || []);
+  if (!launched) tailScope = verifyScope(allAmbiguous, capacity);
+  else if (allAmbiguous.length > capacity) {
+    // Zero capacity only marks excess rows pending; it cannot invoke AI.
+    await verifyScope(allAmbiguous.slice(capacity), 0);
+  }
+  return { outcomes, tailScope };
+}
+
 export async function reviewCompactAssignments(question, result, env = {}, fetchModel = fetch, ctx = {}) {
   const reviewStartedAt = ctx.reviewStartedAt ?? Date.now();
   const all = semanticCandidates(result, 96), variants = new Map();
@@ -538,14 +581,10 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     }
   }
   const earlyScope = verifyScope(firstAmbiguous, 8);
-  const outcomes = await Promise.all(outcomePromises);
-  const laterReviewed = outcomes.flatMap((outcome, index) => {
-    if (consumed.has(index)) return [];
-    const rows = groundReviews(outcome);
-    reviewedByBatch.set(index, rows);
-    return rows;
+  const { outcomes, tailScope } = await finishReviewTail({
+    outcomePromises, settledOutcomes, consumed, groundReviews, ambiguousRows,
+    reviewedByBatch, verifyScope, capacity: Math.max(0, 8 - firstAmbiguous.length),
   });
-  const tailScope = verifyScope(ambiguousRows(laterReviewed), Math.max(0, 8 - firstAmbiguous.length));
   const scopeOutcomes = (await Promise.all([earlyScope, tailScope])).filter(Boolean);
   const reviewed = batches.flatMap((_, index) => reviewedByBatch.get(index));
   const scopeMissing = scopeOutcomes.reduce((sum, entry) => sum + entry.missing, 0);
