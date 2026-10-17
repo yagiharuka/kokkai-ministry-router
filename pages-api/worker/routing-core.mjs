@@ -26,11 +26,13 @@ export function concepts(value) {
   flush();
   return [...new Map(groups.filter(g => g.parts.length && g.text.length <= 80).map(g => [g.text, g])).values()].slice(0, 12);
 }
-function occurrences(text, term) {
-  const found = []; let at = -1;
+function firstOccurrence(text, term) {
+  let at = -1;
   const loanword = /^[\p{Script=Katakana}ー]+$/u.test(term), katakana = /[\p{Script=Katakana}ー]/u;
   let runEnd = -1, boundaries;
-  while (found.length < 80 && (at = text.indexOf(term, at + 1)) >= 0) {
+  // All callers use only existence or the first valid occurrence. Do not
+  // rescan later matches that cannot affect a score or source boundary.
+  while ((at = text.indexOf(term, at + 1)) >= 0) {
     // A short loanword inside a different lexical word is not the same
     // subject (e.g. ペット in ペットボトル). Use Japanese word boundaries,
     // not a policy dictionary, and allow terms spanning multiple segments
@@ -50,20 +52,30 @@ function occurrences(text, term) {
     const suffix = text.slice(at + term.length, at + term.length + 30);
     // A product mentioned only inside another entity's name is not its own topic.
     if (prefix.length >= 2 && /^(?:[\p{Script=Han}等]{0,16})?(?:法|令|規則|機構|省|庁|委員会|審議会|部会|協会)(?=[^\p{Script=Han}]|$)/u.test(suffix)) continue;
-    found.push(at);
+    return at;
   }
-  return found;
+  return -1;
 }
 function stems(part) {
   return [...new Set([part, ...(part.endsWith('化') && part.length > 2 ? [part.slice(0, -1)] : [])])];
 }
 function groupHit(text, group) {
-  const exact = occurrences(text, group.text);
-  if (exact.length) return { coverage: 1, start: exact[0], end: exact[0] + group.text.length };
-  const parts = group.parts.map(part => stems(part).flatMap(stem => occurrences(text, stem).map(at => ({ at, length: stem.length }))));
-  const hits = parts.filter(list => list.length).map(list => list[0]);
-  if (!hits.length) return { coverage: 0 };
-  return { coverage: hits.length / parts.length, start: Math.min(...hits.map(h => h.at)), end: Math.max(...hits.map(h => h.at + h.length)) };
+  const exact = firstOccurrence(text, group.text);
+  if (exact >= 0) return { coverage: 1, start: exact, end: exact + group.text.length };
+  let count = 0, start = Infinity, end = -Infinity;
+  for (const part of group.parts) {
+    // The original selects the first matching stem, not the earliest match
+    // across all stems. Preserve that ordering and reuse the exact miss.
+    for (const stem of stems(part)) {
+      const at = stem === group.text ? -1 : firstOccurrence(text, stem);
+      if (at < 0) continue;
+      count++;
+      start = Math.min(start, at);
+      end = Math.max(end, at + stem.length);
+      break;
+    }
+  }
+  return count ? { coverage: count / group.parts.length, start, end } : { coverage: 0 };
 }
 export function makePlan(question, hints = []) {
   // Keep the requested change as a separate constraint, rather than treating
@@ -220,12 +232,19 @@ function recallPassage(value, plan) {
   // turns in a full meeting. This is only a recall filter, not acceptance.
   const text = normalize(value);
   if (!subjects.some(g => groupHit(text, g).coverage > 0)) return null;
-  return passages(value).map(p => {
+  // Preserve the stable sort's winner without allocating and sorting a
+  // scored copy of every overlapping window. On an exact tie, keep the first.
+  let best = null;
+  for (const p of passages(value)) {
     const matches = subjects.map(g => groupHit(p.text, g).coverage);
     const subjectMatches = matches.filter(coverage => coverage >= .5).length;
-    return { ...p, subjectMatches, score: matches.reduce((a, b) => a + b, 0) / (subjects.length || 1) };
-  }).filter(p => p.subjectMatches > 0)
-    .sort((a, b) => b.score - a.score || a.text.length - b.text.length)[0] || null;
+    if (!subjectMatches) continue;
+    const score = matches.reduce((a, b) => a + b, 0) / (subjects.length || 1);
+    if (!best || score > best.score || (score === best.score && p.text.length < best.text.length)) {
+      best = { ...p, subjectMatches, score };
+    }
+  }
+  return best;
 }
 // Retrieval is deliberately permissive. Neither this score nor an exact word
 // match decides whether an answer belongs in the final ministry shares.
@@ -262,13 +281,13 @@ function alignAnswer(answer, question, plan) {
   // Contrast with the other passages in the same turn to avoid topic leakage.
   const local = concepts(question.text).flatMap(g => g.parts);
   const others = passages(question.fullText).filter(p => p.end <= question.start || p.start >= question.end).map(p => concepts(p.text).flatMap(g => g.parts));
-  const overlap = text => [...new Set(local)].filter(part => occurrences(text, part).length).length;
+  const overlap = text => [...new Set(local)].filter(part => firstOccurrence(text, part) >= 0).length;
   const queryParts = new Set(plan.groups.flatMap(g => g.parts));
   const bridgeParts = [...new Set(local)].filter(part => !queryParts.has(part) && !/^(説明|確認|内容|制度|取組|考え|認識|指摘|御指摘|所見)$/.test(part));
   const otherQuestions = (question.fullText.match(/[?？]|伺|お尋ね|教示/g) || []).length;
-  const direct = passages(answer).map(p => ({ ...p, shared: overlap(p.text), bridge: bridgeParts.filter(part => occurrences(p.text, part).length).length })).filter(p => p.shared >= (otherQuestions > 1 ? 3 : 2) && p.bridge >= (otherQuestions > 1 ? 2 : 1));
+  const direct = passages(answer).map(p => ({ ...p, shared: overlap(p.text), bridge: bridgeParts.filter(part => firstOccurrence(p.text, part) >= 0).length })).filter(p => p.shared >= (otherQuestions > 1 ? 3 : 2) && p.bridge >= (otherQuestions > 1 ? 2 : 1));
   for (const p of direct.sort((a, b) => b.shared - a.shared || a.text.length - b.text.length)) {
-    const conflicting = others.some(tokens => [...new Set(tokens)].filter(part => occurrences(p.text, part).length).length >= p.shared);
+    const conflicting = others.some(tokens => [...new Set(tokens)].filter(part => firstOccurrence(p.text, part) >= 0).length >= p.shared);
     const subjectRetained = groupHit(p.text, plan.groups[0]).coverage >= .66;
     if (!conflicting && subjectRetained) return { ...p, score: .75, bridged: true };
   }
@@ -336,7 +355,7 @@ export function reviewCandidates(meetings, plan, limit = 12) {
         const excerpt = answerMatch || passages(answer)[0];
         const caseId = `${meeting.issueID || meeting.date}:${ask.speechID || ask.speechOrder || i}`;
         // Keep separate answer speeches until semantic review. An off-topic
-        // first reply must not hide a later relevant reply from the same agency.
+        // first reply must not hide a later relevant reply from that agency.
         const key = `${caseId}:${ministry}:${reply.speechID || reply.speechURL}`;
         const questionText = normalize(ask.speech);
         const questionContext = questionText.length <= 1600 ? questionText : questionText.slice(Math.max(0, (relevant?.start || 0) - 300), Math.min(questionText.length, (relevant?.end || 0) + 1000)).slice(0, 1600);
@@ -463,4 +482,5 @@ export async function retrieveAssignments(plan, fetchNdl, since = '2020-01-01', 
   const rows = pairAnswers(records, plan), review = reviewCandidates(records, plan);
   return { ...summarize(rows), evidence: rows.slice(0, 8), candidates: rows.slice(0, 24), review_candidates: review, searched, searched_queries: [...searchedQueries], requests_used: requests, retrieved_meetings: [...meetings.keys()], meetings_searched: meetings.size, errors, partial: errors.length > 0, historical_only: historicalOnly && review.length > 0, recent_since: recentSince, search_limited: searchLimited, routing_version: routingVersion, query_concepts: plan.groups.map(g => g.text) };
 }
+
 
