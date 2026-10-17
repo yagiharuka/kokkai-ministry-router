@@ -1,0 +1,43 @@
+name: Initial scan equivalence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.16.0', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run all offline tests and build the Worker
+        working-directory: pages-api
+        run: |
+          mkdir -p /tmp/initial-scan
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/initial-scan/tests.log
+          npm run build 2>&1 | tee /tmp/initial-scan/build.log
+          node --check dist/server/index.js
+      - name: Record local comparison without network or AI
+        run: |
+          node pages-api/scripts/test-initial-scan.mjs --benchmark --report /tmp/initial-scan/comparison.json
+          git rev-parse HEAD > /tmp/initial-scan/commit.txt
+          git archive HEAD pages-api dist > /tmp/initial-scan/source.tar
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: initial-scan-node-${{ matrix.node }}
+          path: /tmp/initial-scan/
+          retention-days: 7
