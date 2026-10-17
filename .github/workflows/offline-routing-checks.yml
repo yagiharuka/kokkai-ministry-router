@@ -1,0 +1,58 @@
+name: Offline routing checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-routing-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.16.0', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Prepare tracked source for reproducible offline checks
+        run: |
+          mkdir -p /tmp/routing-checks
+          git rev-parse HEAD > /tmp/routing-checks/commit.txt
+          git archive HEAD pages-api dist AGENT.md wrangler.jsonc > /tmp/routing-checks/source.tar
+      - name: Run every offline routing test
+        working-directory: pages-api
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/routing-checks/tests.log
+      - name: Build and syntax-check the production worker
+        working-directory: pages-api
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee /tmp/routing-checks/build.log
+          node --check dist/server/index.js
+      - name: Compare the wire change with the PR base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git show "$BASE_SHA:pages-api/worker/semantic-review.mjs" > /tmp/routing-checks/base-semantic-review.mjs
+          node pages-api/scripts/test-review-wire.mjs --baseline /tmp/routing-checks/base-semantic-review.mjs --report /tmp/routing-checks/wire-comparison.json
+      - name: Retain offline test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: routing-offline-node-${{ matrix.node }}
+          path: /tmp/routing-checks/
+          retention-days: 7

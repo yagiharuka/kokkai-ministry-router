@@ -1,4 +1,5 @@
-// Explicit Workers Free integration evaluation. Never run as part of npm test.
+// Explicit Workers Free integration evaluation. Never run live as part of npm test.
+// test-evaluate-live.mjs exercises this file only with mocked HTTP and credentials.
 // node --env-file=.env.local scripts/evaluate-live.mjs [output.json] [question filters...]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -29,7 +30,13 @@ globalThis.fetch = async (url, init) => {
   if (target.hostname === 'api.cloudflare.com') {
     const body = await response.clone().json().catch(() => ({}));
     const request = JSON.parse(init.body);
-    calls.push({ operation: request.response_format.json_schema.properties.queries ? 'search_plan' : 'context_review',
+    // Current reviews use JSON-object mode, without json_schema. The recorder
+    // must not turn a successful upstream response into a model failure.
+    const isPlan = Boolean(request.response_format?.json_schema?.properties?.queries);
+    const isScope = String(request.messages?.[0]?.content || '').includes('この判定は、');
+    const operation = isPlan ? 'search_plan' : isScope ? 'scope_check' :
+      request.response_format?.type === 'json_object' ? 'compact_review' : 'context_review';
+    calls.push({ operation,
       http_status: response.status, duration_ms: Date.now() - started,
       usage: body.result?.usage, success: body.success,
       error_codes: (body.errors || []).map(error => error.code),
@@ -50,8 +57,8 @@ try {
     console.log(JSON.stringify({ event: 'completed', question, status: result.assessment_status,
       pairs: result.pairs, shares: result.shares, reviewed: result.reviewed_candidates,
       accepted: result.accepted_candidates, errors: result.errors, duration_ms: Date.now() - started }));
-    if (result.assessment_status === 'failed') {
-      report.stopped_reason = result.assessment_error + '; remaining cases were not attempted.';
+    if (result.assessment_status === 'failed' || result.assessment_error || result.assessment_partial) {
+      report.stopped_reason = (result.assessment_error || 'partial_assessment') + '; remaining cases were not attempted.';
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
       break;
     }
