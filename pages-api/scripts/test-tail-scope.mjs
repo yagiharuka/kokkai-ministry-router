@@ -118,7 +118,7 @@ async function fullRun(source, counts, order, scopeFailure=false, blockLast=fals
     gates[index].resolve(); await drain();
   }
   const result=JSON.parse(JSON.stringify(await pending));
-  for(const d of result.review_diagnostics||[])for(const key of ['started_after_ms','model_ms','cache_read_ms','total_ms'])delete d[key];
+  for(const d of result.review_diagnostics||[])for(const key of ['started_after_ms','model_ms','cache_read_ms','total_ms','omitted_unused_refs','validation_failures'])delete d[key];
   return {result,received,scopePayloads,events,peak};
 }
 for(const counts of [[1,7,8],[1,1,1],[8,8,8],[0,7,1]])for(const order of [[0,1,2],[2,1,0],[1,0,2]])for(const failed of [false,true]) {

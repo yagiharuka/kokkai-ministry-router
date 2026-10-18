@@ -368,6 +368,21 @@ export async function finishReviewTail({ outcomePromises, settledOutcomes, consu
   return { outcomes, tailScope };
 }
 
+// Normalize omitted, unused citation fields only for an explicit non-acceptance.
+// Do not repair semantic fields, change decisions, invent references, or mutate
+// the provider response. The existing strict validator remains authoritative.
+export function completeUnusedReviewRefs(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+      !['reject', 'uncertain'].includes(raw.decision)) return raw;
+  const semanticKeys = ['id', 'beneficiary', 'activity', 'relation', 'comparison', 'decision'];
+  const allowed = new Set([...semanticKeys, 'q', 'a']);
+  if (!semanticKeys.every(key => Object.hasOwn(raw, key) && typeof raw[key] === 'string') ||
+      Object.keys(raw).some(key => !allowed.has(key)) ||
+      ['q', 'a'].some(key => Object.hasOwn(raw, key) && typeof raw[key] !== 'string')) return raw;
+  if (Object.hasOwn(raw, 'q') && Object.hasOwn(raw, 'a')) return raw;
+  return { ...raw, q: Object.hasOwn(raw, 'q') ? raw.q : '', a: Object.hasOwn(raw, 'a') ? raw.a : '' };
+}
+
 export async function reviewCompactAssignments(question, result, env = {}, fetchModel = fetch, ctx = {}) {
   const reviewStartedAt = ctx.reviewStartedAt ?? Date.now();
   const all = semanticCandidates(result, 96), variants = new Map();
@@ -473,17 +488,47 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
       const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
         output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
         reasoning_effort: ctx.scopeCheck ? 'low' : 'default',
-        returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0 };
+        returned: 0, unknown_id: 0, invalid_shape: 0, invalid_fields: 0, duplicate_id: 0, completed: 0,
+        omitted_unused_refs: 0,
+        validation_failures: { missing_semantic_fields: 0, missing_accepted_refs: 0,
+          unknown_fields: 0, non_string_fields: 0, invalid_row: 0,
+          blank_comparison: 0, long_comparison: 0, invalid_decision: 0,
+          invalid_relation: 0, blank_accepted_roles_or_refs: 0 } };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       diagnostic.returned = data.reviews.length;
-      for (const raw of data.reviews) {
-        if (!raw || Array.isArray(raw) || Object.keys(raw).sort().join(',') !== 'a,activity,beneficiary,comparison,decision,id,q,relation' || !Object.values(raw).every(value => typeof value === 'string')) { diagnostic.invalid_shape++; continue; }
+      const canonicalReviews = [];
+      for (const received of data.reviews) {
+        const raw = completeUnusedReviewRefs(received);
+        if (raw !== received) diagnostic.omitted_unused_refs++;
+        canonicalReviews.push(raw);
+        if (!raw || Array.isArray(raw) || Object.keys(raw).sort().join(',') !== 'a,activity,beneficiary,comparison,decision,id,q,relation' || !Object.values(raw).every(value => typeof value === 'string')) {
+          diagnostic.invalid_shape++;
+          // Fixed counters only: no source text, provider response, or field
+          // values enter diagnostics. Each malformed row has one root cause.
+          let failure = 'invalid_row';
+          if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+            const semantic = ['id','beneficiary','activity','relation','comparison','decision'];
+            const allowed = [...semantic, 'q', 'a'];
+            failure = semantic.some(key => !Object.hasOwn(raw, key)) ? 'missing_semantic_fields' :
+              Object.keys(raw).some(key => !allowed.includes(key)) ? 'unknown_fields' :
+              Object.values(raw).some(value => typeof value !== 'string') ? 'non_string_fields' :
+              raw.decision === 'accept' && (!Object.hasOwn(raw, 'q') || !Object.hasOwn(raw, 'a')) ? 'missing_accepted_refs' : 'invalid_row';
+          }
+          diagnostic.validation_failures[failure]++;
+          continue;
+        }
         const { id: localId, beneficiary, activity, relation, comparison, decision, q: question_part, a: answer_part } = raw;
         if (!globalIds.has(localId)) { diagnostic.unknown_id++; continue; }
         const id = globalIds.get(localId);
         if (byId.has(id)) { duplicates.add(id); diagnostic.duplicate_id++; continue; }
         const validDecision = ['accept', 'reject', 'uncertain'].includes(decision);
-        if (!validDecision || !comparison.trim() || comparison.length > 300 || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) { diagnostic.invalid_fields++; continue; }
+        if (!validDecision || !comparison.trim() || comparison.length > 300 || !['same', 'broader', 'provider_only', 'different', 'unclear'].includes(relation)) {
+          diagnostic.invalid_fields++;
+          const failure = !validDecision ? 'invalid_decision' : !comparison.trim() ? 'blank_comparison' :
+            comparison.length > 300 ? 'long_comparison' : 'invalid_relation';
+          diagnostic.validation_failures[failure]++;
+          continue;
+        }
         const contradictoryAcceptance = decision === 'accept' && relation !== 'same';
         // A model decision that contradicts its own beneficiary/activity relation
         // is not evidence of rejection. Hold it for audit, never add it to shares.
@@ -493,7 +538,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         // rejection into a failed batch. Accepted items still need full roles,
         // a reason and two references, checked against their own source below.
         if (finalDecision === 'accept' && (!beneficiary.trim() || !activity.trim() ||
-            !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; continue; }
+            !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; diagnostic.validation_failures.blank_accepted_roles_or_refs++; continue; }
         const fallbackReason = finalDecision === 'uncertain' ? '対象と答弁の対応を確認できないため保留。' : '質問案の対象・活動に対応する答弁ではないと判定。';
         byId.set(id, { id, beneficiary, activity, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: contradictoryAcceptance ? ('採否と対象分類が矛盾：' + comparison.trim()).slice(0,300) : comparison.trim().slice(0,300) || fallbackReason });
       }
@@ -507,7 +552,11 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
           const source = grounded.get(r.id);
           return r.decision === 'reject' || (Object.hasOwn(source.question, r.question_part) && Object.hasOwn(source.answer, r.answer_part));
         });
-      if (!cacheHit && reusable) cacheWriteDeferred = Boolean(await saveCompactCache(cacheKey, data, ctx));
+      // Canonical cache rows still satisfy the old strict eight-field schema,
+      // so a rollback cannot inherit incompatible cached responses. Do not
+      // mutate the provider object or cache malformed/incomplete batches.
+      if (!cacheHit && reusable) cacheWriteDeferred = Boolean(await saveCompactCache(cacheKey,
+        diagnostic.omitted_unused_refs ? { reviews: canonicalReviews } : data, ctx));
       return { reviews, completed, diagnostic: { ...diagnostic, completed, cache_hit: cacheHit, model_called: modelCalled,
         ...durationDiagnostic(),
         ...(modelUsage ? { usage: modelUsage } : {}) }, ...(completed < batch.length ? { error: 'model_unavailable' } : {}) };
@@ -610,4 +659,3 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
     historical_only: unique.length > 0 && unique.every(row => row.date && row.date < result.recent_since),
   };
 }
-
