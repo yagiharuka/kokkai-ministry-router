@@ -38,7 +38,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 const stable = value => {
   const data = plain(value);
   for (const d of data.review_diagnostics || []) {
-    for (const key of ['model_ms','total_ms','started_after_ms','cache_read_ms','omitted_unused_refs','validation_failures']) delete d[key];
+    for (const key of ['model_ms','total_ms','started_after_ms','cache_read_ms','omitted_unused_refs','validation_failures','invalid_relation_details']) delete d[key];
   }
   return data;
 };
