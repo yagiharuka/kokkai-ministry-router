@@ -269,7 +269,7 @@ export default {
       try {
         const result = await cachedRoute(first, second, focus, question, env, ctx);
         if (!result) return withCors(Response.json({ error: "ほかの検索を処理中です。少し時間を置いて再試行してください。" }, { status: 429, headers: { 'Retry-After': '30' } }));
-        return withCors(Response.json(result, { headers: { "cache-control": result.assessment_status === 'reviewed' ? "public, max-age=600" : "no-store" } }));
+        return withCors(Response.json(result, { headers: { "cache-control": result.assessment_status === 'reviewed' && !result.assessment_partial && !result.partial ? "public, max-age=600" : "no-store" } }));
       } catch (error) {
         return withCors(Response.json({ error: error instanceof Error ? error.message : "会議録を取得できませんでした。" }, { status: 502 }));
       }

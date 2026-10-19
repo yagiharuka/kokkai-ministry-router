@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261017-79"};
+ const params={question:input,v:"20261019-80"};
  // Let the server's analysis cache report current wait and original timings.
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),115000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
@@ -76,13 +76,18 @@ function diagnosticRows(value){
  const errors=new Set(['invalid_review','invalid_model_output','model_incomplete','model_output_limit','quota_exhausted','model_busy','model_request_failed','model_input_limit','model_timeout','model_access_denied','invalid_json']);
  return (Array.isArray(value)?value:[]).slice(0,7).map(item=>{
   const source=timingObject(item)||{},row={};
-  for(const key of ['expected','completed','input_chars','output_token_limit','model_ms','cache_read_ms','total_ms']){
+  for(const key of ['expected','completed','input_chars','output_token_limit','model_ms','cache_read_ms','total_ms','started_after_ms','returned','unknown_id','invalid_shape','invalid_fields','duplicate_id','omitted_unused_refs']){
    if(Number.isSafeInteger(source[key])&&source[key]>=0)row[key]=source[key];
   }
   for(const key of ['cache_hit','model_called'])if(typeof source[key]==='boolean')row[key]=source[key];
   const usage=timingObject(source.usage);
   for(const key of ['input_tokens','output_tokens'])if(Number.isSafeInteger(usage?.[key])&&usage[key]>=0)row[key]=usage[key];
   if(errors.has(source.error))row.error=source.error;
+  if(['compact_json_v3','scope_json_v3'].includes(source.output_format))row.output_format=source.output_format;
+  const failures=timingObject(source.validation_failures);
+  for(const key of ['missing_semantic_fields','missing_accepted_refs','unknown_fields','non_string_fields','invalid_row','blank_comparison','long_comparison','invalid_decision','invalid_relation','blank_accepted_roles_or_refs','unknown_accepted_refs']){
+   if(Number.isSafeInteger(failures?.[key])&&failures[key]>=0)(row.validation_failures||={})[key]=failures[key];
+  }
   return row;
  });
 }
@@ -92,7 +97,13 @@ function diagnosticText(r,rows){
  const cached=cachedResult(r),lines=['処理時間の診断', '結果：'+(cached?'保存済みの結果を表示':'今回の分析')];
  if(/^\d{8}-\d{1,3}$/.test(r.routing_version||''))lines.push('公開版：'+r.routing_version);
  if(typeof r.analyzed_at==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(r.analyzed_at)&&Number.isFinite(Date.parse(r.analyzed_at)))lines.push('元の分析日時：'+r.analyzed_at);
- lines.push('※候補判定は並列です。対象の追加確認はその後に行います。時間の合計と全体の待ち時間は異なります。');
+ const overall=timingObject(cached?r.original_timing:r.timing);
+ if(overall&&!overall.cached){
+  const stages=[['retrieval_ms','会議録検索'],['planning_ms','検索語の追加検討（検索時間の内数）'],['review_ms','AI判定'],['total_ms','全体']];
+  for(const [key,label] of stages)if(Number.isSafeInteger(overall[key])&&overall[key]>=0)lines.push((cached?'元の分析の':'今回の')+label+'：'+overall[key]+'ms');
+ }
+ lines.push('※候補判定は並列です。必要な追加確認は、判定済みの候補から並行して始まることがあります。時間の合計と全体の待ち時間は異なります。');
+ const failureLabels={missing_semantic_fields:'意味項目の欠落',missing_accepted_refs:'採用根拠欄の欠落',unknown_fields:'未定義の項目',non_string_fields:'文字列以外の値',invalid_row:'判定行の形式不正',blank_comparison:'理由が空欄',long_comparison:'理由の長さ超過',invalid_decision:'採否の値が不正',invalid_relation:'対象分類の値が不正',blank_accepted_roles_or_refs:'採用時の対象・活動・根拠が空欄',unknown_accepted_refs:'原文に存在しない採用根拠番号'};
  rows.forEach((row,i)=>{
   const reused=cached||row.cache_hit===true;
   const state=cached?'保存した診断を表示（今回はAI未実行）':row.cache_hit===true?'保存した判定を再利用':row.model_called===true?'今回AIを実行':row.model_called===false?'AIは未実行':'実行状態は未提供';
@@ -104,6 +115,12 @@ function diagnosticText(r,rows){
    '生成上限：'+metric(row.output_token_limit,'トークン')+'（実消費量ではありません）',
    'AI待ち時間：'+(reused?'今回は未実行。元の時間は取得できません。':metric(row.model_ms,'ms')));
   if(!cached)lines.push('キャッシュ読出：'+metric(row.cache_read_ms,'ms')+' / バッチ全体：'+metric(row.total_ms,'ms'));
+  if(row.output_format)lines.push('判定段階：'+(row.output_format==='scope_json_v3'?'対象の追加確認':'初回判定'));
+  if(!cached&&Number.isSafeInteger(row.started_after_ms))lines.push('AI判定段階の開始から：'+metric(row.started_after_ms,'ms')+'後に開始');
+  for(const [key,label] of [['returned','返却された判定行'],['unknown_id','未知の候補ID'],['duplicate_id','重複した候補ID'],['invalid_shape','行形式の不正'],['invalid_fields','項目・根拠の不正'],['omitted_unused_refs','未使用の引用欄を補完']]){
+   if(Number.isSafeInteger(row[key]))lines.push(label+'：'+metric(row[key],'件'));
+  }
+  for(const [key,label] of Object.entries(failureLabels))if(Number.isSafeInteger(row.validation_failures?.[key]))lines.push('検証内訳・'+label+'：'+metric(row.validation_failures[key],'件'));
   if(row.error)lines.push('エラー分類：'+row.error);
  });
  return lines.join('\n');
@@ -157,8 +174,8 @@ function render(r){
  const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(validDuration(r.elapsedSeconds)&&!cachedResult(r)?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const analyzedAt=Date.parse(r.analyzed_at||'');
  const saved=reviewed&&cachedResult(r)?'<p class="caveat">保存済みの結果を表示しています'+(Number.isFinite(analyzedAt)?'（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）':'')+'。同じ質問の結果は最大24時間再利用します。</p>':'';
- const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261017-79';
- const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261017-79）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
+ const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261019-80';
+ const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261019-80）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
  const incompleteNotice=r.assessment_partial?'<p class="error" role="status">一部のAI判定が未完了です。関連する答弁の取りこぼしがあり、以下の割合は判定できた一部の質疑だけで算出しています。</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';

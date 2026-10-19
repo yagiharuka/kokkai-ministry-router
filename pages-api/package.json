@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "bash scripts/build.sh",
-    "test": "node scripts/test-routing.mjs && node scripts/test-recall-quality.mjs && node scripts/test-fast-retrieval.mjs && node scripts/test-frontend.mjs && node scripts/test-semantic.mjs && node scripts/test-compact-review.mjs && node scripts/test-cache.mjs && node scripts/test-quota.mjs && node scripts/test-review-cache.mjs && node scripts/test-ai-errors.mjs && node scripts/test-background-cache.mjs && node scripts/test-initial-scan.mjs && node scripts/test-tail-scope.mjs && node scripts/test-review-wire.mjs && node scripts/test-review-receiver.mjs",
-    "test:semantic": "node scripts/test-semantic.mjs"
+    "test": "node scripts/test-routing.mjs && node scripts/test-recall-quality.mjs && node scripts/test-fast-retrieval.mjs && node scripts/test-frontend.mjs && node scripts/test-semantic.mjs && node scripts/test-compact-review.mjs && node scripts/test-cache.mjs && node scripts/test-quota.mjs && node scripts/test-review-cache.mjs && node scripts/test-ai-errors.mjs && node scripts/test-background-cache.mjs && node scripts/test-initial-scan.mjs && node scripts/test-tail-scope.mjs && node scripts/test-review-wire.mjs && node scripts/test-review-receiver.mjs && node scripts/test-review-failures.mjs && npm run test:evaluate-live",
+    "test:semantic": "node scripts/test-semantic.mjs",
+    "test:evaluate-live": "node scripts/test-evaluate-live.mjs && node scripts/test-evaluate-live.mjs --partial && node scripts/test-evaluate-live.mjs --recorder-faults"
   }
 }
