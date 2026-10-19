@@ -1,0 +1,23 @@
+{
+  "source": "User-supplied live diagnostics; question and raw model rows were not supplied",
+  "routing_version": "20261019-81",
+  "analyzed_at": "2026-10-19T11:43:26.216Z",
+  "question_confirmed": false,
+  "raw_invalid_values_available": false,
+  "timing": {"retrieval_ms":9857,"planning_ms":0,"review_ms":21112,"total_ms":30969},
+  "initial_candidates":24,
+  "initial_completed":17,
+  "review_diagnostics": [
+    {"expected":8,"completed":8,"started_after_ms":0,"input_chars":8503,"usage":{"input_tokens":7593,"output_tokens":1901},"output_token_limit":3072,"model_ms":21100,"cache_read_ms":12,"total_ms":21112},
+    {"expected":8,"completed":8,"started_after_ms":0,"input_chars":7044,"usage":{"input_tokens":6512,"output_tokens":1242},"output_token_limit":3072,"model_ms":12847,"cache_read_ms":12,"total_ms":12859},
+    {"expected":8,"completed":1,"started_after_ms":0,"input_chars":9388,"usage":{"input_tokens":8110,"output_tokens":1490},"output_token_limit":3072,"model_ms":14412,"cache_read_ms":16,"total_ms":14428,"returned":8,"unknown_id":0,"duplicate_id":0,"invalid_shape":0,"invalid_fields":7,"validation_failures":{"missing_semantic_fields":0,"missing_accepted_refs":0,"unknown_fields":0,"non_string_fields":0,"invalid_row":0,"blank_comparison":0,"long_comparison":0,"invalid_decision":0,"invalid_relation":7,"blank_accepted_roles_or_refs":0,"unknown_accepted_refs":0}},
+    {"expected":1,"completed":1,"started_after_ms":12859,"input_chars":848,"usage":{"input_tokens":1628,"output_tokens":320},"output_token_limit":3072,"model_ms":3495,"cache_read_ms":5,"total_ms":3500,"output_format":"scope_json_v3"}
+  ],
+  "interpretation": [
+    "No model timeout was reported in this run; 7 initial candidates remain unvalidated.",
+    "The first batch, not the invalid third batch, is the observed AI critical path.",
+    "Validation short-circuits at invalid_relation, so zero later counters do not prove valid accepted roles/references.",
+    "No particular spelling, casing, whitespace or alternative classification is inferred for the seven raw values.",
+    "No comparison to earlier question timings establishes a causal performance improvement."
+  ]
+}

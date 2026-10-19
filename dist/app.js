@@ -34,7 +34,7 @@ async function analyze(input){
  const phrases=policyPhrases(input);
  const lawTerm=phrases.length?lawSearchTerm(phrases[0]):'';
  const lawRequest=lawTerm?getJson(api+"jurisdiction?"+new URLSearchParams({term:lawTerm})).catch(()=>({matches:[],error:true})):Promise.resolve({matches:[]});
- const params={question:input,v:"20261019-81"};
+ const params={question:input,v:"20261019-82"};
  // Let the server's analysis cache report current wait and original timings.
  const cases=await getJson(api+"cases?"+new URLSearchParams(params),115000,{cache:'no-store'});
  // Supplementary laws must not delay the actual ministry result.
@@ -88,6 +88,10 @@ function diagnosticRows(value){
   for(const key of ['missing_semantic_fields','missing_accepted_refs','unknown_fields','non_string_fields','invalid_row','blank_comparison','long_comparison','invalid_decision','invalid_relation','blank_accepted_roles_or_refs','unknown_accepted_refs']){
    if(Number.isSafeInteger(failures?.[key])&&failures[key]>=0)(row.validation_failures||={})[key]=failures[key];
   }
+  const relations=timingObject(source.invalid_relation_details);
+  for(const key of ['blank','surrounding_whitespace','letter_case','decision_code','other']){
+   if(Number.isSafeInteger(relations?.[key])&&relations[key]>=0)(row.invalid_relation_details||={})[key]=relations[key];
+  }
   return row;
  });
 }
@@ -121,6 +125,8 @@ function diagnosticText(r,rows){
    if(Number.isSafeInteger(row[key]))lines.push(label+'：'+metric(row[key],'件'));
   }
   for(const [key,label] of Object.entries(failureLabels))if(Number.isSafeInteger(row.validation_failures?.[key]))lines.push('検証内訳・'+label+'：'+metric(row.validation_failures[key],'件'));
+  const relationLabels={blank:'空欄・空白のみ',surrounding_whitespace:'既知の分類名の前後に空白',letter_case:'既知の分類名の大文字小文字違い（前後空白を含む）',decision_code:'対象分類欄に採否コード',other:'その他の未定義値（原文非記録）'};
+  for(const [key,label] of Object.entries(relationLabels))if(Number.isSafeInteger(row.invalid_relation_details?.[key]))lines.push('分類不正の内訳・'+label+'：'+metric(row.invalid_relation_details[key],'件'));
   if(row.error)lines.push('エラー分類：'+row.error);
  });
  return lines.join('\n');
@@ -174,8 +180,8 @@ function render(r){
  const stats=reviewed?'<p class="caveat">'+(typeof r.retrieved_cases==='number'?'取得質疑 '+Number(r.retrieved_cases)+'件 · ':'')+'候補 '+Number(r.reviewed_candidates||0)+'件を確認 · '+Number(r.pairs||0)+'件を採用'+(validDuration(r.elapsedSeconds)&&!cachedResult(r)?' · '+r.elapsedSeconds+'秒':'')+'</p>':'';
  const analyzedAt=Date.parse(r.analyzed_at||'');
  const saved=reviewed&&cachedResult(r)?'<p class="caveat">保存済みの結果を表示しています'+(Number.isFinite(analyzedAt)?'（'+escape(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(analyzedAt)))+' 検索）':'')+'。同じ質問の結果は最大24時間再利用します。</p>':'';
- const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261019-81';
- const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261019-81）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
+ const engineMismatch=typeof r.routing_version==='string'&&/^\d{8}-\d{1,3}$/.test(r.routing_version)&&r.routing_version!=='20261019-82';
+ const engineNotice=engineMismatch?'<p class="error" role="status">判定APIが旧版（'+escape(r.routing_version)+'）で、画面の最新版（20261019-82）と一致していません。新しい監査機能が有効でない可能性があります。Cloudflare側の配備を確認してください。</p>':'';
  const incompleteNotice=r.assessment_partial?'<p class="error" role="status">一部のAI判定が未完了です。関連する答弁の取りこぼしがあり、以下の割合は判定できた一部の質疑だけで算出しています。</p>':'';
  const shareHtml=shares.length?'<div class="shares">'+shares.map((s,i)=>'<div class="share"><div class="shareline"><strong><em>'+String(i+1).padStart(2,'0')+'</em>'+escape(s.ministry)+'</strong><b>'+s.percent+'%</b></div><div class="track"><div style="width:'+s.percent+'%"></div></div><small>根拠 '+s.count+'件</small></div>').join('')+'</div>':'';
  const acceptedHtml=evidence.length?'<div class="examples"><h3>採用した質疑</h3>'+evidence.map(evidenceCard).join('')+'</div>':'';
