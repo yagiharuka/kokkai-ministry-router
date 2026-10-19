@@ -41,7 +41,7 @@ export function workersAiFailure(error, status = 0) {
     kind = 'model_busy'; basis = 'temporary_capacity_or_rate';
   } else if (code === 3006 || /context.{0,30}(?:limit|length|window)|input.{0,30}token.{0,30}limit|request too large/.test(message)) {
     kind = 'model_input_limit'; basis = 'input_size';
-  } else if ([3007,3008].includes(code) || /timeout|timed out/.test(message)) {
+  } else if ([3007,3008].includes(code) || error?.name === 'TimeoutError' || /timeout|timed out/.test(message)) {
     kind = 'model_timeout'; basis = 'timeout';
   } else if ([3023,3041,5016,5018,5035].includes(code)) {
     kind = 'model_access_denied'; basis = 'account_or_model_access';
@@ -76,13 +76,25 @@ async function structuredModelOnce(config, name, schema, instructions, input, fe
       throw workersAiFailure(error);
     } finally { clearTimeout(timer); }
   } else {
-    const response = await fetchModel(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${config.model}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(timeoutMs),
+    let response;
+    try {
+      response = await fetchModel(`https://api.cloudflare.com/client/v4/accounts/${config.accountId}/ai/run/${config.model}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      // Classify transport failures before the review parser handles its own
+      // JSON errors. Never expose the fetch error's private request details.
+      throw workersAiFailure(error);
+    }
+    data = await response.json().catch(error => {
+      // A malformed JSON body remains incomplete. A timeout or transport error
+      // while receiving that body is a provider/transport failure, not JSON.
+      if (error?.name === 'SyntaxError') return null;
+      throw workersAiFailure(error, response.status);
     });
-    data = await response.json().catch(() => null);
     if (!response.ok || data?.success === false) {
       const errors = Array.isArray(data?.errors) ? data.errors : [];
       throw workersAiFailure(errors.find(e => Number(e.code) === 3036) || errors[0] || {}, response.status);
@@ -484,7 +496,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
           data = await structuredModelOnce(config, ctx.scopeCheck ? 'kokkai_scope_check' : 'kokkai_compact_review', schema, instructions, input, fetchModel, usage => { modelUsage = usage; });
         } finally { modelMs = Math.max(0, Date.now() - modelStarted); }
       }
-      const byId = new Map(), duplicates = new Set();
+      const byId = new Map(), duplicates = new Set(), invalidAcceptedRefs = new Set();
       const diagnostic = { expected: batch.length, input_chars: JSON.stringify(input).length,
         output_token_limit: outputLimit(batch), output_format: ctx.scopeCheck ? 'scope_json_v3' : 'compact_json_v3',
         reasoning_effort: ctx.scopeCheck ? 'low' : 'default',
@@ -493,7 +505,7 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         validation_failures: { missing_semantic_fields: 0, missing_accepted_refs: 0,
           unknown_fields: 0, non_string_fields: 0, invalid_row: 0,
           blank_comparison: 0, long_comparison: 0, invalid_decision: 0,
-          invalid_relation: 0, blank_accepted_roles_or_refs: 0 } };
+          invalid_relation: 0, blank_accepted_roles_or_refs: 0, unknown_accepted_refs: 0 } };
       if (!data || Object.keys(data).length !== 1 || !Array.isArray(data.reviews)) throw new Error('invalid_review');
       diagnostic.returned = data.reviews.length;
       const canonicalReviews = [];
@@ -539,13 +551,25 @@ export async function reviewCompactAssignments(question, result, env = {}, fetch
         // a reason and two references, checked against their own source below.
         if (finalDecision === 'accept' && (!beneficiary.trim() || !activity.trim() ||
             !comparison.trim() || comparison.length > 300 || !question_part || !answer_part)) { diagnostic.invalid_fields++; diagnostic.validation_failures.blank_accepted_roles_or_refs++; continue; }
+        if (finalDecision === 'accept') {
+          const source = grounded.get(id);
+          if (!Object.hasOwn(source.question, question_part) || !Object.hasOwn(source.answer, answer_part)) {
+            invalidAcceptedRefs.add(id);
+            diagnostic.invalid_fields++;
+            diagnostic.validation_failures.unknown_accepted_refs++;
+          }
+        }
         const fallbackReason = finalDecision === 'uncertain' ? '対象と答弁の対応を確認できないため保留。' : '質問案の対象・活動に対応する答弁ではないと判定。';
         byId.set(id, { id, beneficiary, activity, decision: finalDecision, question_part: finalDecision === 'accept' ? question_part : '', answer_part: finalDecision === 'accept' ? answer_part : '', reason: contradictoryAcceptance ? ('採否と対象分類が矛盾：' + comparison.trim()).slice(0,300) : comparison.trim().slice(0,300) || fallbackReason });
       }
       const reviews = batch.map(row => !duplicates.has(row.candidate_id) && byId.has(row.candidate_id) ? byId.get(row.candidate_id) : {
         id: row.candidate_id, decision: 'uncertain', reason: 'この候補のAI判定を確認できなかったため保留。', question_part: '', answer_part: '',
       });
-      const completed = batch.filter(row => byId.has(row.candidate_id) && !duplicates.has(row.candidate_id)).length;
+      // Keep invalid-reference rows in byId so duplicates stay held and the
+      // existing grounding step preserves their uncertain result/reason. They
+      // are not completed reviews and must not enter the full-analysis cache.
+      const completed = batch.filter(row => byId.has(row.candidate_id) && !duplicates.has(row.candidate_id) &&
+        !invalidAcceptedRefs.has(row.candidate_id)).length;
       const reusable = completed === batch.length && diagnostic.returned === batch.length && !diagnostic.unknown_id &&
         !diagnostic.invalid_shape && !diagnostic.invalid_fields && !diagnostic.duplicate_id && reviews.every(r => {
           if (r.decision === 'uncertain') return false;

@@ -73,8 +73,10 @@ for (const query of queries.slice(0,4)) {
    {speechRecord:speeches,numberOfRecords:speeches.length}:{meetingRecord:meetings};};
  const a=await retrieveFastAssignments(plan,fake(traceA));
  const b=await oldFast.retrieveFastAssignments(plan,fake(traceB));
- const strip=result=>{const {selection_ms,...rest}=result;return rest;};
- equal(strip(a),strip(b),'Complete first-request retrieval output except stopwatch');
+ equal(a.routing_version,after.routingVersion,'Current output identifies the current receiver contract');
+ equal(b.routing_version,before.routingVersion,'Retained baseline keeps its historical version');
+ const strip=result=>{const {selection_ms,routing_version,...rest}=result;return rest;};
+ equal(strip(a),strip(b),'Complete first-request retrieval output except stopwatch and separately checked version');
  equal(traceA,traceB,'Same external request count and parameters');
 }
 const report={kind:'offline exact-output differential test; no AI or external requests',checks,baseline_blob:gitHash,external_requests:0};

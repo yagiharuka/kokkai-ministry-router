@@ -126,7 +126,7 @@ assert.equal(getNode('submit').disabled,false);
 assert.ok(getNode('results').innerHTML.includes('100%'));
 await submit('半導体産業の国内生産を支援すべきではないか');
 assert.equal(caseRequests.length,2);
-assert.ok(caseRequests.every(url=>url.searchParams.get('v')==='20261017-79'));
+assert.ok(caseRequests.every(url=>url.searchParams.get('v')==='20261019-80'));
 assert.equal(caseRequests[1].searchParams.get('question'),'半導体産業の国内生産を支援すべきではないか');
 const latestHtml=getNode('results').innerHTML;
 assert.ok(latestHtml.includes('合計 37.8秒'));
@@ -183,7 +183,7 @@ const diagnostics=[
  {expected:12,completed:12,input_chars:18123,output_token_limit:2560,model_ms:17900,cache_read_ms:8,total_ms:17930,cache_hit:false,model_called:true,usage:{input_tokens:12345,output_tokens:600}},
  {expected:12,completed:12,input_chars:17901,output_token_limit:2560,model_ms:14500,cache_read_ms:5,total_ms:14520,cache_hit:false,model_called:true},
 ];
-const diagnosticBase={...timedBase,routing_version:'20261017-79',analyzed_at:'2026-10-11T13:30:00.000Z',review_diagnostics:diagnostics};
+const diagnosticBase={...timedBase,routing_version:'20261019-80',analyzed_at:'2026-10-11T13:30:00.000Z',review_diagnostics:diagnostics};
 const textFor=result=>{context.result=result;return vm.runInContext('diagnosticText(result,diagnosticRows(result.review_diagnostics))',context)};
 assert.ok(textFor({...diagnosticBase,review_diagnostics:[...diagnostics,diagnostics[0]]}).includes('バッチ 3'));
 const sevenBatchText=textFor({...diagnosticBase,review_diagnostics:Array(8).fill(diagnostics[0])});
@@ -199,7 +199,7 @@ assert.ok(text.includes('出力トークン：600'));
 assert.ok(text.includes('入力トークン：未提供'));
 assert.ok(text.includes('AI待ち時間：17900ms'));
 assert.ok(text.includes('候補判定は並列'));
-assert.ok(text.includes('公開版：20261017-79'));
+assert.ok(text.includes('公開版：20261019-80'));
 assert.ok(text.includes('元の分析日時：2026-10-11T13:30:00.000Z'));
 assert.ok(html.includes('100%')&&html.includes(item.answer),'Diagnostics must not replace the existing judgment or evidence');
 assert.equal(render(diagnosticBase),html,'Repeated render must not duplicate the disclosure');
@@ -239,6 +239,51 @@ assert.ok(textFor({...diagnosticBase,review_diagnostics:[{...diagnostics[0],mode
 assert.ok(textFor({...diagnosticBase,review_diagnostics:[{},{}]}).includes('実行状態は未提供'));
 for(const invalid of [null,undefined,{},true,'PRIVATE'])assert.ok(!render({...diagnosticBase,review_diagnostics:invalid}).includes('diagnostic-copy'));
 assert.equal(textFor({...diagnosticBase,review_diagnostics:[]}), '');
+
+// Fixed counters added by the current receiver must survive iPhone's copy
+// path, without copying arbitrary keys or any part of the model response.
+const failureDiagnostic={...diagnostics[0],expected:8,completed:6,returned:8,
+ unknown_id:0,duplicate_id:0,invalid_shape:1,invalid_fields:1,omitted_unused_refs:2,
+ started_after_ms:123,output_format:'compact_json_v3',
+ validation_failures:{missing_semantic_fields:1,unknown_accepted_refs:1,blank_comparison:0,
+   'PRIVATE FIELD':'PRIVATE VALUE',unknown_fields:'PRIVATE VALUE'}};
+const failureResult={...diagnosticBase,review_diagnostics:[failureDiagnostic],
+ timing:{retrieval_ms:7000,planning_ms:0,review_ms:17000,total_ms:24000}};
+const failureText=textFor(failureResult);
+assert.ok(failureText.includes('今回の会議録検索：7000ms'));
+assert.ok(failureText.includes('今回のAI判定：17000ms'));
+assert.ok(failureText.includes('今回の全体：24000ms'));
+assert.ok(failureText.includes('判定段階：初回判定'));
+assert.ok(failureText.includes('123ms後に開始'));
+assert.ok(failureText.includes('返却された判定行：8件'));
+assert.ok(failureText.includes('行形式の不正：1件'));
+assert.ok(failureText.includes('未使用の引用欄を補完：2件'));
+assert.ok(failureText.includes('検証内訳・意味項目の欠落：1件'));
+assert.ok(failureText.includes('検証内訳・原文に存在しない採用根拠番号：1件'));
+assert.ok(failureText.includes('検証内訳・理由が空欄：0件'));
+assert.ok(!failureText.includes('PRIVATE'));
+render(failureResult);
+assert.ok(!getNode('results').attributes['data-review-diagnostics'].includes('PRIVATE'));
+assert.ok(getNode('results').attributes['data-review-diagnostics'].includes('unknown_accepted_refs'));
+const scopeText=textFor({...failureResult,review_diagnostics:[{...failureDiagnostic,output_format:'scope_json_v3'}]});
+assert.ok(scopeText.includes('判定段階：対象の追加確認'));
+assert.ok(scopeText.includes('判定済みの候補から並行して始まる'));
+assert.ok(!scopeText.includes('対象の追加確認はその後に行います'));
+const savedFailureText=textFor({...failureResult,analysis_cache_hit:true,
+ timing:{cached:true,total_ms:12},original_timing:failureResult.timing});
+assert.ok(savedFailureText.includes('元の分析の全体：24000ms'));
+assert.ok(!savedFailureText.includes('今回の全体：24000ms'));
+assert.ok(!savedFailureText.includes('123ms後に開始'));
+assert.ok(savedFailureText.includes('検証内訳・原文に存在しない採用根拠番号：1件'));
+for(const invalid of [-1,NaN,Infinity,1.5,'1','PRIVATE',null,{},[]]){
+ const invalidText=textFor({...failureResult,review_diagnostics:[{...diagnostics[0],
+   returned:invalid,started_after_ms:invalid,output_format:'PRIVATE',
+   validation_failures:{unknown_accepted_refs:invalid}}]});
+ assert.ok(!invalidText.includes('返却された判定行'));
+ assert.ok(!invalidText.includes('ms後に開始'));
+ assert.ok(!invalidText.includes('検証内訳'));
+ assert.ok(!invalidText.includes('PRIVATE'));
+}
 
 // Model a newly rendered DOM for each copy test, as innerHTML does in a browser.
 const mountDiagnostics=result=>{
@@ -284,13 +329,13 @@ assert.ok(partialNotice.indexOf('取りこぼし')<partialNotice.indexOf('class=
 assert.ok(!render({...timedBase,assessment_partial:false}).includes('一部のAI判定が未完了です。'));
 const oldApi=render({...timedBase,routing_version:'20261015-73'});
 assert.ok(oldApi.includes('判定APIが旧版'),'Detect independent API deployment mismatch');
-assert.ok(!render({...timedBase,routing_version:'20261017-79'}).includes('判定APIが旧版'));
+assert.ok(!render({...timedBase,routing_version:'20261019-80'}).includes('判定APIが旧版'));
 assert.ok(!render({...timedBase,routing_version:'<invalid>'}).includes('判定APIが旧版'));
 
 const source=await readFile(new URL('../frontend/app.js',import.meta.url),'utf8');
 assert.equal(await readFile(new URL('../../dist/app.js',import.meta.url),'utf8'),source,'Published and source frontend files must match');
 const page=await readFile(new URL('../../dist/index.html',import.meta.url),'utf8');
-assert.ok(page.includes('app.js?v=20261017-79-ui2'),'Only the frontend asset cache key changes');
-assert.ok(source.includes('question:input,v:"20261017-79"'),'The analysis/cache version remains unchanged');
+assert.ok(page.includes('app.js?v=20261019-80'),'Frontend assets advertise the new receiver-contract version');
+assert.ok(source.includes('question:input,v:"20261019-80"'),'New analysis requests use the receiver-contract version');
 console.log('Frontend states, timings, safe numeric diagnostics, cache labels, absent usage, clipboard success/fallback/repeated taps, stale-copy isolation, escaping, unchanged source requests and nonblocking law lookup passed. No network or model calls.');
 
