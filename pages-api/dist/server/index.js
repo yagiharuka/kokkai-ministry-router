@@ -14,7 +14,7 @@ async function runCacheWrite(write, ctx = {}) {
 }
 
 // Shared, policy-independent retrieval and turn alignment. No policy -> ministry rules.
-const routingVersion = '20261019-80';
+const routingVersion = '20261019-81';
 const words = new Intl.Segmenter('ja', { granularity: 'word' });
 const filler = new Set(['について','における','による','に関する','として','ため','政府','どのよう','どう','こと','もの','これ','それ','何','どこ','また','さらに','及び','並びに','より','から','ある','する','いる','れる','政策','対応','質問','現在','今後','我が国','日本','促進','推進','進める','検討','べき','では','ない','すべ','強化','必要','見直し','拡大','拡充','支援','改善','整備','充実','進め','いかが','でしょう','ます','ください','お願い','伺い','お伺い','お尋ね','対策','活躍']);
 const normalize = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
@@ -96,7 +96,12 @@ function makePlan(question, hints = []) {
   // Keep the requested change as a separate constraint, rather than treating
   // background discussion of the same topic as an answer to the proposal.
   let requestedAction = '';
-  const relevanceText = normalize(question).replace(/を([\p{Script=Han}]{2,4})(?:する|す)?べき/gu,
+  // Strip only a terminal request to explain the preceding topic. Segmenting
+  // this wrapper can produce 教え / くだ / さい as false policy concepts.
+  // Keep substantive 教える/説明 obligations and the complete model question.
+  const relevanceText = normalize(question)
+    .replace(/(?:について|に関して)(?:詳しく|具体的に)?教えて(?:ください|下さい)[。．.!！?？]*$/u, '')
+    .replace(/を([\p{Script=Han}]{2,4})(?:する|す)?べき/gu,
     (whole, predicate) => {
       if (!/^(?:検討|議論|考慮|実施)$/.test(predicate)) requestedAction = predicate;
       return 'を進めるべき';

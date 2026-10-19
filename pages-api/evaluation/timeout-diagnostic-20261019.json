@@ -1,0 +1,110 @@
+{
+  "kind": "user-reported diagnostic with a separate synthetic offline regression schedule",
+  "schema_version": 1,
+  "observed": {
+    "provenance": "Transcribed from the user's diagnostic supplied on 2026-10-19; not independently fetched or reproduced live.",
+    "routing_version": "20261019-80",
+    "analyzed_at": "2026-10-19T11:20:06.881Z",
+    "question": null,
+    "question_status": "unconfirmed",
+    "question_context": "Sequential screenshots displayed 技術研究組合の特徴について教えてください, but association with this exact diagnostic is not confirmed.",
+    "timing": {
+      "retrieval_ms": 8085,
+      "planning_ms": 0,
+      "review_ms": 45007,
+      "total_ms": 53092
+    },
+    "review_diagnostics": [
+      {
+        "batch": "B1",
+        "operation": "initial",
+        "expected": 8,
+        "completed": 8,
+        "input_chars": 9708,
+        "usage": { "input_tokens": 8405, "output_tokens": 1517 },
+        "output_token_limit": 3072,
+        "started_after_ms": 0,
+        "model_ms": 14287,
+        "cache_read_ms": 6,
+        "total_ms": 14293
+      },
+      {
+        "batch": "B2",
+        "operation": "initial",
+        "expected": 8,
+        "completed": 8,
+        "input_chars": 12852,
+        "usage": { "input_tokens": 10842, "output_tokens": 718 },
+        "output_token_limit": 3072,
+        "started_after_ms": 0,
+        "model_ms": 7208,
+        "cache_read_ms": 7,
+        "total_ms": 7215
+      },
+      {
+        "batch": "B3",
+        "operation": "initial",
+        "expected": 1,
+        "completed": 0,
+        "input_chars": 1595,
+        "usage": null,
+        "output_token_limit": 2048,
+        "started_after_ms": 0,
+        "model_ms": 45000,
+        "cache_read_ms": 7,
+        "total_ms": 45007,
+        "error": "model_timeout"
+      },
+      {
+        "batch": "B4",
+        "operation": "scope",
+        "expected": 3,
+        "completed": 3,
+        "input_chars": 2250,
+        "usage": { "input_tokens": 2589, "output_tokens": 521 },
+        "output_token_limit": 3072,
+        "started_after_ms": 14293,
+        "model_ms": 8051,
+        "cache_read_ms": 5,
+        "total_ms": 8056
+      }
+    ],
+    "validation_counters": {
+      "reported_values": "all zero",
+      "interpretation": "No reported validation failure. A timeout with no response does not establish that the missing model response would have passed validation."
+    },
+    "raw_sources_and_model_decisions_available": false,
+    "excluded_comparison": "An earlier screenshot showed a different analysis time, 24 candidates, and a cached 25.3-second result. It is not a comparable before/after measurement."
+  },
+  "derived_from_reported_diagnostics": {
+    "initial_expected": 17,
+    "initial_completed": 16,
+    "scope_finished_after_review_start_ms": 22349,
+    "scope_finished_before_initial_timeout_ms": 22658,
+    "interpretation": "The one-candidate initial timeout is consistent with the reported review critical path. The scope call had already finished according to these timestamps."
+  },
+  "offline_regression": {
+    "command": "node pages-api/scripts/test-underfilled-timeout.mjs",
+    "implementation_base": "c3183be1fce5ebe0b9ba14c7cc4ac3d283cf76e7",
+    "schedule": "Inspired by the reported initial 8+8+1 and scope-3 timing; virtual cache delays and deferred model completions exercise the production timeout callback.",
+    "question": "教員の勤務時間を減らすための対策",
+    "question_provenance": "Synthetic test question, unrelated to the unconfirmed live question.",
+    "source_provenance": "All 17 source rows and their NDL-shaped URLs are synthetic and must not be cited as real parliamentary records.",
+    "decision_provenance": "All model decisions and any mock token usage are synthetic, not captured provider output.",
+    "model_behavior": "The third initial binding promise is withheld until the real reviewer timeout rejects it; the other responses are deterministic fixtures.",
+    "expected_initial_batch_sizes": [8, 8, 1],
+    "expected_scope_batch_sizes": [3],
+    "expected_reviewed_candidates_after_timeout": 16,
+    "expected_model_calls_per_fresh_analysis": 4,
+    "expected_automatic_retries": 0,
+    "expected_external_requests": 0,
+    "live_latency_measured": false,
+    "limitations": [
+      "The observed input lengths and token usage are retained above but are not recreated by the synthetic source text.",
+      "This verifies scheduling, timeout classification, grounded-result preservation, and partial-result cache safety, not model semantic accuracy.",
+      "A one-row timeout does not show that an underfilled batch caused the timeout.",
+      "There is no live comparison showing that changing batching would improve latency, reliability, cost, or accuracy.",
+      "No production code, generation settings, retries, or request limits are changed by this fixture."
+    ]
+  }
+}

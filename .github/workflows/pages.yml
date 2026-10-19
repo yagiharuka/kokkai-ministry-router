@@ -33,7 +33,7 @@ jobs:
       - name: Inspect live Cloudflare API (no AI inference)
         run: |
           node --input-type=module <<'NODE'
-          const expected = '20261019-80';
+          const expected = '20261019-81';
           const url = 'https://kokkai-ministry-router.haru620328.workers.dev/api/status';
           try {
             const response = await fetch(url, {
